@@ -91,6 +91,7 @@ plugins = ["pydantic.mypy"]
 # submodules as stubs appear, and never add a new module without a reason.
 [[tool.mypy.overrides]]
 module = [
+  "authlib.*",
   "deepagents.*",
   "langchain_deepseek.*",
   "langchain_core.*",
@@ -109,6 +110,24 @@ omit = ["app/mock_llm.py"]
 precision = 1
 show_missing = true
 skip_covered = false
+# Floor is what THIS configuration actually measures (77.0), not the true line
+# coverage (84.9). Ratchet it up 2-5% per PR; never lower it, and never set an
+# aspirational value that then has to be walked back.
+#
+# The two numbers differ because of a proven instrument defect, recorded here so
+# nobody "fixes" tests that already pass. `branch = true` on Python 3.13 forces
+# coverage's settrace cores — sys.monitoring cannot measure branches there — and
+# both CTracer and PyTracer drop the synchronous lines of a coroutine that
+# suspends repeatedly inside one `async with` block, keeping only the `await`
+# lines (CPython re-emits a call event on each resumption, and that is all they
+# record). services.py's begin_turn is the only such function in the codebase, so
+# it reports 53.6% while three independent checks show every line executing: the
+# turn commits and returns 200, a raw sys.settrace probe records lines 36-102,
+# and coverage's own sysmon core reports 86.1%. The error is one-directional
+# under-measurement, so this floor is conservative rather than unsafe.
+#
+# Cross-check the true figure with branch coverage off and core=sysmon.
+fail_under = 77.0
 exclude_lines = [
   "pragma: no cover",
   "if TYPE_CHECKING:",

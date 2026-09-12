@@ -5,6 +5,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
@@ -23,7 +24,7 @@ DEFAULT_QUERIES = [
 ]
 
 
-def normalize(item: dict, query: str) -> dict | None:
+def normalize(item: dict[str, Any], query: str) -> dict[str, Any] | None:
     content_id = str(item.get("ContentID") or "").strip()
     content_type = str(item.get("ContentType") or "").strip().lower()
     title = str(item.get("Title") or "").strip()
@@ -61,7 +62,7 @@ def normalize(item: dict, query: str) -> dict | None:
     }
 
 
-async def persist(rows: list[dict]) -> int:
+async def persist(rows: list[dict[str, Any]]) -> int:
     async with Session.begin() as db:
         for row in rows:
             # Preserve existing topic tags atomically without duplicates on re-import.
@@ -84,17 +85,17 @@ async def persist(rows: list[dict]) -> int:
     return len(rows)
 
 
-async def run(queries: list[str], count: int):
+async def run(queries: list[str], count: int) -> dict[str, Any]:
     settings = get_settings()
     if not settings.zhihu_access_secret:
         raise RuntimeError("ZHIHU_ACCESS_SECRET is not configured")
-    report = {"source": "zhihu_search", "queries": [], "imported_unique": 0}
-    seen = set()
+    report: dict[str, Any] = {"source": "zhihu_search", "queries": [], "imported_unique": 0}
+    seen: set[tuple[str, str]] = set()
     async with httpx.AsyncClient(
         base_url="https://developer.zhihu.com", timeout=30, follow_redirects=False
     ) as client:
 
-        async def get(path, params):
+        async def get(path: str, params: dict[str, str | int]) -> Any:
             response = await client.get(
                 path,
                 params=params,
@@ -135,7 +136,7 @@ async def run(queries: list[str], count: int):
     return report
 
 
-def write_report(report):
+def write_report(report: dict[str, Any]) -> None:
     """Persist and echo the import report. Blocking on purpose: called outside the loop."""
     directory = Path(__file__).resolve().parents[2] / "artifacts"
     directory.mkdir(exist_ok=True)
@@ -143,7 +144,7 @@ def write_report(report):
     print(json.dumps(report, ensure_ascii=False))
 
 
-async def main():
+async def main() -> dict[str, Any]:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--query", action="append", help="Repeat up to ten times")
     parser.add_argument("--count", type=int, default=5, choices=range(1, 11))

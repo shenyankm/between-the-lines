@@ -121,9 +121,9 @@ lint-ts:
 	$(fe) format:check
 
 .PHONY: format
-format: ## Rewrite formatting (ruff format + prettier)
-	$(PYTHON) -m ruff format --config $(BACKEND)/pyproject.toml $(BACKEND)/app $(BACKEND)/tests $(BACKEND)/migrations scripts
+format: ## Rewrite formatting (ruff fix + ruff format + prettier)
 	$(PYTHON) -m ruff check --config $(BACKEND)/pyproject.toml --fix $(BACKEND)/app $(BACKEND)/tests $(BACKEND)/migrations scripts
+	$(PYTHON) -m ruff format --config $(BACKEND)/pyproject.toml $(BACKEND)/app $(BACKEND)/tests $(BACKEND)/migrations scripts
 	$(fe) format
 
 .PHONY: typecheck
@@ -142,7 +142,7 @@ test: test-py test-ts ## Run backend and frontend unit/integration tests
 
 .PHONY: test-py
 test-py:
-	cd $(BACKEND) && $(PYTHON) -m pytest -q
+	cd $(BACKEND) && $(PYTHON) -m pytest -q --cov=app --cov-report=term-missing
 
 .PHONY: test-py-unit
 test-py-unit: ## Unit tests only; passes with PostgreSQL stopped

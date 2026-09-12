@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -56,5 +56,5 @@ class DevLogin(BaseModel):
 class TurnOut(BaseModel):
     id: str
     status: str
-    result: dict | None
-    usage: dict
+    result: dict[str, Any] | None
+    usage: dict[str, Any]

@@ -1,8 +1,9 @@
 import json
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
-STORY = json.loads(Path(__file__).with_name("story.json").read_text())
+STORY: dict[str, Any] = json.loads(Path(__file__).with_name("story.json").read_text())
 NPCS = set(STORY["npcs"])
 
 
@@ -10,7 +11,7 @@ class RuleError(ValueError):
     pass
 
 
-def initial_state():
+def initial_state() -> dict[str, Any]:
     return {
         "act": 0,
         "credit": 50,
@@ -22,7 +23,7 @@ def initial_state():
     }
 
 
-def apply_player(state: dict, action: str) -> tuple[dict, str]:
+def apply_player(state: dict[str, Any], action: str) -> tuple[dict[str, Any], str]:
     s = deepcopy(state)
     flags = set(s["flags"])
     if action == "epilogue":
@@ -90,7 +91,7 @@ def apply_player(state: dict, action: str) -> tuple[dict, str]:
     return s, text
 
 
-def apply_npc(state: dict, npc: str, operation: str) -> tuple[dict, str]:
+def apply_npc(state: dict[str, Any], npc: str, operation: str) -> tuple[dict[str, Any], str]:
     s = deepcopy(state)
     if npc not in NPCS or s["act"] != 2 or s["ending"]:
         raise RuleError("角色或幕次不允许此操作。")
@@ -114,7 +115,7 @@ def apply_npc(state: dict, npc: str, operation: str) -> tuple[dict, str]:
     return s, text
 
 
-def visible_state(state: dict, npc: str) -> dict:
+def visible_state(state: dict[str, Any], npc: str) -> dict[str, Any]:
     visible = {"requirements", "materials", "started", "clarified", "delivered", "confronted"}
     if npc == "zhang":
         visible |= {"reported", "supported"}

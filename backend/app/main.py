@@ -2,15 +2,20 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
+from typing import Any, cast
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from sqlalchemy import select, text
+from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import Response
 
 from .agents import MODEL, run_agent, run_epilogue
 from .auth import current_user
@@ -29,7 +34,7 @@ if not logger.handlers:
 
 
 @asynccontextmanager
-async def lifespan(app):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with AsyncConnectionPool(
         conninfo=settings.checkpoint_url,
         max_size=10,
@@ -44,12 +49,15 @@ async def lifespan(app):
         async with engine.begin() as conn:
             await conn.execute(text("CREATE SCHEMA IF NOT EXISTS agent_checkpoints"))
         await pool.wait()
-        app.state.checkpointer = AsyncPostgresSaver(pool)
+        # row_factory=dict_row travels inside the opaque kwargs= dict, so psycopg types
+        # this pool as yielding tuple rows. Every row really is a dict at runtime.
+        saver_pool = cast("AsyncConnectionPool[AsyncConnection[dict[str, Any]]]", pool)
+        app.state.checkpointer = AsyncPostgresSaver(saver_pool)
         await app.state.checkpointer.setup()
         app.state.active = set()
         await recover_stale_turns(all_running=True)
 
-        async def sweep():
+        async def sweep() -> None:
             while True:
                 await asyncio.sleep(15)
                 await recover_stale_turns()
@@ -74,7 +82,7 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def protect_mutations(request: Request, call_next):
+async def protect_mutations(request: Request, call_next: RequestResponseEndpoint) -> Response:
     if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
         # Same-origin API; JSON-only mutations prevent cross-site HTML forms.
         origin = request.headers.get("origin")
@@ -94,14 +102,14 @@ app.include_router(auth_router)
 
 
 @app.get("/api/health")
-async def health():
+async def health() -> dict[str, bool]:
     async with Session() as db:
         await db.execute(text("SELECT 1"))
     return {"ok": True}
 
 
 @app.get("/api/config")
-async def config():
+async def config() -> dict[str, Any]:
     return {
         "dev_login": settings.dev_login_enabled and settings.environment != "production",
         "zhihu_login": settings.oauth_ready,
@@ -111,7 +119,7 @@ async def config():
 
 
 @app.get("/api/story")
-async def story():
+async def story() -> dict[str, Any]:
     return {
         **STORY,
         "npcs": {
@@ -121,7 +129,7 @@ async def story():
 
 
 @app.get("/api/saves", response_model=list[SaveOut])
-async def saves(user: User = Depends(current_user)):
+async def saves(user: User = Depends(current_user)) -> list[dict[str, Any]]:
     async with Session() as db:
         items = (
             await db.scalars(
@@ -132,7 +140,7 @@ async def saves(user: User = Depends(current_user)):
 
 
 @app.post("/api/saves", response_model=SaveOut)
-async def create_save(user: User = Depends(current_user)):
+async def create_save(user: User = Depends(current_user)) -> dict[str, Any]:
     async with Session.begin() as db:
         save = Save(user_id=user.id, state=initial_state())
         db.add(save)
@@ -141,13 +149,13 @@ async def create_save(user: User = Depends(current_user)):
 
 
 @app.get("/api/saves/{save_id}", response_model=SaveOut)
-async def get_save(save_id: str, user: User = Depends(current_user)):
+async def get_save(save_id: str, user: User = Depends(current_user)) -> dict[str, Any]:
     async with Session() as db:
         return snapshot(await owned_save(db, save_id, user.id))
 
 
 @app.get("/api/saves/{save_id}/events")
-async def events(save_id: str, user: User = Depends(current_user)):
+async def events(save_id: str, user: User = Depends(current_user)) -> list[dict[str, Any]]:
     async with Session() as db:
         await owned_save(db, save_id, user.id)
         items = (
@@ -159,7 +167,9 @@ async def events(save_id: str, user: User = Depends(current_user)):
 
 
 @app.get("/api/saves/{save_id}/turns/{request_id}", response_model=TurnOut)
-async def get_turn(save_id: str, request_id: str, user: User = Depends(current_user)):
+async def get_turn(
+    save_id: str, request_id: str, user: User = Depends(current_user)
+) -> dict[str, Any]:
     async with Session() as db:
         await owned_save(db, save_id, user.id)
         turn = await db.scalar(
@@ -170,14 +180,14 @@ async def get_turn(save_id: str, request_id: str, user: User = Depends(current_u
         return {"id": turn.id, "status": turn.status, "result": turn.result, "usage": turn.usage}
 
 
-def sse(event: str, data: dict):
+def sse(event: str, data: object) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
 @app.post("/api/saves/{save_id}/turns")
 async def submit(
     save_id: str, body: TurnInput, request: Request, user: User = Depends(current_user)
-):
+) -> StreamingResponse:
     if (
         body.action == "speak"
         and settings.agent_mode == "deepseek"
@@ -196,8 +206,8 @@ async def submit(
         active.discard(reservation)
         raise
 
-    async def stream():
-        usage = {
+    async def stream() -> AsyncIterator[str]:
+        usage: dict[str, Any] = {
             "model": MODEL,
             "mode": settings.agent_mode,
             "model_calls": 0,

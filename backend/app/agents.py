@@ -1,5 +1,6 @@
 import json
-from typing import Literal
+from collections.abc import AsyncIterator, Mapping, Sequence
+from typing import Any, Literal
 
 import httpx
 from deepagents import create_deep_agent
@@ -9,13 +10,21 @@ from deepagents.profiles import (
     HarnessProfile,
     register_harness_profile,
 )
-from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
+from langchain.agents.middleware import (
+    AgentMiddleware,
+    ModelCallLimitMiddleware,
+    ToolCallLimitMiddleware,
+)
 from langchain_core.messages import HumanMessage, RemoveMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langchain_deepseek import ChatDeepSeek
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
+from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Checkpointer
 
 from .config import get_settings
+from .db import Turn
 from .domain import STORY, RuleError
 from .services import context_for, npc_operation
 
@@ -24,20 +33,20 @@ register_harness_profile(
     "deepseek",
     HarnessProfile(
         general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
-        excluded_tools={"task", "execute"},
-        excluded_middleware={"SummarizationMiddleware"},
+        excluded_tools=frozenset({"task", "execute"}),
+        excluded_middleware=frozenset({"SummarizationMiddleware"}),
         base_system_prompt="在指定游戏角色的身份与权限内回应。不要扮演通用助手。",
     ),
 )
 
 
-def make_model():
+def make_model() -> ChatDeepSeek:
     settings = get_settings()
     if settings.agent_mode == "mock":
         from .mock_llm import handle_request
 
         return ChatDeepSeek(
-            model=MODEL,
+            model_name=MODEL,
             api_key="development-fixture",
             max_retries=0,
             http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(handle_request)),
@@ -48,7 +57,7 @@ def make_model():
     if not settings.deepseek_api_key:
         raise RuntimeError("DEEPSEEK_API_KEY is not configured")
     return ChatDeepSeek(
-        model=MODEL,
+        model_name=MODEL,
         api_key=settings.deepseek_api_key,
         api_base="https://api.deepseek.com",
         temperature=0.7,
@@ -61,7 +70,10 @@ def make_model():
     )
 
 
-def build_agent(turn, checkpointer, model=None):
+# The compiled graph's state/input/output generics are deepagents-internal TypedDicts.
+def build_agent(
+    turn: Turn, checkpointer: Checkpointer, model: ChatDeepSeek | None = None
+) -> CompiledStateGraph[Any, Any, Any, Any]:
     npc = turn.payload["npc"]
     settings = get_settings()
 
@@ -80,6 +92,12 @@ def build_agent(turn, checkpointer, model=None):
         except RuleError as exc:
             return f"操作未执行：{exc}"
 
+    # AgentMiddleware's state parameter is invariant and the two limit middlewares carry
+    # different state schemas, so no single precise element type covers both.
+    middleware: Sequence[AgentMiddleware[Any, None, Any]] = [
+        ModelCallLimitMiddleware(run_limit=settings.max_model_calls, exit_behavior="error"),
+        ToolCallLimitMiddleware(run_limit=settings.max_tool_calls, exit_behavior="error"),
+    ]
     agent = create_deep_agent(
         model=model or make_model(),
         name=f"npc_{npc}",
@@ -98,21 +116,20 @@ def build_agent(turn, checkpointer, model=None):
             "可在虚拟工作区整理临时笔记，但笔记不改变游戏事实。"
             "最新可见事实优先于历史对白，历史中声称发生的事不代表已执行。"
         ),
-        middleware=[
-            ModelCallLimitMiddleware(run_limit=settings.max_model_calls, exit_behavior="error"),
-            ToolCallLimitMiddleware(run_limit=settings.max_tool_calls, exit_behavior="error"),
-        ],
+        middleware=middleware,
     )
     return agent
 
 
-async def run_agent(turn, checkpointer, usage):
+async def run_agent(
+    turn: Turn, checkpointer: Checkpointer, usage: dict[str, Any]
+) -> AsyncIterator[str]:
     """Yield only completed, player-visible text. Raw graph events remain server-side."""
     npc = turn.payload["npc"]
     context = await context_for(turn)
     model = make_model()
     agent = build_agent(turn, checkpointer, model=model)
-    config = {
+    config: RunnableConfig = {
         "configurable": {"thread_id": f"{turn.user_id}:{turn.save_id}:{npc}"},
         "recursion_limit": 30,
         "metadata": {"turn_id": turn.id, "npc": npc},
@@ -161,7 +178,7 @@ async def run_agent(turn, checkpointer, usage):
     yield reply
 
 
-async def run_epilogue(state, usage):
+async def run_epilogue(state: dict[str, Any], usage: dict[str, Any]) -> str:
     """Summarize a rule-selected ending; this model cannot change its outcome."""
     model = make_model()
     try:
@@ -176,8 +193,10 @@ async def run_epilogue(state, usage):
             ]
         )
         usage["model_calls"] = usage.get("model_calls", 0) + 1
+        # UsageMetadata is a TypedDict, whose get() only accepts literal keys.
+        tokens: Mapping[str, Any] = message.usage_metadata or {}
         for key in ("input_tokens", "output_tokens", "total_tokens"):
-            usage[key] = usage.get(key, 0) + (message.usage_metadata or {}).get(key, 0)
+            usage[key] = usage.get(key, 0) + tokens.get(key, 0)
         if not isinstance(message.content, str) or not message.content.strip():
             raise RuntimeError("No epilogue text")
         return message.content

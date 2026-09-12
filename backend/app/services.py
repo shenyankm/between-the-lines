@@ -1,7 +1,9 @@
 from datetime import timedelta
+from typing import Any, cast
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
 from .db import Event, Save, Session, Turn, User, utcnow
@@ -11,11 +13,11 @@ from .schemas import TurnInput
 settings = get_settings()
 
 
-def snapshot(save):
+def snapshot(save: Save) -> dict[str, Any]:
     return {"id": save.id, "version": save.version, "state": save.state}
 
 
-async def owned_save(db, save_id, user_id, lock=False):
+async def owned_save(db: AsyncSession, save_id: str, user_id: str, lock: bool = False) -> Save:
     query = select(Save).where(Save.id == save_id, Save.user_id == user_id)
     save = await db.scalar(query.with_for_update() if lock else query)
     if not save:
@@ -23,7 +25,7 @@ async def owned_save(db, save_id, user_id, lock=False):
     return save
 
 
-async def begin_turn(save_id: str, user_id: str, body: TurnInput):
+async def begin_turn(save_id: str, user_id: str, body: TurnInput) -> Turn:
     async with Session.begin() as db:
         # Lock user before save: serializes quota checks across the user's saves.
         await db.scalar(select(User).where(User.id == user_id).with_for_update())
@@ -50,10 +52,13 @@ async def begin_turn(save_id: str, user_id: str, body: TurnInput):
         if save.version != body.version:
             raise HTTPException(409, "进度已变化，请刷新后重试。")
         since = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        used = await db.scalar(
-            select(func.count())
-            .select_from(Turn)
-            .where(Turn.user_id == user_id, Turn.created_at >= since)
+        used = (
+            await db.scalar(
+                select(func.count())
+                .select_from(Turn)
+                .where(Turn.user_id == user_id, Turn.created_at >= since)
+            )
+            or 0
         )
         if used >= settings.daily_turn_limit:
             raise HTTPException(429, "今日回合额度已用完。")
@@ -97,7 +102,7 @@ async def begin_turn(save_id: str, user_id: str, body: TurnInput):
         return turn
 
 
-async def context_for(turn: Turn):
+async def context_for(turn: Turn) -> dict[str, Any]:
     npc = turn.payload["npc"]
     async with Session() as db:
         save = await owned_save(db, turn.save_id, turn.user_id)
@@ -112,9 +117,11 @@ async def context_for(turn: Turn):
     return {"facts": visible_state(save.state, npc), "history": [e.data for e in reversed(events)]}
 
 
-async def npc_operation(turn_id: str, npc: str, operation: str):
+async def npc_operation(turn_id: str, npc: str, operation: str) -> str:
     async with Session.begin() as db:
-        turn = await db.get(Turn, turn_id)
+        # Unreachable None: called only from the agent tool closure with the id of a
+        # turn committed earlier in this request, and no route cascades a turn away.
+        turn = cast(Turn, await db.get(Turn, turn_id))
         save = await owned_save(db, turn.save_id, turn.user_id, True)
         # Stale or timed-out executions must never mutate the world.
         await db.refresh(turn)
@@ -124,7 +131,7 @@ async def npc_operation(turn_id: str, npc: str, operation: str):
             select(Event).where(Event.turn_id == turn_id, Event.operation == operation)
         )
         if previous:
-            return previous.data["text"]
+            return cast(str, previous.data["text"])
         state, text = apply_npc(save.state, npc, operation)
         save.state = state
         save.version += 1
@@ -141,7 +148,9 @@ async def npc_operation(turn_id: str, npc: str, operation: str):
         return text
 
 
-async def finish_turn(turn_id, text, usage, error=False):
+async def finish_turn(
+    turn_id: str, text: str | None, usage: dict[str, Any], error: bool = False
+) -> dict[str, Any] | None:
     usage["billing_complete"] = not error
     usage["cost_estimate_usd"] = (
         0.0
@@ -156,7 +165,7 @@ async def finish_turn(turn_id, text, usage, error=False):
         )
     )
     async with Session.begin() as db:
-        turn = await db.get(Turn, turn_id)
+        turn = cast(Turn, await db.get(Turn, turn_id))
         save = await owned_save(db, turn.save_id, turn.user_id, True)
         await db.refresh(turn)
         if turn.status != "running":
@@ -190,7 +199,7 @@ async def finish_turn(turn_id, text, usage, error=False):
         return turn.result
 
 
-async def recover_stale_turns(all_running=False):
+async def recover_stale_turns(all_running: bool = False) -> None:
     # Safe with a single API process: startup means the previous process has stopped.
     # A periodic lease expiry additionally handles abandoned requests.
     async with Session.begin() as db:

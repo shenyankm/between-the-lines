@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     zhihu_name_field: str = "name"
 
     @model_validator(mode="after")
-    def production_guards(self):
+    def production_guards(self) -> Self:
         if self.environment == "production":
             if self.dev_login_enabled or self.agent_mode == "mock":
                 raise ValueError("Production forbids development login and mock agents")

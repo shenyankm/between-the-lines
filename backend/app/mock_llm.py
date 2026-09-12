@@ -6,11 +6,12 @@ No requests leave the process. This is a fixture, not a model quality evaluation
 
 import asyncio
 import json
+from typing import Any
 
 import httpx
 
 
-def completion(payload: dict) -> dict:
+def completion(payload: dict[str, Any]) -> dict[str, Any]:
     messages = payload["messages"]
     human = next(m for m in reversed(messages) if m["role"] == "user")
     context = json.loads(human["content"])
@@ -85,7 +86,7 @@ def completion(payload: dict) -> dict:
     return {"role": "assistant", "content": reply}
 
 
-async def handle_request(request: httpx.Request):
+async def handle_request(request: httpx.Request) -> httpx.Response:
     payload = json.loads(request.content)
     await asyncio.sleep(0.03)
     message = completion(payload)
@@ -110,7 +111,7 @@ async def handle_request(request: httpx.Request):
                 "usage": usage,
             },
         )
-    deltas = [{"role": "assistant", "content": ""}]
+    deltas: list[dict[str, Any]] = [{"role": "assistant", "content": ""}]
     if message.get("tool_calls"):
         call = message["tool_calls"][0]
         args = call["function"]["arguments"]

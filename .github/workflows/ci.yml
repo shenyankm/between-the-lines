@@ -77,7 +77,12 @@ jobs:
           git diff --exit-code -- backend/uv.lock backend/requirements.lock
           pnpm --dir frontend install --frozen-lockfile
       - name: Lint Python
-        run: python -m ruff check --config backend/pyproject.toml backend/app backend/tests backend/migrations scripts
+        run: |
+          python -m ruff check --config backend/pyproject.toml backend/app backend/tests backend/migrations scripts
+          python -m ruff format --config backend/pyproject.toml --check backend/app backend/tests backend/migrations scripts
+      - name: Typecheck Python
+        working-directory: backend
+        run: python -m mypy app
       - name: Migrate a fresh database and check schema drift
         working-directory: backend
         run: |
@@ -85,7 +90,10 @@ jobs:
           python -m alembic check
       - name: Test backend and Agent boundaries
         working-directory: backend
-        run: python -m pytest -q --junitxml=../artifacts/pytest.xml
+        run: >-
+          python -m pytest -q --cov=app --cov-report=term-missing
+          --cov-report=xml:../artifacts/coverage.xml
+          --junitxml=../artifacts/pytest.xml
       - name: Verify crash recovery
         run: python scripts/test-restart.py
       - name: Check generated OpenAPI and TypeScript contract
@@ -100,6 +108,7 @@ jobs:
           name: backend-results
           path: |
             artifacts/pytest.xml
+            artifacts/coverage.xml
             artifacts/restart-test.json
           if-no-files-found: ignore
           retention-days: 7

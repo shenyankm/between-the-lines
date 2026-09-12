@@ -15,9 +15,9 @@ from .schemas import DevLogin, UserOut
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
-oauth = OAuth()
+oauth = OAuth()  # type: ignore[no-untyped-call]  # authlib ships no stubs
 if settings.oauth_ready:
-    oauth.register(
+    oauth.register(  # type: ignore[no-untyped-call]  # authlib ships no stubs
         "zhihu",
         client_id=settings.zhihu_client_id,
         client_secret=settings.zhihu_client_secret,
@@ -27,7 +27,7 @@ if settings.oauth_ready:
     )
 
 
-def digest(value):
+def digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
@@ -44,7 +44,7 @@ async def current_user(request: Request) -> User:
     return user
 
 
-async def issue_session(subject: str, name: str, response: Response):
+async def issue_session(subject: str, name: str, response: Response) -> dict[str, str]:
     token = secrets.token_urlsafe(32)
     async with Session.begin() as db:
         await db.execute(
@@ -53,6 +53,8 @@ async def issue_session(subject: str, name: str, response: Response):
             .on_conflict_do_nothing(index_elements=["subject"])
         )
         user = await db.scalar(select(User).where(User.subject == subject))
+        if user is None:
+            raise HTTPException(401, "请先登录。")
         db.add(
             LoginSession(
                 token_hash=digest(token), user_id=user.id, expires_at=utcnow() + timedelta(days=7)
@@ -71,7 +73,7 @@ async def issue_session(subject: str, name: str, response: Response):
 
 
 @router.post("/dev", response_model=UserOut)
-async def dev_login(body: DevLogin, request: Request, response: Response):
+async def dev_login(body: DevLogin, request: Request, response: Response) -> dict[str, str]:
     if settings.environment == "production" or not settings.dev_login_enabled:
         raise HTTPException(404)
     # A fresh random identity per browser login, never a guessable name-as-password.
@@ -79,12 +81,12 @@ async def dev_login(body: DevLogin, request: Request, response: Response):
 
 
 @router.get("/me", response_model=UserOut)
-async def me(user: User = Depends(current_user)):
+async def me(user: User = Depends(current_user)) -> dict[str, str]:
     return {"id": user.id, "name": user.name}
 
 
 @router.post("/logout")
-async def logout(request: Request, response: Response):
+async def logout(request: Request, response: Response) -> dict[str, bool]:
     async with Session.begin() as db:
         await db.execute(
             delete(LoginSession).where(
@@ -96,16 +98,18 @@ async def logout(request: Request, response: Response):
 
 
 @router.get("/zhihu")
-async def zhihu_login(request: Request):
+async def zhihu_login(request: Request) -> RedirectResponse:
     if not settings.oauth_ready:
         raise HTTPException(503, "知乎登录尚未完成配置。")
-    return await oauth.zhihu.authorize_redirect(
+    # authlib ships no stubs, so this await is Any; it resolves to a RedirectResponse.
+    redirect: RedirectResponse = await oauth.zhihu.authorize_redirect(
         request, settings.public_origin.rstrip("/") + "/api/auth/zhihu/callback"
     )
+    return redirect
 
 
 @router.get("/zhihu/callback")
-async def zhihu_callback(request: Request):
+async def zhihu_callback(request: Request) -> RedirectResponse:
     if not settings.oauth_ready:
         raise HTTPException(503, "知乎登录尚未完成配置。")
     try:

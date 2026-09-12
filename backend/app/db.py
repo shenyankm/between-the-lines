@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
@@ -9,11 +10,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from .config import get_settings
 
 
-def utcnow():
+def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-def new_id():
+def new_id() -> str:
     return str(uuid4())
 
 
@@ -40,7 +41,7 @@ class Save(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     version: Mapped[int] = mapped_column(Integer, default=0)
-    state: Mapped[dict] = mapped_column(JSONB)
+    state: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -51,11 +52,11 @@ class Turn(Base):
     save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     request_id: Mapped[str] = mapped_column(String(36))
-    payload: Mapped[dict] = mapped_column(JSONB)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(20), default="running")
     attempt: Mapped[int] = mapped_column(Integer, default=1)
-    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    usage: Mapped[dict] = mapped_column(JSONB, default=dict)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -67,8 +68,8 @@ class Event(Base):
     save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
     turn_id: Mapped[str] = mapped_column(ForeignKey("turns.id", ondelete="CASCADE"))
     operation: Mapped[str] = mapped_column(String(100))
-    audience: Mapped[list] = mapped_column(JSONB)
-    data: Mapped[dict] = mapped_column(JSONB)
+    audience: Mapped[list[str]] = mapped_column(JSONB)
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -84,7 +85,7 @@ class ZhihuContent(Base):
     author_name: Mapped[str] = mapped_column(Text)
     vote_count: Mapped[int] = mapped_column(Integer)
     comment_count: Mapped[int] = mapped_column(Integer)
-    topics: Mapped[list] = mapped_column(JSONB)
+    topics: Mapped[list[str]] = mapped_column(JSONB)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
