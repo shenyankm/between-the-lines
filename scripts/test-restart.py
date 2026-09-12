@@ -57,14 +57,10 @@ async def main():
             env={**env, "TEST_MARKER": str(marker)},
             stdout=subprocess.DEVNULL,
         )
-        async with httpx.AsyncClient(
-            base_url="http://127.0.0.1:8002", timeout=15
-        ) as client:
+        async with httpx.AsyncClient(base_url="http://127.0.0.1:8002", timeout=15) as client:
             try:
                 await ready(client, process)
-                (
-                    await client.post("/api/auth/dev", json={"name": "重启验证"})
-                ).raise_for_status()
+                (await client.post("/api/auth/dev", json={"name": "重启验证"})).raise_for_status()
                 save = (await client.post("/api/saves", json={})).json()
                 for action in ("begin", "boundary", "next"):
                     response = await client.post(
@@ -118,9 +114,7 @@ async def main():
                 await ready(client, process)
                 recovered = (await client.get(f"/api/saves/{save['id']}")).json()
                 assert "requirements" in recovered["state"]["flags"]
-                turn = (
-                    await client.get(f"/api/saves/{save['id']}/turns/{request_id}")
-                ).json()
+                turn = (await client.get(f"/api/saves/{save['id']}/turns/{request_id}")).json()
                 assert turn["status"] == "failed" and turn["result"]["retryable"]
                 events = (await client.get(f"/api/saves/{save['id']}/events")).json()
                 assert sum(e["kind"] == "work" for e in events) == 1
@@ -133,9 +127,7 @@ async def main():
                     "session_survived": True,
                 }
                 (root / "artifacts").mkdir(exist_ok=True)
-                (root / "artifacts/restart-test.json").write_text(
-                    json.dumps(report, indent=2)
-                )
+                (root / "artifacts/restart-test.json").write_text(json.dumps(report, indent=2))
                 print(json.dumps(report))
             finally:
                 if process.poll() is None:

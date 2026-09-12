@@ -18,9 +18,10 @@ async def test_same_save_admission_and_quota(monkeypatch):
         yield "我听到了。"
 
     monkeypatch.setattr(main, "run_agent", slow_agent)
-    async with app.router.lifespan_context(app), httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test"
-    ) as c:
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
         await c.post("/api/auth/dev", json={"name": "并发验证"})
         save = (await c.post("/api/saves", json={})).json()
         await c.post(
@@ -55,9 +56,10 @@ async def test_timeout_and_capacity_release(monkeypatch):
 
     monkeypatch.setattr(main, "run_agent", never_finishes)
     monkeypatch.setattr(main.settings, "turn_timeout_seconds", 0.03)
-    async with app.router.lifespan_context(app), httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test"
-    ) as c:
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
         await c.post("/api/auth/dev", json={"name": "超时验证"})
         save = (await c.post("/api/saves", json={})).json()
         await c.post(

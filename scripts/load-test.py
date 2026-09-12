@@ -12,14 +12,11 @@ import httpx
 
 async def play(concurrency):
     clients = [
-        httpx.AsyncClient(base_url="http://127.0.0.1:8000", timeout=90)
-        for _ in range(concurrency)
+        httpx.AsyncClient(base_url="http://127.0.0.1:8000", timeout=90) for _ in range(concurrency)
     ]
 
     async def setup(client):
-        (
-            await client.post("/api/auth/dev", json={"name": "并发测试"})
-        ).raise_for_status()
+        (await client.post("/api/auth/dev", json={"name": "并发测试"})).raise_for_status()
         save = (await client.post("/api/saves", json={})).json()
         for action in ("begin", "boundary", "next"):
             response = await client.post(
@@ -53,29 +50,26 @@ async def play(concurrency):
             elapsed = time.perf_counter() - start
             if response.status_code != 200:
                 return {"seconds": elapsed, "status": response.status_code, "usage": {}}
-            turn = (
-                await client.get(f"/api/saves/{save['id']}/turns/{request_id}")
-            ).json()
+            turn = (await client.get(f"/api/saves/{save['id']}/turns/{request_id}")).json()
             return {
                 "seconds": elapsed,
                 "status": turn["status"],
                 "usage": turn["usage"],
             }
 
-        results = await asyncio.gather(*(request(c, s) for c, s in zip(clients, saves, strict=True)))
+        results = await asyncio.gather(
+            *(request(c, s) for c, s in zip(clients, saves, strict=True))
+        )
         durations = sorted(r["seconds"] for r in results)
         return {
             "concurrency": concurrency,
             "mode": "mock_deepseek_transport_real_agent_graph",
             "completed": sum(r["status"] == "completed" for r in results),
-            "failure_rate": sum(r["status"] != "completed" for r in results)
-            / concurrency,
+            "failure_rate": sum(r["status"] != "completed" for r in results) / concurrency,
             "p50_seconds": round(statistics.median(durations), 3),
             "p95_seconds": round(durations[max(0, int(len(durations) * 0.95) - 1)], 3),
             "model_calls": sum(r["usage"].get("model_calls", 0) for r in results),
-            "cost_estimate_usd": sum(
-                r["usage"].get("cost_estimate_usd", 0) for r in results
-            ),
+            "cost_estimate_usd": sum(r["usage"].get("cost_estimate_usd", 0) for r in results),
             "results": results,
         }
     finally:

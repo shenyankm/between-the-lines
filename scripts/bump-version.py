@@ -56,7 +56,9 @@ def prepend_changelog_stub(version: str) -> None:
     if marker in text:
         path.write_text(text.replace(marker, stub, 1), encoding="utf-8")
     else:
-        path.write_text(text.rstrip("\n") + "\n\n" + stub.replace(marker + "\n\n", ""), encoding="utf-8")
+        path.write_text(
+            text.rstrip("\n") + "\n\n" + stub.replace(marker + "\n\n", ""), encoding="utf-8"
+        )
 
 
 def main(argv: list[str]) -> int:
