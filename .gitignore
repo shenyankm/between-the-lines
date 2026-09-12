@@ -1,0 +1,41 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Private reference material fetched from external document systems.
+# Never commit: contains non-public source documents.
+doc-fetch-resources/
+
+# Python
+.bootstrap/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+dist/
+playwright-report/
+test-results/
+.pnpm-store/
+*.tsbuildinfo
+
+# Generated verification output (reproducible from scripts/; CI uploads it)
+artifacts/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.log

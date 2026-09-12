@@ -1,0 +1,26 @@
+# Root build context is used only by deploy/web.Dockerfile (the frontend image).
+# It needs frontend/ and deploy/nginx.conf and nothing else.
+# deploy/ must stay available: web.Dockerfile copies deploy/nginx.conf.
+backend
+docs
+doc-fetch-resources
+scripts
+.github
+.bootstrap
+.venv
+.git
+
+**/node_modules
+**/.env
+**/__pycache__
+**/dist
+**/test-results
+**/playwright-report
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+artifacts
+*.pem
+*.key
+*.log
+.DS_Store

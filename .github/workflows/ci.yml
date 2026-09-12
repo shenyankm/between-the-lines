@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  AGENT_MODE: mock
+  DEEPSEEK_API_KEY: ""
+  ENVIRONMENT: test
+  DEV_LOGIN_ENABLED: "true"
+  PUBLIC_ORIGIN: http://localhost:5173
+  UV_PYTHON_DOWNLOADS: never
+  UV_NO_MANAGED_PYTHON: "true"
+  UV_NO_CACHE: "true"
+
+jobs:
+  backend:
+    name: Backend and API contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql+asyncpg://btl:btl@localhost:54329/btl_test
+      CHECKPOINT_URL: postgresql://btl:btl@localhost:54329/btl_test
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_USER: btl
+          POSTGRES_PASSWORD: btl
+          POSTGRES_DB: btl_test
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U btl -d btl_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.23.2"
+      - name: Install locked dependencies without a virtual environment
+        run: |
+          python -m pip install uv==0.12.13
+          uv lock --project backend --check
+          uv pip install --python "$(command -v python)" --require-hashes -r backend/requirements.lock
+          uv export --project backend --frozen --no-emit-project --format requirements-txt --output-file backend/requirements.lock --quiet
+          git diff --exit-code -- backend/uv.lock backend/requirements.lock
+          npm install -g pnpm@11.19.0
+          pnpm --dir frontend install --frozen-lockfile
+      - name: Lint Python
+        run: python -m ruff check --config backend/pyproject.toml backend/app backend/tests backend/migrations scripts
+      - name: Migrate a fresh database and check schema drift
+        working-directory: backend
+        run: |
+          python -m alembic upgrade head
+          python -m alembic check
+      - name: Test backend and Agent boundaries
+        working-directory: backend
+        run: python -m pytest -q --junitxml=../artifacts/pytest.xml
+      - name: Verify crash recovery
+        run: python scripts/test-restart.py
+      - name: Check generated OpenAPI and TypeScript contract
+        run: |
+          python scripts/export-openapi.py
+          pnpm --dir frontend generate:api
+          git diff --exit-code -- backend/openapi.json frontend/src/generated/api.d.ts
+      - name: Upload backend results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-results
+          path: |
+            artifacts/pytest.xml
+            artifacts/restart-test.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  frontend:
+    name: Frontend checks and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.23.2"
+      - name: Install locked dependencies
+        run: |
+          npm install -g pnpm@11.19.0
+          pnpm --dir frontend install --frozen-lockfile
+      - run: pnpm --dir frontend lint
+      - run: pnpm --dir frontend test
+      - run: pnpm --dir frontend build
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: web-dist
+          path: frontend/dist
+          retention-days: 7
+
+  integration:
+    name: Docker and browser integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      COMPOSE_FILE: compose.ci.yaml
+      COMPOSE_PROJECT_NAME: btl-ci
+      COMPOSE_DISABLE_ENV_FILE: "true"
+      PLAYWRIGHT_BASE_URL: http://localhost:18080
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.23.2"
+      - name: Install browser test dependencies
+        run: |
+          npm install -g pnpm@11.19.0
+          pnpm --dir frontend install --frozen-lockfile
+          pnpm --dir frontend exec playwright install --with-deps chromium
+      - name: Build and start isolated mock stack
+        run: |
+          docker compose config --quiet
+          docker compose up --build -d --wait --wait-timeout 180
+          docker compose exec -T web nginx -t
+          node -e 'fetch(process.env.PLAYWRIGHT_BASE_URL + "/api/config").then(r => { if (!r.ok) throw Error("Config unavailable"); return r.json(); }).then(c => { if (c.agent_mode !== "mock") throw Error("CI requires mock LLM"); })'
+      - name: Desktop and mobile end-to-end tests
+        run: pnpm --dir frontend test:e2e
+      - name: Verify backup restore
+        run: sh scripts/verify-restore.sh
+      - name: Collect container logs
+        if: always()
+        run: |
+          mkdir -p artifacts
+          docker compose logs --no-color > artifacts/containers.log 2>&1
+      - name: Upload integration reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: integration-results
+          path: |
+            artifacts/
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove isolated test stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+  ci:
+    name: CI required
+    if: always()
+    needs: [backend, frontend, integration]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require all checks to pass
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+        run: |
+          test "$BACKEND_RESULT" = success
+          test "$FRONTEND_RESULT" = success
+          test "$INTEGRATION_RESULT" = success

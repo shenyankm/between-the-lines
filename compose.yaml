@@ -1,0 +1,32 @@
+name: between-the-lines
+services:
+  db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: btl
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-btl}
+      POSTGRES_DB: btl
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U btl -d btl"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    build: ./backend
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on: [api]
+    restart: unless-stopped
+volumes:
+  pgdata:
