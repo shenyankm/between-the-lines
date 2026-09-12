@@ -26,6 +26,7 @@ htmlcov/
 # Node / frontend
 node_modules/
 dist/
+coverage/
 playwright-report/
 test-results/
 .pnpm-store/

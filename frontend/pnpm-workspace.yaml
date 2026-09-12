@@ -1,2 +1,6 @@
 allowBuilds:
   esbuild: true
+  # msw is used only through its Node `setupServer` API, so no worker script is
+  # needed. Its postinstall copies one only when this package.json declares
+  # `msw.workerDirectory`, which it does not - deny it rather than run a no-op.
+  msw: false

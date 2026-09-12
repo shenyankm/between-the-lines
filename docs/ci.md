@@ -7,7 +7,7 @@
 | Job | 检查内容 |
 |---|---|
 | Backend and API contract | uv 锁文件一致性、哈希安装、Ruff lint 与 format --check、mypy strict、空数据库 Alembic 迁移和模型差异、pytest（含 77.0% 覆盖率下限，未达标即失败）、进程崩溃恢复、OpenAPI / TypeScript 生成结果差异 |
-| Frontend checks and build | pnpm 冻结锁安装、ESLint（类型感知 + jsx-a11y）、Prettier --check、tsc 类型检查、Vitest、Vite 生产构建 |
+| Frontend checks and build | pnpm 冻结锁安装、ESLint（类型感知 + jsx-a11y）、Prettier --check、tsc 类型检查、Vitest（含实测覆盖率阈值，`src/api.ts` 单独钉 100%）、Vite 生产构建 |
 | Docker and browser integration | 实际构建 API / Nginx 镜像、独立 PostgreSQL 容器、健康检查、Nginx 配置、桌面与手机通关和场景测试、10/20/30 并发压测（失败率必须为 0，p95 不得超过预算）、数据库备份恢复 |
 | CI required | 汇总前三项；失败、取消或跳过都不能通过 |
 | Secrets and dependencies（audit.yml） | gitleaks 全历史密钥扫描、`doc-fetch-resources/` 从未入库断言、uv audit、pnpm audit、trivy 文件系统扫描 |
@@ -73,14 +73,12 @@ Linux 首次安装浏览器使用 `playwright install --with-deps chromium`，�
 - 门禁的**反向**验证（确认它真的会红，而不是恒绿）：把 `BTL_LOAD_TEST_MAX_P95_SECONDS` 设为 0.5 → 退出码 1，消息点名超标档位；把 `BTL_LOAD_TEST_BASE_URL` 指向一个 `agent_mode=deepseek` 的服务 → 拒绝运行、退出码 1、不写任何报告文件。
 - `make api` 的主机 DSN 修复：`make migrate` 的同类缺陷上一轮已修，本轮发现 `make api` 一样会继承 `.env` 里指向 compose 内部主机名的 `DATABASE_URL` **和** `CHECKPOINT_URL`，已把两个变量统一为可覆盖的 `HOST_DATABASE_URL` / `HOST_CHECKPOINT_URL`。用与 Makefile 完全相同的环境变量在 8001 端口启动（8000 被本机试玩服务占用），`/api/config` 与 `/api/story` 均 200；随后走完 begin / boundary / next / speak 四个回合：speak 返回 `completed`，按 `request_id` 重放拿到 `model_calls=2`、`cost_estimate_usd=0.0`，日志 0 条错误。重放能命中说明 LangGraph 检查点确实写进了 `CHECKPOINT_URL` 指向的库，而不只是应用进程起来了。
 - `ruff check` 与 `ruff format --check`：`backend/app`、`backend/tests`、`backend/migrations`、`scripts` 共 28 个文件全部通过。
+- 前端六项命令全部退出码 0：`install --frozen-lockfile`、`lint`（类型感知 ESLint + jsx-a11y）、`format:check`、`typecheck`（`tsc -b --force`）、`test:coverage`（**7 个文件 54 项测试通过**，实测 statements/lines 70.85%、branches 90.9%、functions 71.79%，`src/api.ts` 与 `src/scenes.ts`、`src/store.ts`、`SceneInterlude.tsx` 均 100%）、`build`（318.01 kB，gzip 102.31 kB）。
+- 前端门禁的**反向**验证：把 `api()` 的兜底文案替换为 `SABOTAGED-FALLBACK` → 5 项测试失败、退出码 1，报错为 `expected 'SABOTAGED-FALLBACK' to be '请求未完成，请重试。'`；改回后按 sha256 校验逐字节还原（`2d921c6d…`），`git status` 对该文件无差异。子代理另外单独验证过 `sendTurn()` 的兜底文案只影响 1 项测试，两处相互独立。
 - 工作流文件：`yaml.safe_load` 结构化解析通过，并确认集成 job 的步骤顺序为 …端到端 → 压测 → 备份恢复…；`compose.ci.yaml` 解析通过。actionlint 本机**仍未安装**。
-
-### 上一轮（静态分析与类型安全）重新执行并通过
-
 - `mypy --strict`：`app/` 11 个源文件 0 错误，全仓仅 6 处带书面理由的抑制。
-- 前端 `tsc -b --force`、`eslint .`（类型感知 + jsx-a11y）、`prettier --check`、`vitest`、`vite build` 全部通过。
-- `uv lock --check`、哈希导出一致性、版本同步检查通过。
-- OpenAPI → TypeScript 契约重新生成；该轮产生的差异已随业务修改一并提交，`make contract` 恢复为无差异。
+- `uv lock --check`、哈希导出一致性（`Resolved 101 packages`）、`scripts/check-version-sync.py`（`version in sync: 0.1.0`）通过。
+- OpenAPI → TypeScript 契约：`git diff -- backend/openapi.json frontend/src/generated/api.d.ts` 为空，本轮改动未触及接口签名，无漂移。
 
 ### 较早验证、本轮**未**重新执行
 

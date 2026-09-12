@@ -137,7 +137,9 @@ jobs:
       - run: pnpm --dir frontend lint
       - run: pnpm --dir frontend format:check
       - run: pnpm --dir frontend typecheck
-      - run: pnpm --dir frontend test
+      # test:coverage runs the same suite as test and additionally enforces the
+      # thresholds in vitest.config.ts; without it those floors gate nothing.
+      - run: pnpm --dir frontend test:coverage
       - run: pnpm --dir frontend build
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
