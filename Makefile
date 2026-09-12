@@ -89,13 +89,22 @@ dev-up: ## Start PostgreSQL with the loopback port used by host-run tests
 dev-down: ## Stop PostgreSQL, keeping the volume
 	docker compose -f compose.yaml -f compose.dev.yaml down
 
+# The root .env carries compose-internal DSNs (host "db", port 5432) that resolve
+# only inside the compose network. Alembic reads DATABASE_URL through
+# get_settings(), so running these from the host would target an unreachable
+# database and die mid-SSL-handshake. pytest is immune because tests/conftest.py
+# pins DATABASE_URL in os.environ before import, and CI pins it at job level;
+# these targets need the same pin. Override to migrate a different database.
+MIGRATE_DATABASE_URL ?= postgresql+asyncpg://btl:btl@localhost:54329/btl
+
 .PHONY: migrate
 migrate: ## Apply Alembic migrations
-	cd $(BACKEND) && $(PYTHON) -m alembic upgrade head
+	cd $(BACKEND) && DATABASE_URL=$(MIGRATE_DATABASE_URL) $(PYTHON) -m alembic upgrade head
 
 .PHONY: migrate-check
 migrate-check: ## Fail if the models drift from the committed schema
-	cd $(BACKEND) && $(PYTHON) -m alembic upgrade head && $(PYTHON) -m alembic check
+	cd $(BACKEND) && DATABASE_URL=$(MIGRATE_DATABASE_URL) $(PYTHON) -m alembic upgrade head \
+		&& DATABASE_URL=$(MIGRATE_DATABASE_URL) $(PYTHON) -m alembic check
 
 .PHONY: api
 api: ## Run the API on the host in mock mode (no real LLM calls)
