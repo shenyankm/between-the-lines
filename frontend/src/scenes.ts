@@ -1,10 +1,17 @@
+const defaultActBackground = "/assets/office.png";
+
 export const actBackgrounds = [
   "/assets/office-morning.png",
   "/assets/cafeteria-noon.png",
   "/assets/finance-rain.png",
   "/assets/meeting-morning.png",
-  "/assets/office.png",
+  defaultActBackground,
 ];
+
+/** Background for an act; falls back to the default when the index is out of range. */
+export function actBackground(act: number): string {
+  return actBackgrounds[act] ?? defaultActBackground;
+}
 
 // These are authored inner monologues, never private facts sent to NPC agents.
 export const interludes: Record<

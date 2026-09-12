@@ -8,6 +8,20 @@ export class ApiError extends Error {
     super(message);
   }
 }
+
+/** Narrow an unknown error payload to the API's `detail` string, if present. */
+function detailMessage(payload: unknown, fallback: string): string {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "detail" in payload &&
+    typeof payload.detail === "string"
+  ) {
+    return payload.detail;
+  }
+  return fallback;
+}
+
 export async function api<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch(`/api${path}`, {
     credentials: "same-origin",
@@ -20,13 +34,15 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
         }),
   });
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
+    const data: unknown = await response.json().catch(() => ({}));
     throw new ApiError(
-      typeof data.detail === "string" ? data.detail : "请求未完成，请重试。",
+      detailMessage(data, "请求未完成，请重试。"),
       response.status,
     );
   }
-  return response.json();
+  // The HTTP boundary is untyped; callers declare the expected shape via T.
+  const payload: unknown = await response.json();
+  return payload as T;
 }
 
 export function parseSSE(
@@ -60,11 +76,8 @@ export async function sendTurn(
     body: JSON.stringify({ request_id: requestId, version, npc, action, text }),
   });
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new ApiError(
-      typeof data.detail === "string" ? data.detail : "请求未完成。",
-      response.status,
-    );
+    const data: unknown = await response.json().catch(() => ({}));
+    throw new ApiError(detailMessage(data, "请求未完成。"), response.status);
   }
   const reader = response.body?.getReader();
   if (!reader) throw new Error("浏览器无法读取回复。");

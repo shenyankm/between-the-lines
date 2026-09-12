@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { actBackgrounds, interludes } from "./scenes";
+import { actBackground, interludes } from "./scenes";
 import { SceneInterlude } from "./SceneInterlude";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -56,7 +56,7 @@ function Home() {
     try {
       const save = await api<Save>("/saves", {});
       await client.invalidateQueries({ queryKey: ["saves"] });
-      navigate(`/play/${save.id}`);
+      void navigate(`/play/${save.id}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -101,7 +101,11 @@ function Home() {
         </p>
         {user.data ? (
           <div className={s.homeActions}>
-            <button className={s.primary} disabled={busy} onClick={start}>
+            <button
+              className={s.primary}
+              disabled={busy}
+              onClick={() => void start()}
+            >
               开始新的故事 <ArrowRight size={18} />
             </button>
             {saves.data?.[0] && (
@@ -123,7 +127,11 @@ function Home() {
               知乎账号登录 <ArrowRight size={18} />
             </a>
             {config.data?.dev_login && (
-              <button className={s.secondary} disabled={busy} onClick={login}>
+              <button
+                className={s.secondary}
+                disabled={busy}
+                onClick={() => void login()}
+              >
                 开发环境试玩 <ChevronRight size={17} />
               </button>
             )}
@@ -174,7 +182,7 @@ function Saves() {
         {saves.data?.map((item, i) => (
           <Link to={`/play/${item.id}`} key={item.id} className={s.saveCard}>
             <Bookmark />
-            <h2>故事 {saves.data!.length - i}</h2>
+            <h2>故事 {saves.data.length - i}</h2>
             <p>{item.state.ending || `第 ${item.state.act} 幕`}</p>
             <span>
               专业信用 {item.state.credit} · 心绪消耗 {item.state.stress}
@@ -258,6 +266,11 @@ function Play() {
       setBusy(false);
     }
   }
+  async function logout() {
+    await api("/auth/logout", {});
+    client.clear();
+    void navigate("/");
+  }
   async function act(action: Action, text = "", target: Npc = npc) {
     if (!saveQuery.data || busy || pending) return;
     setBusy(true);
@@ -310,6 +323,13 @@ function Play() {
     scene = story.acts[state.act],
     character = story.npcs[npc],
     events = eventsQuery.data || [];
+  if (!scene)
+    return (
+      <main className={s.page}>
+        <Link to="/">返回首页</Link>
+        <p role="alert">第 {state.act + 1} 幕的场景数据缺失，请刷新重试。</p>
+      </main>
+    );
   const lastReply = [...events]
     .reverse()
     .find((e) => e.kind === "npc" && e.npc === npc && e.act === state.act);
@@ -361,7 +381,7 @@ function Play() {
           {
             "--character-color":
               npc === "sun" ? "#688999" : npc === "li" ? "#998363" : "#768c89",
-            "--scene-background": `url("${actBackgrounds[state.act] || actBackgrounds[0]}")`,
+            "--scene-background": `url("${actBackground(state.act)}")`,
           } as React.CSSProperties
         }
       >
@@ -444,7 +464,7 @@ function Play() {
               <button
                 className={s.secondary}
                 disabled={disabled}
-                onClick={() => act("epilogue")}
+                onClick={() => void act("epilogue")}
               >
                 生成故事回顾
               </button>
@@ -478,7 +498,7 @@ function Play() {
                 <button
                   key={action}
                   disabled={disabled}
-                  onClick={() => act(action, "", target)}
+                  onClick={() => void act(action, "", target)}
                 >
                   <span>{label}</span>
                   <ChevronRight size={16} />
@@ -534,7 +554,7 @@ function Play() {
           </div>
         )}
         {pending && !busy && (
-          <button className={s.textButton} onClick={recover}>
+          <button className={s.textButton} onClick={() => void recover()}>
             <RefreshCw size={16} />
             恢复回合结果
           </button>
@@ -551,6 +571,11 @@ function Play() {
           }}
         />
       )}
+      {/* Backdrop click is a pointer-only convenience: the native <dialog>
+          already gives keyboard users the same dismissal path, because
+          Escape fires onCancel above. Both a11y rules model the element as
+          a non-interactive static node and miss that native behaviour. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- native <dialog> keyboard parity via Esc/onCancel */}
       <dialog
         ref={dialogRef}
         className={s.drawer}
@@ -686,11 +711,7 @@ function Play() {
       <button
         className={s.logout}
         aria-label="退出登录"
-        onClick={async () => {
-          await api("/auth/logout", {});
-          client.clear();
-          navigate("/");
-        }}
+        onClick={() => void logout()}
       >
         <LogOut size={14} />
       </button>

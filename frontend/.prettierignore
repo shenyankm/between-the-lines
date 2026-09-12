@@ -1,0 +1,17 @@
+# Machine-generated OpenAPI contract (openapi-typescript output).
+# CI asserts `git diff --exit-code` on this file; reformatting it would dirty
+# the contract gate and make every regeneration produce a diff.
+src/generated/
+
+# Dependency manifests
+node_modules/
+pnpm-lock.yaml
+
+# Build and test artifacts
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# TypeScript incremental build info (tsconfig.tsbuildinfo and per-project variants)
+*.tsbuildinfo

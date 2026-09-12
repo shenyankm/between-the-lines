@@ -29,4 +29,12 @@
 - `Settings.env_file` 改为基于 `__file__` 解析，消除「加载哪份配置取决于启动目录」的分裂
 - `.dockerignore` 不再把后端源码树与私有文档缓存送入仅构建前端的 Docker 上下文
 - 新增 `Makefile` 作为本地任务的单一事实来源，CI 为其子集；`make doctor` 校验工具链并启用版本化 git hooks
-- 新增 `SECURITY.md`、`CHANGELOG.md`、`docs/adr/`、`docs/operations.md`、`docs/tls.md`
+- 新增 `SECURITY.md`、`CHANGELOG.md`
+- `scripts/githooks/pre-commit` 拦截 dotenv 文件（前缀与后缀命名）、私钥、`doc-fetch-resources/` 与超过 400 KB 的 blob，并对暂存的 Python 执行 ruff；经 `core.hooksPath` 启用，不使用与「无虚拟环境」约束冲突的 pre-commit 框架
+- 新增 `audit.yml`：gitleaks 全历史密钥扫描、`doc-fetch-resources/` 从未入库断言、`uv audit`、`pnpm audit`、trivy 文件系统与镜像扫描；工具以校验和验证的二进制安装，不用第三方 Action
+- `scripts/check-version-sync.py` 强制 `backend/pyproject.toml` 与 `frontend/package.json` 版本一致，使标签成为无歧义的回滚目标
+- Ruff 规则集由 `["E","F","I"]` 扩展至 `["E","F","I","B","UP","SIM","RUF","S","ASYNC","PTH"]`；`RUF001/002/003` 全局忽略（中文全角标点是正确排版而非同形字攻击），`B008` 经 `extend-immutable-calls` 放行 FastAPI 的 `Depends` 惯用法
+- 后端 mypy 配置为 `strict`，`app/` 全量通过；Agent 相关第三方库以带注释的 burn-down override 列表豁免
+- 前端补齐 `typecheck` 与 `format:check` 脚本（CI 已调用但此前并不存在）、`.prettierrc`、`.prettierignore`、`.nvmrc`；ESLint 升级为类型感知并加入 jsx-a11y；`tsconfig` 纳入 `e2e/`、`vitest.config.ts`、`playwright.config.ts` 并开启 `noUncheckedIndexedAccess`
+- 五个此前 `response schema` 为空（`"schema": {}`）的接口（health / config / story / events / auth logout）因补齐返回类型注解而获得真实的 OpenAPI 契约，前端生成类型同步更新
+- **修复依赖声明缺陷**：`authlib` 的 OAuth 客户端优先解析 `httpx2` 并把 `httpx` 回退路径标记为废弃，但 `authlib` 两者都未声明；此前 `httpx2` 仅经 `deepagents → anthropic / langsmith` 传递进入环境，知乎登录因此依赖一条随时可能消失的传递边。现已将 `httpx2>=2.12` 声明为直接依赖

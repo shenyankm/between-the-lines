@@ -1,11 +1,15 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
+
+/** Parsed-JSON shape; structurally matches Playwright's serializable `json`. */
+type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
 const story = JSON.parse(
   readFileSync(
     new URL("../../backend/app/story.json", import.meta.url),
     "utf8",
   ),
-);
+) as Json;
 
 test("all six locations render, interludes cancel safely and advance once", async ({
   page,

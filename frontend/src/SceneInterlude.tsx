@@ -16,6 +16,7 @@ export function SceneInterlude({
   useEffect(() => {
     ref.current?.showModal();
   }, []);
+  if (!scene) return null;
   return (
     <dialog
       ref={ref}
