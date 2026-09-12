@@ -8,6 +8,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from app import agents
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.parametrize("tool_name", ["act_on_work", "execute", "task"])
 async def test_deep_agent_tool_loop_isolation_and_fixed_model(monkeypatch, tool_name):

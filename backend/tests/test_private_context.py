@@ -1,10 +1,13 @@
 import json
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app import mock_llm
 from app.main import app
+
+pytestmark = pytest.mark.integration
 
 
 def test_private_dialogue_does_not_reach_other_npc_or_new_save(monkeypatch):

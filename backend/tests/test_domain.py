@@ -3,6 +3,8 @@ import pytest
 from app.config import Settings
 from app.domain import RuleError, apply_npc, apply_player, initial_state, visible_state
 
+pytestmark = pytest.mark.unit
+
 
 def purchase_state():
     state, _ = apply_player(initial_state(), "begin")

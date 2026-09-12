@@ -8,6 +8,8 @@ from app import mock_llm
 from app.config import get_settings
 from app.main import app
 
+pytestmark = pytest.mark.integration
+
 
 def prepare(client):
     client.post("/api/auth/dev", json={"name": "预算验证"})

@@ -20,6 +20,7 @@ def sample(content_id="test"):
     }
 
 
+@pytest.mark.unit
 def test_reject_untrusted_links_and_incomplete_content():
     for url in [
         "javascript:alert(1)",
@@ -36,6 +37,7 @@ def test_reject_untrusted_links_and_incomplete_content():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_reimport_deduplicates_content_and_keeps_topics():
     content_id = f"ci-{uuid4()}"
     first = normalize(sample(content_id), "边界")

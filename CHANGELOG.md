@@ -38,3 +38,9 @@
 - 前端补齐 `typecheck` 与 `format:check` 脚本（CI 已调用但此前并不存在）、`.prettierrc`、`.prettierignore`、`.nvmrc`；ESLint 升级为类型感知并加入 jsx-a11y；`tsconfig` 纳入 `e2e/`、`vitest.config.ts`、`playwright.config.ts` 并开启 `noUncheckedIndexedAccess`
 - 五个此前 `response schema` 为空（`"schema": {}`）的接口（health / config / story / events / auth logout）因补齐返回类型注解而获得真实的 OpenAPI 契约，前端生成类型同步更新
 - **修复依赖声明缺陷**：`authlib` 的 OAuth 客户端优先解析 `httpx2` 并把 `httpx` 回退路径标记为废弃，但 `authlib` 两者都未声明；此前 `httpx2` 仅经 `deepagents → anthropic / langsmith` 传递进入环境，知乎登录因此依赖一条随时可能消失的传递边。现已将 `httpx2>=2.12` 声明为直接依赖
+- **覆盖率下限从装饰变成门禁**：`fail_under = 77.0` 此前只写在配置里，`make test-py` 与 CI 都不带 `--cov` 执行，因此它什么也没拦住。现在两处都执行覆盖率，CI 另外产出 `coverage.xml` 归档。取 77.0 而非真实行覆盖率 84.9，是因为 `branch = true` 在 Python 3.13 上强制 settrace 核心，而该核心会少报「在单个 `async with` 内反复挂起的协程」的同步行——已用裸 `sys.settrace` 探针与 coverage 自己的 sysmon 核心交叉证实为工具缺陷而非测试缺口，完整分析记在 `backend/pyproject.toml` 的设置处
+- 新增结构性测试隔离：`backend/tests/conftest.py` 的 autouse fixture 在每个非 unit 测试前 TRUNCATE 除 `alembic_version`、`checkpoint_migrations` 之外的所有表。此前随机顺序能通过只是因为 `dev_login` 每次生成随机身份，隔离是单个接口实现细节的副产品；现在它由 fixture 保证
+- 测试按 `unit` / `integration` 标记拆分（10 + 14），`pytest -m unit` 在 PostgreSQL 完全停止时通过，这一点经实测而非假设
+- 并发压测成为 CI 门禁：`scripts/load-test.py` 的 base URL、并发档位、p95 预算与报告路径全部改为环境变量，集成 job 在 api 容器内以 stdin 方式执行（该 job 不装 Python 工具链，容器里已有锁定版 httpx），报告经 `docker compose cp` 取出归档。**门禁经过反向验证**：p95 预算收紧到 0.5 秒时退出码 1 并点名超标档位；base URL 指向 `agent_mode=deepseek` 的服务时拒绝运行且不写报告
+- `compose.ci.yaml` 将 `MAX_CONCURRENT_TURNS` 提到 64：默认的 30 与压测最高档位完全相等，余量为零，调度抖动会把吞吐门禁变成 429。生产仍是 30，准入分支改由 `test_exhausted_admission_budget_rejects_without_reserving` 确定性断言（预算压到 0 → 429 且不残留占位），该分支此前无任何测试覆盖
+- 主机侧 DSN 统一：`make migrate` 之外，`make api` 同样会继承根 `.env` 里指向 compose 内部主机名的 `DATABASE_URL` 与 `CHECKPOINT_URL`，在主机上必然死于无法解析的 SSL 握手。`MIGRATE_DATABASE_URL` 泛化为可覆盖的 `HOST_DATABASE_URL` / `HOST_CHECKPOINT_URL`，两个目标共用；`make api` 已实测能走完 begin/boundary/next/speak 四个回合并按 `request_id` 重放命中检查点

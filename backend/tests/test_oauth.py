@@ -6,10 +6,13 @@ from urllib.parse import parse_qs, urlparse
 # module authlib actually uses, or the OAuth client ignores it and the token
 # exchange escapes to the real network.
 import httpx2
+import pytest
 from fastapi.testclient import TestClient
 
 from app import auth
 from app.main import app
+
+pytestmark = pytest.mark.integration
 
 
 def test_oauth_state_validation_and_stable_identity(monkeypatch):

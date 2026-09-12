@@ -185,6 +185,15 @@ jobs:
           node -e 'fetch(process.env.PLAYWRIGHT_BASE_URL + "/api/config").then(r => { if (!r.ok) throw Error("Config unavailable"); return r.json(); }).then(c => { if (c.agent_mode !== "mock") throw Error("CI requires mock LLM"); })'
       - name: Desktop and mobile end-to-end tests
         run: pnpm --dir frontend test:e2e
+      # Run inside the api container: this job installs no Python toolchain, and
+      # the container already has the locked httpx. Its default base URL
+      # (127.0.0.1:8000) is uvicorn from the inside, so the measurement excludes
+      # nginx -- the browser tests above cover that path.
+      - name: Load test for concurrency and throughput regressions
+        run: |
+          mkdir -p artifacts
+          docker compose exec -T -e BTL_LOAD_TEST_REPORT=/tmp/load-test.json api python - < scripts/load-test.py
+          docker compose cp api:/tmp/load-test.json artifacts/load-test.json
       - name: Verify backup restore
         run: sh scripts/verify-restore.sh
       - name: Collect container logs

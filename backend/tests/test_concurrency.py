@@ -2,8 +2,11 @@ import asyncio
 from uuid import uuid4
 
 import httpx
+import pytest
 
 from app.main import app
+
+pytestmark = pytest.mark.integration
 
 
 async def test_same_save_admission_and_quota(monkeypatch):
@@ -74,3 +77,29 @@ async def test_timeout_and_capacity_release(monkeypatch):
         assert len(app.state.active) == 0
         events = (await c.get(f"/api/saves/{save['id']}/events")).json()
         assert not any(e["kind"] == "npc" for e in events)
+
+
+async def test_exhausted_admission_budget_rejects_without_reserving(monkeypatch):
+    """The 429 branch is a real capacity limit, not a decoration.
+
+    Driving the budget to zero reaches it without staging 30 genuinely
+    concurrent turns, so the assertion is deterministic rather than a race.
+    The load test measures throughput against a raised budget and would never
+    fail on this branch regressing; this test is what holds it in place.
+    """
+    import app.main as main
+
+    monkeypatch.setattr(main.settings, "max_concurrent_turns", 0)
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        await c.post("/api/auth/dev", json={"name": "预算验证"})
+        save = (await c.post("/api/saves", json={})).json()
+        blocked = await c.post(
+            f"/api/saves/{save['id']}/turns",
+            json={"request_id": str(uuid4()), "version": save["version"], "action": "begin"},
+        )
+        assert blocked.status_code == 429
+        # A rejected request must not consume the budget it was refused for.
+        assert len(app.state.active) == 0

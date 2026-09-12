@@ -22,6 +22,12 @@ services:
       DEEPSEEK_API_KEY: ""
       DEV_LOGIN_ENABLED: "true"
       PUBLIC_ORIGIN: http://localhost:18080
+      # The load test drives up to 30 simultaneous turns, which is exactly the
+      # default admission budget -- zero headroom, so a timing wobble would turn
+      # a throughput gate into a 429. This stack exists to measure throughput;
+      # production keeps the 30 default in app/config.py, and the admission
+      # branch itself is asserted deterministically in tests/test_concurrency.py.
+      MAX_CONCURRENT_TURNS: "64"
       DATABASE_URL: postgresql+asyncpg://btl:btl@db:5432/btl
       CHECKPOINT_URL: postgresql://btl:btl@db:5432/btl
     depends_on:
