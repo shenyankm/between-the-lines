@@ -1,0 +1,59 @@
+#!/bin/sh
+# Versioned pre-commit hook. Enabled by `make doctor` via core.hooksPath.
+#
+# Deliberately not the `pre-commit` framework: its isolated hook environments sit
+# badly beside this project's "never create a virtual environment" rule, and the
+# two things that actually matter here are ten lines of shell using tools that
+# are already installed.
+#
+# Kept fast on purpose. Heavy gates (mypy, pytest, contract drift) live in
+# `make check` and CI, not here.
+
+set -eu
+
+fail() {
+    printf 'pre-commit: %s\n' "$1" >&2
+    exit 1
+}
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -n "$staged" ] || exit 0
+
+# 1. Never commit a secret or a private key.
+#    Matches .env, .env.local, sub/dir/.env, and also production.env / staging.env
+#    -- a suffix-style dotenv name is just as sensitive as a prefix-style one.
+secret_hits=$(printf '%s\n' "$staged" | grep -E '(^|/)\.env($|\.)|\.env($|\.)|\.pem$|\.key$|\.p12$|\.pfx$|^doc-fetch-resources/' | grep -vE '(^|/)\.env\.example$' || true)
+[ -z "$secret_hits" ] || fail "refusing to stage secret or private material:
+$secret_hits
+(only .env.example may be committed)"
+
+# 2. Never commit an unexpectedly large blob.
+#    Exemption: frontend/public/assets holds ~2 MB source PNGs until phase 7.1
+#    converts them to AVIF/WebP. Empty HOOK_ASSET_ALLOWLIST once that lands.
+size_limit_kb=400
+allowlist='^frontend/public/assets/'
+big=""
+for f in $staged; do
+    [ -f "$f" ] || continue
+    case "$f" in
+        frontend/pnpm-lock.yaml|backend/uv.lock|backend/requirements.lock|backend/openapi.json|frontend/src/generated/api.d.ts) continue ;;
+    esac
+    printf '%s\n' "$f" | grep -Eq "$allowlist" && continue
+    kb=$(($(wc -c < "$f") / 1024))
+    [ "$kb" -gt "$size_limit_kb" ] && big="$big$f (${kb} KB)
+"
+done
+[ -z "$big" ] || fail "files exceed ${size_limit_kb} KB:
+$big
+Compress them, or store them under artifacts/ (gitignored)."
+
+# 3. Lint the Python that is actually staged.
+py_files=$(printf '%s\n' "$staged" | grep -E '\.py$' || true)
+if [ -n "$py_files" ]; then
+    command -v python >/dev/null 2>&1 || fail "python not found on PATH"
+    # shellcheck disable=SC2086
+    python -m ruff check --config backend/pyproject.toml $py_files \
+        || fail "ruff found problems; run 'make format' then re-stage"
+fi
+
+exit 0
