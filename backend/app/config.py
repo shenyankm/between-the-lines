@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     database_url: str = "postgresql+asyncpg://btl:btl@localhost:54329/btl"
     checkpoint_url: str = "postgresql://btl:btl@localhost:54329/btl"
-    session_secret: str = "development-only-change-before-production"
+    # Deliberate placeholder, not a credential: production_guards below refuses to
+    # boot with ENVIRONMENT=production while this default is still in use.
+    session_secret: str = "development-only-change-before-production"  # noqa: S105
     public_origin: str = "http://localhost:5173"
     dev_login_enabled: bool = True
     agent_mode: Literal["deepseek", "mock"] = "deepseek"

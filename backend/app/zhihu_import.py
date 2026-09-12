@@ -132,6 +132,11 @@ async def run(queries: list[str], count: int):
     report["imported_unique"] = len(seen)
     async with Session() as db:
         report["database_total"] = await db.scalar(select(func.count()).select_from(ZhihuContent))
+    return report
+
+
+def write_report(report):
+    """Persist and echo the import report. Blocking on purpose: called outside the loop."""
     directory = Path(__file__).resolve().parents[2] / "artifacts"
     directory.mkdir(exist_ok=True)
     (directory / "zhihu-import.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
@@ -147,14 +152,14 @@ async def main():
     if len(queries) > 10 or any(not q.strip() for q in queries):
         parser.error("Provide one to ten nonempty queries")
     try:
-        await run(queries, args.count)
+        return await run(queries, args.count)
     finally:
         await engine.dispose()
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        write_report(asyncio.run(main()))
     except Exception as exc:
         # Do not print request objects, credentials or provider response bodies.
         print(f"Import stopped: {type(exc).__name__}. Earlier query batches remain committed.")

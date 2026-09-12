@@ -62,7 +62,7 @@ async def play(concurrency):
                 "usage": turn["usage"],
             }
 
-        results = await asyncio.gather(*(request(c, s) for c, s in zip(clients, saves)))
+        results = await asyncio.gather(*(request(c, s) for c, s in zip(clients, saves, strict=True)))
         durations = sorted(r["seconds"] for r in results)
         return {
             "concurrency": concurrency,

@@ -1,6 +1,11 @@
 from urllib.parse import parse_qs, urlparse
 
-import httpx2 as httpx
+# Not a typo for httpx. authlib.integrations.httpx_client._compat resolves its
+# client with `try: import httpx2 / except ImportError: import httpx as httpx2`
+# and marks that fallback deprecated. The MockTransport below has to come from the
+# module authlib actually uses, or the OAuth client ignores it and the token
+# exchange escapes to the real network.
+import httpx2
 from fastapi.testclient import TestClient
 
 from app import auth
@@ -19,11 +24,11 @@ def test_oauth_state_validation_and_stable_identity(monkeypatch):
 
     async def handle(request):
         if request.url.path == "/token":
-            return httpx.Response(
+            return httpx2.Response(
                 200, json={"access_token": "fixture-token", "token_type": "Bearer"}
             )
         assert request.headers["authorization"] == "Bearer fixture-token"
-        return httpx.Response(200, json={"id": "stable-fixture-id", "name": "知乎测试用户"})
+        return httpx2.Response(200, json={"id": "stable-fixture-id", "name": "知乎测试用户"})
 
     # Partner protocol fixture, not a claim about real Zhihu endpoints or fields.
     auth.oauth.register(
@@ -33,7 +38,7 @@ def test_oauth_state_validation_and_stable_identity(monkeypatch):
         client_secret="fixture-secret",
         authorize_url="https://partner.example/authorize",
         access_token_url="https://partner.example/token",
-        client_kwargs={"transport": httpx.MockTransport(handle)},
+        client_kwargs={"transport": httpx2.MockTransport(handle)},
     )
     with TestClient(app) as client:
         assert client.get("/api/auth/zhihu/callback?code=test&state=invalid").status_code == 400

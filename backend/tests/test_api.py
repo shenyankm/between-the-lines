@@ -64,7 +64,7 @@ def test_full_story_and_reload(client):
 
 def test_idempotency_and_version_conflict(client):
     save = create(client)
-    response, payload = turn(client, save, "begin")
+    _response, payload = turn(client, save, "begin")
     original = save.copy()
     repeated = client.post(f"/api/saves/{save['id']}/turns", json=payload)
     assert repeated.status_code == 200
