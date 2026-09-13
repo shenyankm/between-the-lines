@@ -122,6 +122,8 @@ def apply_npc(state: GameState, npc: str, operation: str) -> tuple[GameState, st
 
 
 def visible_state(state: GameState, npc: str) -> VisibleState:
+    if npc == "wang":
+        return {"act": state.act, "procurement": "pending", "flags": []}
     visible = {"requirements", "materials", "started", "clarified", "delivered", "confronted"}
     if npc == "zhang":
         visible |= {"reported", "supported"}

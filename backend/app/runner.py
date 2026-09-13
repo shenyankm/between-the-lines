@@ -48,6 +48,7 @@ class TurnRunner:
         def reserve() -> None:
             if (
                 body.action == "speak"
+                and body.channel != "group"
                 and self.settings.agent_mode == "deepseek"
                 and not self.settings.deepseek_api_key
             ):
@@ -110,7 +111,7 @@ class TurnRunner:
         try:
             try:
                 async with asyncio.timeout(self.settings.turn_timeout_seconds):
-                    if turn.input.action == "speak":
+                    if turn.input.action == "speak" and turn.input.channel != "group":
                         async for chunk in self.reply(turn, self.checkpointer, usage):
                             reply += chunk
                     elif turn.input.action == "epilogue":

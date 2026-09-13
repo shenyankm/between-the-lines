@@ -3,7 +3,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any, cast
 
-from sqlalchemy import Numeric, func, select
+from sqlalchemy import Numeric, case, func, select
 from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -21,12 +21,13 @@ from .db import (
     SaveSnapshot,
     Turn,
     User,
+    new_id,
     utcnow,
 )
 from .domain import NPCS, RuleError, apply_npc, visible_state
 from .error_catalog import FailureCode, failure_message
 from .errors import ApiError
-from .game_types import GameStateV2, parse_state
+from .game_types import GameStateV2, GameStateV3, parse_state
 from .schemas import PlayStateOut, SaveOut, TurnFailure, TurnInput
 from .story import load_story
 
@@ -64,7 +65,7 @@ async def month_to_date_cost(db: AsyncSession) -> float:
 
 def snapshot(save: Save) -> dict[str, Any]:
     if (
-        save.state_schema_version not in {1, 2}
+        save.state_schema_version not in {1, 2, 3}
         or save.state_schema_version != save.story_version
         or save.state.get("story_version", 1) != save.story_version
     ):
@@ -92,7 +93,7 @@ async def owned_save(db: AsyncSession, save_id: str, user_id: str, lock: bool = 
         # would let a caller enumerate save ids belonging to other players.
         raise ApiError(404, "save_not_found")
     if (
-        save.state_schema_version not in {1, 2}
+        save.state_schema_version not in {1, 2, 3}
         or save.state_schema_version != save.story_version
         or save.state.get("story_version", 1) != save.story_version
     ):
@@ -133,6 +134,10 @@ class GameService:
                 # A failed turn is retrieved with the old ID; explicit retries use a NEW ID
                 # and refreshed version, preventing old checkpoint tools from being replayed.
                 return existing
+            if save.story_version < 3 or save.state.get("content_revision", 1) < 2:
+                raise ApiError(422, "rule_violation", "旧版存档只读，请新建 v3 故事。")
+            if body.target and body.target != ("group" if body.channel == "group" else body.npc):
+                raise ApiError(422, "rule_violation", "会话目标与渠道不一致。")
             reserve()
             active = await db.scalar(
                 select(Turn).where(Turn.save_id == save_id, Turn.status == "running")
@@ -154,14 +159,18 @@ class GameService:
                 raise ApiError(422, "empty_message")
             try:
                 before = parse_state(save.state)
+                event_id = new_id()
+                from .story_rules import MAJOR as V3_MAJOR
+
+                major = V3_MAJOR if isinstance(before, GameStateV3) else MAJOR
                 pending = await db.scalar(
                     select(Proposal).where(
                         Proposal.save_id == save_id, Proposal.status == "pending"
                     )
                 )
                 if (
-                    isinstance(before, GameStateV2)
-                    and body.action in MAJOR
+                    isinstance(before, (GameStateV2, GameStateV3))
+                    and body.action in major
                     and (
                         not pending
                         or pending.id != str(body.proposal_id)
@@ -171,12 +180,26 @@ class GameService:
                 ):
                     raise ApiError(409, "version_conflict", "这项重要决定需要有效的确认卡。")
                 if body.action == "propose":
-                    if not isinstance(before, GameStateV2) or body.proposed_action not in MAJOR:
+                    if (
+                        not isinstance(before, (GameStateV2, GameStateV3))
+                        or body.proposed_action not in major
+                    ):
                         raise RuleError("无效的确认行动。")
-                    transition(before, str(body.proposed_action), body.npc)
+                    transition(
+                        before,
+                        str(body.proposed_action),
+                        body.npc,
+                        body.params.model_dump(exclude_none=True) if body.params else None,
+                    )
                 elif body.proposed_action is not None:
                     raise RuleError("行动提议只能使用 propose 提交。")
-                state, text = transition(before, body.action, body.npc)
+                state, text = transition(
+                    before,
+                    body.action,
+                    body.npc,
+                    body.params.model_dump(exclude_none=True) if body.params else None,
+                    event_id,
+                )
             except RuleError as exc:
                 raise ApiError(422, "rule_violation", str(exc)) from exc
             if save.story_version == 2 and body.action == "next":
@@ -211,7 +234,7 @@ class GameService:
             )
             db.add(turn)
             await db.flush()
-            if body.action in {"speak", "epilogue"}:
+            if body.action in {"speak", "epilogue"} and body.channel != "group":
                 await reserve_job(
                     db,
                     self.settings,
@@ -242,7 +265,9 @@ class GameService:
                     )
                 )
             audience = (
-                [body.npc]
+                ["sun", "li", "zhang"]
+                if body.channel == "group"
+                else [body.npc]
                 if body.action == "speak"
                 else ["sun"]
                 if body.action in {"boundary", "cut_ties", "keep_distance"}
@@ -250,15 +275,32 @@ class GameService:
                 if body.action == "report"
                 else []
                 if body.action in PRIVATE or body.action in {"propose", "cancel_proposal"}
-                else sorted(NPCS)
+                else []
+                if body.action.startswith("partner_")
+                or body.action
+                in {"draft_exit", "submit_exit", "leave", "rest", "draft_support", "submit_support"}
+                else [body.npc]
+                if body.channel == "dm"
+                else ["sun", "li", "zhang"]
             )
             db.add(
                 Event(
+                    id=event_id,
                     save_id=save_id,
                     turn_id=turn.id,
                     operation="player",
                     audience=audience,
                     data={
+                        "speaker": "player" if body.action == "speak" else "system",
+                        "channel": body.channel
+                        or (
+                            "work"
+                            if body.action
+                            in {"submit_purchase", "supplement", "approve_purchase", "deliver"}
+                            else "scene"
+                        ),
+                        "audience": audience,
+                        "scene": getattr(state, "node", None),
                         "kind": "player",
                         "text": text or body.text,
                         "npc": body.npc,
@@ -268,7 +310,7 @@ class GameService:
                     },
                 )
             )
-            if body.action == "contact_wang":
+            if body.action == "contact_wang" and save.story_version < 3:
                 db.add(
                     Event(
                         save_id=save_id,
@@ -330,14 +372,16 @@ class GameService:
             if previous:
                 return cast(str, previous.data["text"])
             before = parse_state(save.state)
-            if isinstance(before, GameStateV2):
-                from .intents import grounded
+            if isinstance(before, (GameStateV2, GameStateV3)):
+                from .intents import grounded, grounded_v3
 
-                if not self.settings.automatic_intents_enabled or not grounded(
+                evidence_gate = grounded_v3 if isinstance(before, GameStateV3) else grounded
+                if not self.settings.automatic_intents_enabled or not evidence_gate(
                     turn.payload["text"], operation, npc, before.act
                 ):
                     raise RuleError("本轮未明确请求此操作，请使用行动按钮。")
-                state, text = transition(before, operation, npc)
+                event_id = new_id()
+                state, text = transition(before, operation, npc, event_id=event_id)
             else:
                 state, text = apply_npc(before, npc, operation)
             save.state = state.model_dump(mode="json")
@@ -347,9 +391,12 @@ class GameService:
                 Event(
                     save_id=save.id,
                     turn_id=turn_id,
+                    id=event_id if isinstance(before, (GameStateV2, GameStateV3)) else new_id(),
                     operation=operation,
                     audience=audience,
                     data={
+                        "speaker": "system",
+                        "channel": turn.payload.get("channel") or "scene",
                         "kind": "work",
                         "text": text,
                         "npc": npc,
@@ -404,6 +451,9 @@ class GameService:
                         operation="reply",
                         audience=[] if epilogue else [turn.payload["npc"]],
                         data={
+                            "speaker": turn.payload["npc"],
+                            "channel": turn.payload.get("channel") or "scene",
+                            "audience": [] if epilogue else [turn.payload["npc"]],
                             "kind": "epilogue" if epilogue else "npc",
                             "text": text,
                             "npc": turn.payload["npc"],
@@ -511,10 +561,44 @@ class GameService:
             active = await db.scalar(
                 select(Turn).where(Turn.save_id == save_id, Turn.status == "running")
             )
+            contact_key = case(
+                (Event.data["channel"].astext == "group", "group"), else_=Event.data["npc"].astext
+            )
+            conversations = (
+                await db.execute(
+                    select(
+                        contact_key,
+                        Event.data["text"].astext,
+                        func.count().over(partition_by=contact_key),
+                    )
+                    .where(
+                        Event.save_id == save_id, Event.data["channel"].astext.in_(["dm", "group"])
+                    )
+                    .distinct(contact_key)
+                    .order_by(contact_key, Event.created_at.desc(), Event.id.desc())
+                )
+            ).all()
+            contacts = {
+                key: {
+                    "preview": preview,
+                    "count": count,
+                    "unread": count
+                    > save.reading.get("group" if key == "group" else "dm_" + key, 0),
+                }
+                for key, preview, count in conversations
+            }
             return PlayStateOut.model_validate(
                 {
                     "save": snapshot(save),
-                    "available_actions": available_actions(parse_state(save.state)),
+                    "available_actions": available_actions(parse_state(save.state))
+                    if save.story_version == 3 and save.state.get("content_revision", 1) == 2
+                    else [],
+                    "performance_version": save.version,
+                    "performance": load_story(
+                        save.story_version, save.state.get("content_revision", 1)
+                    ).performance_for(parse_state(save.state)),
+                    "reading": save.reading,
+                    "contacts": contacts,
                     "proposal": await self.proposal_for(db, save),
                     "ai": await self.ai_status(db, user_id),
                     "events": [{"id": event.id, **event.data} for event in events],
@@ -535,7 +619,9 @@ class GameService:
         )
         if not proposal:
             return None
-        definition = CATALOG[proposal.action]
+        from .story_rules import CATALOG as V3_CATALOG
+
+        definition = (V3_CATALOG if save.story_version == 3 else CATALOG)[proposal.action]
         return {
             "id": proposal.id,
             "action": proposal.action,
@@ -579,7 +665,7 @@ class GameService:
         }
 
     async def capture_snapshot(self, db: AsyncSession, save: Save) -> None:
-        if save.story_version != 2:
+        if save.story_version not in {2, 3}:
             return
         state = parse_state(save.state)
         node = None
@@ -627,8 +713,9 @@ class GameService:
             )
         )
 
-    async def player_intent(self, turn_id: str, npc: str, action: str) -> str:
-        from .intents import grounded, grounded_major
+    async def player_intent(self, turn_id: str, npc: str, action: str, evidence: str = "") -> str:
+        from .intents import grounded, grounded_major, grounded_v3
+        from .story_rules import MAJOR as V3_MAJOR
 
         async with self.sessions.begin() as db:
             turn = cast(Turn, await db.get(Turn, turn_id))
@@ -647,8 +734,17 @@ class GameService:
             if previous:
                 return str(previous.data["text"])
             before = parse_state(save.state)
-            if isinstance(before, GameStateV2) and action in MAJOR:
-                if not grounded_major(turn.payload["text"], action):
+            if isinstance(before, GameStateV3) and (
+                not evidence.strip() or evidence not in turn.payload["text"]
+            ):
+                raise RuleError("请引用本轮原文作为依据；当前意图未执行。")
+            major_actions = V3_MAJOR if isinstance(before, GameStateV3) else MAJOR
+            if isinstance(before, (GameStateV2, GameStateV3)) and action in major_actions:
+                if not (
+                    grounded_v3(turn.payload["text"], action, npc, before.act)
+                    if isinstance(before, GameStateV3)
+                    else grounded_major(turn.payload["text"], action)
+                ):
                     raise RuleError("这项重大选择需要你通过按钮确认。")
                 transition(before, action, npc)
                 old = await db.scalar(
@@ -673,22 +769,31 @@ class GameService:
                     )
                 )
                 return text
-            if (
-                not isinstance(before, GameStateV2)
-                or action not in {"boundary", "report"}
-                or not grounded(turn.payload["text"], action, npc, before.act)
+            if not isinstance(before, (GameStateV2, GameStateV3)) or not (
+                grounded_v3(turn.payload["text"], action, npc, before.act)
+                if isinstance(before, GameStateV3)
+                else action in {"boundary", "report"}
+                and grounded(turn.payload["text"], action, npc, before.act)
             ):
                 raise RuleError("本轮表达不足以确认这一行动，请使用按钮。")
-            state, text = transition(before, action, npc)
+            event_id = new_id()
+            state, text = transition(before, action, npc, event_id=event_id)
             save.state = state.model_dump(mode="json")
             save.version += 1
             db.add(
                 Event(
                     save_id=save.id,
                     turn_id=turn_id,
+                    id=event_id,
                     operation="player_intent",
-                    audience=[npc],
+                    audience=["sun", "li", "zhang"]
+                    if action in {"clarify", "review_clarification"}
+                    else [npc],
                     data={
+                        "speaker": "system",
+                        "channel": "group"
+                        if action in {"clarify", "review_clarification"}
+                        else turn.payload.get("channel") or "scene",
                         "kind": "work",
                         "text": text,
                         "npc": npc,

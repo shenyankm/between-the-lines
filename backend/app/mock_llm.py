@@ -25,7 +25,15 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
         return {"role": "assistant", "content": text}
     facts = context["最新可见事实"]
     system = str(messages[0]["content"])
-    npc: Npc = "sun" if "你是孙淼" in system else "li" if "你是李姐" in system else "zhang"
+    npc: Npc = (
+        "sun"
+        if "你是孙淼" in system
+        else "li"
+        if "你是李姐" in system
+        else "wang"
+        if "你是王会计" in system
+        else "zhang"
+    )
     flags = facts["flags"]
     tool_result = messages[-1]["content"] if messages[-1]["role"] == "tool" else None
     operation = None
@@ -38,7 +46,7 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
             operation = "support_project"
     tool_name = "act_on_work"
     arguments = {"operation": operation}
-    if context.get("故事版本") == 2 and not tool_result:
+    if context.get("故事版本") in {2, 3} and not tool_result:
         from .intents import MAJOR_PATTERNS, grounded, grounded_major
 
         intent = next(
@@ -60,7 +68,10 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
         )
         operation = intent
         if intent in {"boundary", "report", *MAJOR_PATTERNS}:
-            tool_name, arguments = "express_intent", {"action": intent}
+            tool_name, arguments = (
+                "express_intent",
+                {"action": intent, "evidence": context.get("本轮玩家对白", "")},
+            )
         else:
             arguments = {"operation": intent}
     if operation:

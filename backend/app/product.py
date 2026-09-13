@@ -54,6 +54,8 @@ async def check_save_capacity(db: AsyncSession, user: User, limit: int) -> None:
             .select_from(Save)
             .where(
                 Save.user_id == user.id,
+                Save.story_version == 3,
+                Save.state["content_revision"].as_integer() == 2,
                 *(
                     []
                     if user.identity_type == "guest"
@@ -87,6 +89,9 @@ async def validate_reference(db: AsyncSession, save: Save, body: TurnInput) -> N
     if body.perspective_id not in {card["id"] for card in (job.result or {}).get("cards", [])}:
         raise ApiError(422, "rule_violation", "未知的观点卡引用。")
 
+    if job.payload.get("live_sources"):
+        # Server-frozen public search sources cannot be supplied or rewritten by players.
+        return
     for source in job.payload.get("sources", []):
         kind, identifier = source["id"].split(":", 1)
         row = await db.get(ZhihuContent, (kind, identifier))
@@ -108,14 +113,36 @@ async def branch_save(
             raise ApiError(404, "save_not_found")
         return result
     point = await db.get(SaveSnapshot, str(body.snapshot_id))
-    if not point or point.save_id != source.id or source.story_version != 2:
+    if (
+        not point
+        or point.save_id != source.id
+        or source.story_version != 3
+        or source.state.get("content_revision", 1) < 2
+    ):
         raise ApiError(422, "rule_violation", "这个节点无法可靠还原，请新建故事。")
     await check_save_capacity(db, user, limit)
+    import copy
+
+    state = copy.deepcopy(point.state)
+    event_ids = {event["id"]: new_id() for event in point.history}
+
+    def remap(value: Any) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key == "event_id" and item in event_ids:
+                    value[key] = event_ids[item]
+                else:
+                    remap(item)
+        elif isinstance(value, list):
+            for item in value:
+                remap(item)
+
+    remap(state)
     save = Save(
         user_id=user.id,
-        state=point.state,
-        state_schema_version=2,
-        story_version=2,
+        state=state,
+        state_schema_version=3,
+        story_version=3,
         parent_save_id=source.id,
         checkpoint_namespace=new_id(),
     )
@@ -131,6 +158,7 @@ async def branch_save(
             Event(
                 save_id=save.id,
                 turn_id=None,
+                id=event_ids[event["id"]],
                 source_event_id=event["id"],
                 operation=event["operation"],
                 audience=event["audience"],

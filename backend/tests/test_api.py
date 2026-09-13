@@ -1,3 +1,4 @@
+import json
 import os
 from uuid import uuid4
 
@@ -21,19 +22,28 @@ def create(c):
     return c.post("/api/saves", json={}).json()
 
 
-def turn(c, save, action, npc="sun", text="", request_id=None):
+def turn(c, save, action, npc="sun", text="", request_id=None, **extra):
     payload = {
         "request_id": request_id or str(uuid4()),
         "version": save["version"],
         "action": action,
         "npc": npc,
         "text": text,
+        **extra,
     }
     response = c.post(f"/api/saves/{save['id']}/turns", json=payload)
     if response.status_code == 200:
         fresh = c.get(f"/api/saves/{save['id']}").json()
         save.update(fresh)
     return response, payload
+
+
+def confirmed(client, save, action):
+    response, _ = turn(client, save, "propose", proposed_action=action)
+    assert response.status_code == 200, response.text
+    frame = next(f for f in response.text.split("\n\n") if f.startswith("event: done"))
+    result = json.loads(frame.split("data: ", 1)[1])
+    return turn(client, save, action, proposal_id=result["proposal"]["id"])
 
 
 def test_full_story_and_reload(client):
@@ -43,27 +53,29 @@ def test_full_story_and_reload(client):
         ("boundary", "sun", ""),
         ("next", "sun", ""),
         ("speak", "sun", "还缺哪些材料？"),
-        ("supplement", "sun", ""),
+        ("dispute_return", "li", ""),
         ("report", "zhang", ""),
         ("speak", "zhang", "请支持这个项目"),
         ("speak", "li", "材料齐全，请审核"),
         ("next", "sun", ""),
         ("clarify", "sun", ""),
-        ("deliver", "sun", ""),
-        ("cut_ties", "sun", ""),
-        ("next", "sun", ""),
+        ("review_clarification", "sun", ""),
+        ("deliver", "zhang", ""),
     ]:
         response, _ = turn(client, save, action, npc, text)
         assert response.status_code == 200, response.text
         assert '"status": "completed"' in response.text, response.text
-    assert save["state"]["ending"] == "找回自我 · 只留工作往来"
+    assert confirmed(client, save, "cut_ties")[0].status_code == 200
+    assert turn(client, save, "project_review", "zhang")[0].status_code == 200
+    assert (
+        turn(client, save, "follow_up", params={"boundary_response": "decline"})[0].status_code
+        == 200
+    )
+    assert confirmed(client, save, "close_story")[0].status_code == 200
+    assert save["state"]["outcome"]["id"] == "professional_boundary"
     events = client.get(f"/api/saves/{save['id']}/events").json()
     assert any(e["kind"] == "work" for e in events)
     assert not any(e["kind"] == "epilogue" for e in events)
-    response, _ = turn(client, save, "epilogue", "sun", "")
-    assert response.status_code == 200
-    events = client.get(f"/api/saves/{save['id']}/events").json()
-    assert any(e["kind"] == "epilogue" and "私人来往" in e["text"] for e in events)
     assert client.get(f"/api/saves/{save['id']}").json() == save
 
 
@@ -124,8 +136,6 @@ def test_failure_keeps_committed_action(app, client, monkeypatch):
 
 
 def test_relationship_choice_idempotency_and_private_audiences(client, monkeypatch):
-    import json
-
     from app import mock_llm
 
     observed = []
@@ -138,39 +148,33 @@ def test_relationship_choice_idempotency_and_private_audiences(client, monkeypat
     monkeypatch.setattr(mock_llm, "handle_request", inspect)
     save = create(client)
     turn(client, save, "begin")
-    _, wang_payload = turn(client, save, "contact_wang")
-    client.post(f"/api/saves/{save['id']}/turns", json=wang_payload)
+    response, wang_payload = turn(client, save, "contact_wang", "wang")
+    assert response.status_code == 200
     events = client.get(f"/api/saves/{save['id']}/events").json()
-    assert sum(e["kind"] == "personal" for e in events) == 1
-    assert next(e for e in events if e["kind"] == "personal")["text"].startswith("王叔的私人回复")
-    for action, npc, text in [
-        ("next", "sun", ""),
-        ("speak", "li", "还缺哪些材料"),
-        ("supplement", "sun", ""),
-        ("speak", "li", "请审核"),
-        ("next", "sun", ""),
-        ("clarify", "sun", ""),
-        ("deliver", "sun", ""),
-    ]:
-        assert turn(client, save, action, npc, text)[0].status_code == 200
-    assert turn(client, save, "next")[0].status_code == 422
-    _, selection = turn(client, save, "keep_distance", "li")  # Selected UI contact is irrelevant.
+    assert client.post(f"/api/saves/{save['id']}/turns", json=wang_payload).status_code == 200
+    assert client.get(f"/api/saves/{save['id']}/events").json() == events
+    secret = "这句话只对王会计说：蓝色便签放在抽屉里。"
+    assert (
+        turn(client, save, "speak", "wang", secret, channel="dm", target="wang")[0].status_code
+        == 200
+    )
+    for _ in range(2):
+        assert turn(client, save, "next")[0].status_code == 200
+    assert turn(client, save, "keep_distance", "li")[0].status_code == 409
+    response, selection = confirmed(client, save, "keep_distance")
+    assert response.status_code == 200
     version = save["version"]
     assert client.post(f"/api/saves/{save['id']}/turns", json=selection).status_code == 200
     assert client.get(f"/api/saves/{save['id']}").json()["version"] == version
-    assert turn(client, save, "cut_ties")[0].status_code == 422
     for npc in ("sun", "li", "zhang"):
         assert turn(client, save, "speak", npc, "你好")[0].status_code == 200
         request_text = json.dumps(observed[-1], ensure_ascii=False)
-        assert "王叔的私人回复" not in request_text
+        assert secret not in request_text
         assert "谢川" not in request_text
         assert "妈妈" not in request_text
         assert ("sun_observe" in request_text) == (npc == "sun")
-        assert ("接下来观察彼此" in request_text) == (npc == "sun")
-    assert turn(client, save, "next")[0].status_code == 200
-    assert save["ending_summary"].startswith("游戏分支")
+    assert confirmed(client, save, "close_story")[0].status_code == 200
+    assert save["state"]["outcome"]["id"] == "unresolved"
     refreshed = client.get(f"/api/saves/{save['id']}/play-state").json()["save"]
     assert refreshed["relationships"] == save["relationships"]
-    assert any(
-        r["id"] == "xie" and "前男友" in r["description"] for r in refreshed["relationships"]
-    )
+    assert {r["id"] for r in refreshed["relationships"]} == {"sun", "li", "zhang", "wang"}

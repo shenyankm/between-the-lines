@@ -54,6 +54,7 @@ class Save(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     version: Mapped[int] = mapped_column(Integer, default=0)
+    reading: Mapped[dict[str, int]] = mapped_column(JSONB, default=dict, server_default="{}")
     state_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     state: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -243,3 +244,10 @@ class AISpend(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
+
+
+class SearchCache(Base):
+    __tablename__ = "search_cache"
+    topic: Mapped[str] = mapped_column(String(200), primary_key=True)
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

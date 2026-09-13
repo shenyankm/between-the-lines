@@ -10,11 +10,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import literal, select, tuple_
 
 from ..auth import current_user
 from ..db import Event, Save, Turn, User
-from ..domain import initial_state
 from ..errors import (
     AUTH_RESPONSES,
     MUTATION_RESPONSES,
@@ -23,7 +23,7 @@ from ..errors import (
     TURN_RESPONSES,
     ApiError,
 )
-from ..game_types import GameStateV2
+from ..game_types import Channel, Npc, initial_v3
 from ..logging_setup import request_id as correlation_id
 from ..product import check_save_capacity, record_product_event
 from ..runtime import runtime_for
@@ -48,7 +48,7 @@ router = APIRouter()
 async def config(request: Request) -> dict[str, Any]:
     return {
         "guest_login": runtime_for(request).settings.guest_enabled,
-        "story_version": 2 if runtime_for(request).settings.story_v2_enabled else 1,
+        "story_version": 3,
         "dev_login": runtime_for(request).settings.dev_login_enabled
         and runtime_for(request).settings.environment != "production",
         "zhihu_login": runtime_for(request).settings.oauth_ready,
@@ -62,12 +62,13 @@ async def config(request: Request) -> dict[str, Any]:
 async def story(
     request: Request,
     response: Response,
-    version: int = Query(default=1, ge=1, le=2),
+    version: int = Query(default=3, ge=1, le=3),
     story_id: str = "workplace-s1",
+    revision: int = Query(default=2, ge=1, le=2),
 ) -> StoryOut | Response:
     if story_id != "workplace-s1":
         raise ApiError(404, "not_found")
-    definition = load_story(version).public()
+    definition = load_story(version, revision).public()
     response.headers["ETag"] = (
         '"' + hashlib.sha256(definition.model_dump_json().encode()).hexdigest() + '"'
     )
@@ -103,12 +104,10 @@ async def create_save(
         await db.scalar(select(User).where(User.id == user.id).with_for_update())
         settings = runtime_for(request).settings
         await check_save_capacity(db, user, settings.active_save_limit)
-        version = body.story_version or (2 if settings.story_v2_enabled else 1)
-        if version == 2 and not settings.story_v2_enabled:
-            raise ApiError(422, "rule_violation", "新版故事暂未开放。")
-        state = initial_state().model_dump(mode="json")
-        if version == 2:
-            state = GameStateV2.model_validate(state).model_dump(mode="json")
+        version = body.story_version or 3
+        if version != 3:
+            raise ApiError(422, "rule_violation", "新建故事仅支持 v3，旧档仍可阅读。")
+        state = initial_v3().model_dump(mode="json")
         save = Save(
             user_id=user.id, state=state, story_version=version, state_schema_version=version
         )
@@ -133,11 +132,17 @@ async def events(
     request: Request,
     user: User = Depends(current_user),
     before: UUID | None = None,
+    channel: Channel | None = None,
+    target: Npc | None = None,
     limit: int = Query(default=50, ge=1, le=100),
 ) -> list[dict[str, Any]]:
     async with runtime_for(request).sessions() as db:
         await owned_save(db, str(save_id), user.id)
         query = select(Event).where(Event.save_id == str(save_id))
+        if channel:
+            query = query.where(Event.data["channel"].astext == channel)
+        if target:
+            query = query.where(Event.data["npc"].astext == target)
         if before:
             cursor = await db.get(Event, str(before))
             if not cursor or cursor.save_id != str(save_id):
@@ -156,6 +161,20 @@ async def events(
             )
         )
     return [{"id": item.id, **item.data} for item in items]
+
+
+@router.get(
+    "/api/saves/{save_id}/events/{event_id}", response_model=GameEventOut, responses=SAVE_RESPONSES
+)
+async def event_detail(
+    save_id: UUID, event_id: UUID, request: Request, user: User = Depends(current_user)
+) -> dict[str, Any]:
+    async with runtime_for(request).sessions() as db:
+        await owned_save(db, str(save_id), user.id)
+        item = await db.get(Event, str(event_id))
+        if item is None or item.save_id != str(save_id):
+            raise ApiError(404, "not_found")
+        return {"id": item.id, **item.data}
 
 
 @router.get(
@@ -245,3 +264,22 @@ async def submit(
     return StreamingResponse(
         stream(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"}
     )
+
+
+class ReadingInput(BaseModel):
+    key: str = Field(
+        pattern=r"^(prologue|act_[123](_follow_up|_invitation|_farewell)?|dm_(sun|li|zhang|wang)|group|work)$"
+    )
+    position: int = Field(ge=0, le=1000000)
+
+
+@router.post(
+    "/api/saves/{save_id}/reading", response_model=dict[str, int], responses=SAVE_RESPONSES
+)
+async def reading(
+    save_id: UUID, body: ReadingInput, request: Request, user: User = Depends(current_user)
+) -> dict[str, int]:
+    async with runtime_for(request).sessions.begin() as db:
+        save = await owned_save(db, str(save_id), user.id, True)
+        save.reading = {**save.reading, body.key: max(save.reading.get(body.key, 0), body.position)}
+        return save.reading

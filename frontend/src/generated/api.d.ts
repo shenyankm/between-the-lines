@@ -246,6 +246,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/saves/{save_id}/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Event Detail */
+        get: operations["event_detail_api_saves__save_id__events__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/saves/{save_id}/turns/{request_id}": {
         parameters: {
             query?: never;
@@ -291,6 +308,23 @@ export interface paths {
         put?: never;
         /** Submit */
         post: operations["submit_api_saves__save_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/saves/{save_id}/reading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reading */
+        post: operations["reading_api_saves__save_id__reading_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -468,6 +502,23 @@ export interface components {
             choices: components["schemas"]["Choice"][];
             interlude?: components["schemas"]["Interlude"] | null;
         };
+        /** ActionParameters */
+        ActionParameters: {
+            /** Purpose */
+            purpose?: string | null;
+            /** Evidence */
+            evidence?: ("quote" | "purpose" | "urgency")[] | null;
+            /** Support Kind */
+            support_kind?: ("leave" | "help") | null;
+            /** Plan */
+            plan?: string | null;
+            /** Boundary Response */
+            boundary_response?: ("decline" | "agree" | "ask_details") | null;
+            /** Kind */
+            kind?: ("resign" | "transfer" | "withdraw") | null;
+            /** Reason */
+            reason?: string | null;
+        };
         /** ActiveTurn */
         ActiveTurn: {
             /** Id */
@@ -481,11 +532,11 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal";
+            action: "speak" | "begin" | "contact_wang" | "join_farewell" | "attend_farewell" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "review_clarification" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal" | "submit_purchase" | "dispute_return" | "trace_rumor" | "confirm_responsibility" | "change_rules" | "apply_rules" | "repair_friendship" | "acknowledge_harm" | "complete_remedy" | "follow_up" | "partner_undecided" | "draft_support" | "submit_support" | "review_support" | "rest" | "request_help" | "appease" | "request_extension" | "project_review" | "correct_loss" | "draft_exit" | "submit_exit" | "close_story";
             /** Label */
             label: string;
             /** Target */
-            target?: ("sun" | "li" | "zhang") | null;
+            target?: ("sun" | "li" | "zhang" | "wang") | null;
             /**
              * Enabled
              * @default true
@@ -533,9 +584,11 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal";
+            action: "speak" | "begin" | "contact_wang" | "join_farewell" | "attend_farewell" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "review_clarification" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal" | "submit_purchase" | "dispute_return" | "trace_rumor" | "confirm_responsibility" | "change_rules" | "apply_rules" | "repair_friendship" | "acknowledge_harm" | "complete_remedy" | "follow_up" | "partner_undecided" | "draft_support" | "submit_support" | "review_support" | "rest" | "request_help" | "appease" | "request_extension" | "project_review" | "correct_loss" | "draft_exit" | "submit_exit" | "close_story";
             /** Target */
-            target?: ("sun" | "li" | "zhang") | null;
+            target?: ("sun" | "li" | "zhang" | "wang") | null;
+            /** Entry */
+            entry?: ("phone" | "work") | null;
         };
         /** ConfigOut */
         ConfigOut: {
@@ -561,10 +614,28 @@ export interface components {
              */
             story_version: number;
         };
+        /** ContactOut */
+        ContactOut: {
+            /**
+             * Preview
+             * @default
+             */
+            preview: string;
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /**
+             * Unread
+             * @default false
+             */
+            unread: boolean;
+        };
         /** CreateSaveInput */
         CreateSaveInput: {
             /** Story Version */
-            story_version?: (1 | 2) | null;
+            story_version?: (1 | 2 | 3) | null;
         };
         /** DevLogin */
         DevLogin: {
@@ -593,6 +664,22 @@ export interface components {
             /** Stack */
             stack?: string | null;
         };
+        /** EndingResult */
+        EndingResult: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "active_exit" | "career_cost" | "rules_rewritten" | "limited_repair" | "professional_boundary" | "unresolved";
+            /** Title */
+            title: string;
+            /** Achievements */
+            achievements: string[];
+            /** Unresolved */
+            unresolved: string[];
+            /** Key Event Ids */
+            key_event_ids: string[];
+        };
         /** ErrorBody */
         ErrorBody: {
             code: components["schemas"]["ErrorCode"];
@@ -618,6 +705,30 @@ export interface components {
         /** ErrorEnvelope */
         ErrorEnvelope: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** ExitDraft */
+        ExitDraft: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "resign" | "transfer" | "withdraw";
+            /** Reason */
+            reason: string;
+            /** Event Id */
+            event_id: string;
+            /**
+             * Submitted
+             * @default false
+             */
+            submitted: boolean;
+        };
+        /** Fact */
+        Fact: {
+            /** Event Id */
+            event_id: string;
+            /** Detail */
+            detail: string;
         };
         /**
          * FailureCode
@@ -655,11 +766,23 @@ export interface components {
              * Npc
              * @enum {string}
              */
-            npc: "sun" | "li" | "zhang";
+            npc: "sun" | "li" | "zhang" | "wang";
+            /** Speaker */
+            speaker?: string | null;
+            /**
+             * Channel
+             * @default scene
+             * @enum {string}
+             */
+            channel: "scene" | "dm" | "group" | "work";
+            /** Audience */
+            audience?: string[];
+            /** Scene */
+            scene?: string | null;
             /** Act */
             act?: number | null;
             /** Action */
-            action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal") | null;
+            action?: ("speak" | "begin" | "contact_wang" | "join_farewell" | "attend_farewell" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "review_clarification" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal" | "submit_purchase" | "dispute_return" | "trace_rumor" | "confirm_responsibility" | "change_rules" | "apply_rules" | "repair_friendship" | "acknowledge_harm" | "complete_remedy" | "follow_up" | "partner_undecided" | "draft_support" | "submit_support" | "review_support" | "rest" | "request_help" | "appease" | "request_extension" | "project_review" | "correct_loss" | "draft_exit" | "submit_exit" | "close_story") | null;
             /** Id */
             id: string;
         };
@@ -724,6 +847,78 @@ export interface components {
              */
             ending_id: string | null;
         };
+        /** GameStateV3 */
+        GameStateV3: {
+            /** Act */
+            act: number;
+            /** Credit */
+            credit: number;
+            /** Stress */
+            stress: number;
+            /** Heat */
+            heat: number;
+            /** Flags */
+            flags: string[];
+            /**
+             * Procurement
+             * @enum {string}
+             */
+            procurement: "pending" | "approved";
+            /** Ending */
+            ending: string | null;
+            /**
+             * Story Version
+             * @default 3
+             * @constant
+             */
+            story_version: 3;
+            /**
+             * Content Revision
+             * @default 1
+             * @enum {integer}
+             */
+            content_revision: 1 | 2;
+            /** Support Requests */
+            support_requests?: components["schemas"]["SupportApplication"][];
+            /**
+             * Node
+             * @default prologue
+             */
+            node: string;
+            /**
+             * Tick
+             * @default 0
+             */
+            tick: number;
+            /**
+             * Rumination
+             * @default 25
+             */
+            rumination: number;
+            /**
+             * Pressure
+             * @default 25
+             */
+            pressure: number;
+            work?: components["schemas"]["WorkState"];
+            relationship?: components["schemas"]["RelationState"];
+            /**
+             * Partner Choice
+             * @default null
+             */
+            partner_choice: ("breakup" | "distance" | "undecided") | null;
+            /** @default null */
+            exit_draft: components["schemas"]["ExitDraft"] | null;
+            /** @default null */
+            outcome: components["schemas"]["EndingResult"] | null;
+            /** Scored */
+            scored?: string[];
+            /**
+             * Quiet Turns
+             * @default 0
+             */
+            quiet_turns: number;
+        };
         /** Interlude */
         Interlude: {
             /** Image */
@@ -746,7 +941,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "reflection" | "discussion";
+            kind: "reflection" | "discussion" | "ending";
             /** Version */
             version: number;
         };
@@ -781,6 +976,18 @@ export interface components {
         };
         /** PlayStateOut */
         PlayStateOut: {
+            /** Performance */
+            performance?: components["schemas"]["SceneLine"][];
+            /** Performance Version */
+            performance_version?: number | null;
+            /** Contacts */
+            contacts?: {
+                [key: string]: components["schemas"]["ContactOut"];
+            };
+            /** Reading */
+            reading?: {
+                [key: string]: number;
+            };
             save: components["schemas"]["SaveOut"];
             /** Events */
             events: components["schemas"]["GameEventOut"][];
@@ -808,7 +1015,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal";
+            action: "speak" | "begin" | "contact_wang" | "join_farewell" | "attend_farewell" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "review_clarification" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal" | "submit_purchase" | "dispute_return" | "trace_rumor" | "confirm_responsibility" | "change_rules" | "apply_rules" | "repair_friendship" | "acknowledge_harm" | "complete_remedy" | "follow_up" | "partner_undecided" | "draft_support" | "submit_support" | "review_support" | "rest" | "request_help" | "appease" | "request_extension" | "project_review" | "correct_loss" | "draft_exit" | "submit_exit" | "close_story";
             /** Version */
             version: number;
             /** Label */
@@ -834,6 +1041,14 @@ export interface components {
             sun: components["schemas"]["PublicNpc"];
             li: components["schemas"]["PublicNpc"];
             zhang: components["schemas"]["PublicNpc"];
+            wang?: components["schemas"]["PublicNpc"] | null;
+        };
+        /** ReadingInput */
+        ReadingInput: {
+            /** Key */
+            key: string;
+            /** Position */
+            position: number;
         };
         /** ReadyOut */
         ReadyOut: {
@@ -847,6 +1062,19 @@ export interface components {
                 [key: string]: "ok" | "error";
             };
         };
+        /** RelationState */
+        RelationState: {
+            /**
+             * Intention
+             * @default undecided
+             * @enum {string}
+             */
+            intention: "undecided" | "friendship" | "professional";
+            /** Facts */
+            facts?: {
+                [key: string]: components["schemas"]["Fact"];
+            };
+        };
         /** Relationship */
         Relationship: {
             /** Id */
@@ -857,6 +1085,26 @@ export interface components {
             role: string;
             /** Description */
             description: string;
+            /** Evidence Event Ids */
+            evidence_event_ids?: string[];
+        };
+        /** ReviewRecord */
+        ReviewRecord: {
+            /** Event Id */
+            event_id: string;
+            /** Version */
+            version: number;
+            /**
+             * Actor
+             * @enum {string}
+             */
+            actor: "sun" | "li" | "zhang" | "wang";
+            /** Decision */
+            decision: string;
+            /** Detail */
+            detail: string;
+            /** Time */
+            time: string;
         };
         /** SaveManagement */
         SaveManagement: {
@@ -873,7 +1121,12 @@ export interface components {
             /** Version */
             version: number;
             /** State */
-            state: components["schemas"]["GameStateV2"] | components["schemas"]["GameState"];
+            state: components["schemas"]["GameStateV3"] | components["schemas"]["GameStateV2"] | components["schemas"]["GameState"];
+            /**
+             * Read Only
+             * @default false
+             */
+            read_only: boolean;
             /**
              * Story Id
              * @default workplace-s1
@@ -921,6 +1174,21 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** SceneLine */
+        SceneLine: {
+            /** Id */
+            id: string;
+            /** Speaker */
+            speaker: string;
+            /** Text */
+            text: string;
+            /** Portraits */
+            portraits?: string[];
+            /** Location */
+            location?: string | null;
+            /** Background */
+            background?: string | null;
+        };
         /** SnapshotOut */
         SnapshotOut: {
             /** Id */
@@ -951,8 +1219,54 @@ export interface components {
             tips: components["schemas"]["Tip"][];
             /** Adaptation Note */
             adaptation_note: string;
+            /** Scenes */
+            scenes?: {
+                [key: string]: components["schemas"]["SceneLine"][];
+            };
             /** Wang Reply */
             wang_reply: string;
+        };
+        /** Submission */
+        Submission: {
+            /** Event Id */
+            event_id: string;
+            /** Version */
+            version: number;
+            /** Purpose */
+            purpose: string;
+            /** Evidence */
+            evidence: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "returned" | "resubmitted" | "approved";
+            /**
+             * Feedback
+             * @default
+             */
+            feedback: string;
+        };
+        /** SupportApplication */
+        SupportApplication: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "leave" | "help";
+            /** Reason */
+            reason: string;
+            /** Plan */
+            plan: string;
+            /** Act */
+            act: number;
+            draft: components["schemas"]["Fact"];
+            /** @default null */
+            submitted: components["schemas"]["Fact"] | null;
+            /** @default null */
+            approval: components["schemas"]["Fact"] | null;
+            /** @default null */
+            completion: components["schemas"]["Fact"] | null;
         };
         /** Tip */
         Tip: {
@@ -994,20 +1308,25 @@ export interface components {
              * @default sun
              * @enum {string}
              */
-            npc: "sun" | "li" | "zhang";
+            npc: "sun" | "li" | "zhang" | "wang";
             /**
              * Action
              * @default speak
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal";
+            action: "speak" | "begin" | "contact_wang" | "join_farewell" | "attend_farewell" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "review_clarification" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal" | "submit_purchase" | "dispute_return" | "trace_rumor" | "confirm_responsibility" | "change_rules" | "apply_rules" | "repair_friendship" | "acknowledge_harm" | "complete_remedy" | "follow_up" | "partner_undecided" | "draft_support" | "submit_support" | "review_support" | "rest" | "request_help" | "appease" | "request_extension" | "project_review" | "correct_loss" | "draft_exit" | "submit_exit" | "close_story";
             /**
              * Text
              * @default
              */
             text: string;
+            /** Channel */
+            channel?: ("scene" | "dm" | "group" | "work") | null;
+            /** Target */
+            target?: ("sun" | "li" | "zhang" | "wang" | "group") | null;
+            params?: components["schemas"]["ActionParameters"] | null;
             /** Proposed Action */
-            proposed_action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal") | null;
+            proposed_action?: ("speak" | "begin" | "contact_wang" | "join_farewell" | "attend_farewell" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "review_clarification" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal" | "submit_purchase" | "dispute_return" | "trace_rumor" | "confirm_responsibility" | "change_rules" | "apply_rules" | "repair_friendship" | "acknowledge_harm" | "complete_remedy" | "follow_up" | "partner_undecided" | "draft_support" | "submit_support" | "review_support" | "rest" | "request_help" | "appease" | "request_extension" | "project_review" | "correct_loss" | "draft_exit" | "submit_exit" | "close_story") | null;
             /** Proposal Id */
             proposal_id?: string | null;
             /** Discussion Id */
@@ -1121,6 +1440,23 @@ export interface components {
              */
             binding_pending: boolean;
         };
+        /** WorkState */
+        WorkState: {
+            /**
+             * Purchase
+             * @default pending
+             * @enum {string}
+             */
+            purchase: "pending" | "returned" | "review" | "approved";
+            /** Submissions */
+            submissions?: components["schemas"]["Submission"][];
+            /** Reviews */
+            reviews?: components["schemas"]["ReviewRecord"][];
+            /** Facts */
+            facts?: {
+                [key: string]: components["schemas"]["Fact"];
+            };
+        };
         /** StatusEvent */
         StatusEvent: {
             /** Turn Id */
@@ -1134,7 +1470,7 @@ export interface components {
              * Npc
              * @enum {string}
              */
-            npc: "sun" | "li" | "zhang";
+            npc: "sun" | "li" | "zhang" | "wang";
             /** Text */
             text: string;
         };
@@ -1598,6 +1934,7 @@ export interface operations {
             query?: {
                 version?: number;
                 story_id?: string;
+                revision?: number;
             };
             header?: never;
             path?: never;
@@ -1866,6 +2203,8 @@ export interface operations {
         parameters: {
             query?: {
                 before?: string | null;
+                channel?: ("scene" | "dm" | "group" | "work") | null;
+                target?: ("sun" | "li" | "zhang" | "wang") | null;
                 limit?: number;
             };
             header?: never;
@@ -1883,6 +2222,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GameEventOut"][];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    event_detail_api_saves__save_id__events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameEventOut"];
                 };
             };
             /** @description not_authenticated */
@@ -2182,6 +2589,79 @@ export interface operations {
                 headers: {
                     /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
                     "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reading_api_saves__save_id__reading_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadingInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {

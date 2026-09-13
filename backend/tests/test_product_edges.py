@@ -182,6 +182,7 @@ async def test_generator_failures_and_restart_preserve_facts_and_unknown_cost(v2
     client, runtime = v2
     save = await create(client)
     await act(client, save, "begin")
+    await act(client, save, "draft_exit", params={"kind": "resign", "reason": "希望更换工作环境"})
     await confirm(client, save, "leave")
     settings = runtime.settings.model_copy(
         update={"agent_mode": "deepseek", "deepseek_api_key": "fixture"}
@@ -583,12 +584,12 @@ async def test_trial_completion_and_approval_funnel_follow_committed_facts(v2):
     trial = await create(client)
     await act(client, trial, "begin")
     await act(client, trial, "speak", text="请不要替我定义情绪。")
-    await act(client, trial, "contact_wang")
+    await act(client, trial, "contact_wang", "wang")
     async with runtime.sessions() as db:
         rows = (
             await db.scalars(select(ProductEvent).where(ProductEvent.name == "chapter_completed"))
         ).all()
-        assert len(rows) == 1 and rows[0].data["act"] == 1
+        assert rows == []  # Responding is not the same as finishing the chapter.
     await client.post("/api/auth/dev", json={})
     save = await create(client)
     await second_act(client, save)
@@ -600,7 +601,13 @@ async def test_trial_completion_and_approval_funnel_follow_committed_facts(v2):
         ("supplement", "sun"),
         ("approve_purchase", "li"),
     ]:
-        await act(client, save, action, npc)
+        await act(
+            client,
+            save,
+            action,
+            npc,
+            **({"params": {"evidence": ["quote", "purpose"]}} if action == "supplement" else {}),
+        )
     await confirm(client, save, "partner_distance")
     await act(client, save, "next")
     response = await client.post(
@@ -612,7 +619,8 @@ async def test_trial_completion_and_approval_funnel_follow_committed_facts(v2):
             "proposed_action": "cut_ties",
         },
     )
-    assert response.status_code == 422
+    assert response.status_code == 200
+    assert save["state"]["ending"] is None
 
 
 async def test_running_artifact_blocks_duplicate_generation_but_replays_original_key(
@@ -621,6 +629,7 @@ async def test_running_artifact_blocks_duplicate_generation_but_replays_original
     client, runtime = v2
     save = await create(client)
     await act(client, save, "begin")
+    await act(client, save, "draft_exit", params={"kind": "resign", "reason": "希望更换工作环境"})
     await confirm(client, save, "leave")
     gate = asyncio.Event()
     execute = runtime.jobs.execute

@@ -41,7 +41,7 @@ def prepare(client):
     "setting,value,tool_committed",
     [
         ("max_model_calls", 1, True),
-        ("max_tool_calls", 0, False),
+        ("max_tool_calls", 0, True),
     ],
 )
 def test_agent_budgets_stop_execution(app, monkeypatch, setting, value, tool_committed):
@@ -61,6 +61,10 @@ def test_agent_budgets_stop_execution(app, monkeypatch, setting, value, tool_com
         assert '"status": "failed"' in response.text
         state = client.get(f"/api/saves/{save['id']}").json()["state"]
         assert ("requirements" in state["flags"]) is tool_committed
+        assert "execution_budget_exhausted" in response.text
+        # Deterministic intent survives, but the bounded model produces no reply.
+        events = client.get(f"/api/saves/{save['id']}/events").json()
+        assert not any(e["kind"] == "npc" for e in events)
 
 
 def test_provider_rate_limit_has_no_unbounded_retry(app, monkeypatch):
@@ -89,7 +93,10 @@ def test_provider_rate_limit_has_no_unbounded_retry(app, monkeypatch):
         assert '"status": "failed"' in response.text
         assert count == 1
         events = client.get(f"/api/saves/{save['id']}/events").json()
-        assert not any(e["kind"] in {"npc", "work"} for e in events)
+        # A clear request is committed before prose; failed prose cannot undo it.
+        state = client.get(f"/api/saves/{save['id']}").json()["state"]
+        assert "requirements" in state["flags"]
+        assert not any(e["kind"] == "npc" for e in events)
 
 
 def cap(monkeypatch, app, usd: float, mode: str = "deepseek") -> None:

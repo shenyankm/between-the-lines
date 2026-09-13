@@ -6,8 +6,30 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from .actions import AvailableAction
 from .error_catalog import ErrorCode, FailureCode, Recovery, failure_message
-from .game_types import Action, GameState, GameStateV2, Npc, TurnStatus, parse_state
-from .story import Relationship, load_story
+from .game_types import (
+    Action,
+    Channel,
+    GameState,
+    GameStateV2,
+    GameStateV3,
+    Npc,
+    TurnStatus,
+    parse_state,
+)
+from .story import Relationship, SceneLine, load_story
+
+
+class ActionParameters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    purpose: str | None = Field(default=None, min_length=1, max_length=1000)
+    evidence: list[Literal["quote", "purpose", "urgency"]] | None = Field(
+        default=None, max_length=3
+    )
+    support_kind: Literal["leave", "help"] | None = None
+    plan: str | None = Field(default=None, min_length=1, max_length=1000)
+    boundary_response: Literal["decline", "agree", "ask_details"] | None = None
+    kind: Literal["resign", "transfer", "withdraw"] | None = None
+    reason: str | None = Field(default=None, min_length=1, max_length=1000)
 
 
 class TurnInput(BaseModel):
@@ -17,6 +39,9 @@ class TurnInput(BaseModel):
     npc: Npc = "sun"
     action: Action = "speak"
     text: str = Field(default="", max_length=1500)
+    channel: Channel | None = None
+    target: Literal["sun", "li", "zhang", "wang", "group"] | None = None
+    params: ActionParameters | None = None
     proposed_action: Action | None = None
     proposal_id: UUID | None = None
     discussion_id: UUID | None = None
@@ -34,7 +59,8 @@ class TurnInput(BaseModel):
 class SaveOut(BaseModel):
     id: str
     version: int
-    state: GameStateV2 | GameState
+    state: GameStateV3 | GameStateV2 | GameState
+    read_only: bool = False
     story_id: str = "workplace-s1"
     story_version: int = 1
     last_played_at: datetime | None = None
@@ -54,7 +80,8 @@ class SaveOut(BaseModel):
 
     @model_validator(mode="after")
     def narrative_projection(self) -> "SaveOut":
-        story = load_story(self.story_version)
+        self.read_only = self.story_version < 3 or getattr(self.state, "content_revision", 1) < 2
+        story = load_story(self.story_version, getattr(self.state, "content_revision", 1))
         self.relationships = story.relationships_for(self.state)
         self.ending_summary = story.ending_summary(self.state)
         self.scene_intro = story.scene_intro(self.state)
@@ -142,6 +169,10 @@ class GameEventData(BaseModel):
     kind: Literal["player", "npc", "work", "epilogue", "personal", "narrative"]
     text: str
     npc: Npc
+    speaker: str | None = None
+    channel: Channel = "scene"
+    audience: list[str] = Field(default_factory=list)
+    scene: str | None = None
     act: int | None = None
     action: Action | None = None
 
@@ -169,7 +200,17 @@ class AIAvailability(BaseModel):
     remaining: int | None = None
 
 
+class ContactOut(BaseModel):
+    preview: str = ""
+    count: int = 0
+    unread: bool = False
+
+
 class PlayStateOut(BaseModel):
+    performance: list[SceneLine] = Field(default_factory=list)
+    performance_version: int | None = None
+    contacts: dict[str, ContactOut] = Field(default_factory=dict)
+    reading: dict[str, int] = Field(default_factory=dict)
     save: SaveOut
     events: list[GameEventOut]
     active_turn: ActiveTurn | None
@@ -240,7 +281,7 @@ class ReadyOut(BaseModel):
 
 class CreateSaveInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    story_version: Literal[1, 2] | None = None
+    story_version: Literal[1, 2, 3] | None = None
 
 
 class SaveManagement(BaseModel):
@@ -257,7 +298,7 @@ class BranchInput(BaseModel):
 class JobInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     request_id: UUID
-    kind: Literal["reflection", "discussion"]
+    kind: Literal["reflection", "discussion", "ending"]
     version: int = Field(ge=0)
 
 

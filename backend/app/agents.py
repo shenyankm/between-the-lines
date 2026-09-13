@@ -1,5 +1,6 @@
 import json
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from contextlib import suppress
 from typing import Any, Literal
 
 import httpx
@@ -118,7 +119,7 @@ class AgentGateway:
             context = await self.service.context_for(turn)
             return json.dumps(
                 context.model_dump(include={"facts", "available_actions"})
-                if context.story_version == 2
+                if context.story_version in {2, 3}
                 else context.facts,
                 ensure_ascii=False,
             )
@@ -135,13 +136,12 @@ class AgentGateway:
 
         @tool
         async def express_intent(
-            action: Literal[
-                "boundary", "report", "public_confront", "cut_ties", "keep_distance", "leave"
-            ],
+            action: str,
+            evidence: str = "",
         ) -> str:
-            """仅提交本轮玩家明确表达的边界或向张工汇报风险。引用、假设、否定不能执行。每轮至多一个玩家行动。"""
+            """evidence必须摘录本轮玩家原文；只从当前可用行动目录选择玩家本轮明确要求的行动。缺少表单内容时请玩家补填。引用、假设、否定不能执行。每轮至多一个玩家行动。"""
             try:
-                return await self.service.player_intent(turn.id, npc, action)
+                return await self.service.player_intent(turn.id, npc, action, evidence)
             except RuleError as exc:
                 return f"操作未执行：{exc}"
 
@@ -187,6 +187,22 @@ class AgentGateway:
         """Yield only completed, player-visible text. Raw graph events remain server-side."""
         npc = turn.input.npc
         context = await self.service.context_for(turn)
+        if context.story_version == 3 and self.settings.automatic_intents_enabled:
+            from .intents import grounded_v3
+
+            candidates = [
+                a.action
+                for a in context.available_actions
+                if a.enabled and grounded_v3(turn.input.text, a.action, npc, context.facts["act"])
+            ]
+            # Unambiguous authored expressions use the same tools before prose;
+            # model omission must not silently turn a clear request into idle chat.
+            if len(candidates) == 1:
+                action = candidates[0]
+                # Missing form values do not acquire invented defaults.
+                with suppress(RuleError):
+                    await self.service.player_intent(turn.id, npc, action, turn.input.text)
+                context = await self.service.context_for(turn)
         model = self.model_factory()
         agent = self.build_agent(
             turn, checkpointer, model=model, story_version=context.story_version

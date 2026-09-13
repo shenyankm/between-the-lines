@@ -73,43 +73,37 @@ async def second_act(client, save):
     await act(client, save, "next")
 
 
-@pytest.mark.parametrize("partner", ["partner_breakup", "partner_distance"])
-@pytest.mark.parametrize("sun", ["cut_ties", "keep_distance"])
-async def test_three_acts_without_any_ai_budget(v2, partner, sun):
+@pytest.mark.parametrize("response", ["decline", "agree"])
+@pytest.mark.parametrize("relationship", ["cut_ties", "repair_friendship"])
+async def test_three_acts_without_any_ai_budget(v2, response, relationship):
     client, runtime = v2
     runtime.settings.daily_turn_limit = 0
     save = await create(client)
-    assert save["story_version"] == 2
+    assert save["story_version"] == 3
     await second_act(client, save)
-    assert "personal_resolved" not in save["state"]["flags"]
-    for action, npc in [
-        ("request_materials", "sun"),
-        ("supplement", "sun"),
-        ("report", "zhang"),
-        ("support_project", "zhang"),
-        ("joint_review", "li"),
-    ]:
-        await act(client, save, action, npc)
-    blocked = await client.post(
-        f"/api/saves/{save['id']}/turns",
-        json={"request_id": str(uuid4()), "version": save["version"], "action": "next"},
-    )
-    assert blocked.status_code == 422
-    await confirm(client, save, partner)
+    # Mainline progress no longer depends on a private-life choice.
+    await act(client, save, "dispute_return", "li")
+    await act(client, save, "approve_purchase", "li")
     await act(client, save, "next")
     await act(client, save, "clarify")
-    await act(client, save, "deliver")
-    await confirm(client, save, sun)
-    await act(client, save, "next")
-    assert save["state"]["ending_id"] == ("sun_cut" if sun == "cut_ties" else "sun_observe")
-    assert ("暂时保持距离" in save["ending_summary"]) == (partner == "partner_distance")
-    assert "joint_review" in save["state"]["flags"]
+    await act(client, save, "review_clarification")
+    await act(client, save, "deliver", "zhang")
+    await confirm(client, save, relationship)
+    if relationship == "repair_friendship":
+        await act(client, save, "acknowledge_harm")
+        await act(client, save, "complete_remedy")
+    await act(client, save, "project_review", "zhang")
+    await act(client, save, "follow_up", params={"boundary_response": response})
+    await confirm(client, save, "close_story")
+    assert save["state"]["outcome"]["id"] == (
+        "professional_boundary" if relationship == "cut_ties" else "limited_repair"
+    )
     async with runtime.sessions() as db:
         assert not await db.scalar(select(func.count()).select_from(AISpend))
     view = (await client.get(f"/api/saves/{save['id']}/play-state")).json()
     assert view["ai"]["available"] is False
     assert not any(e["kind"] == "epilogue" for e in view["events"])
-    assert any(e["kind"] == "narrative" for e in view["events"])
+    assert any(e.get("speaker") == "system" for e in view["events"])
 
 
 async def test_proposal_survives_refresh_replay_and_expires(v2):
@@ -122,7 +116,7 @@ async def test_proposal_survives_refresh_replay_and_expires(v2):
     assert view["proposal"] == proposal
     assert "confronted" not in view["save"]["state"]["flags"]
     assert (await client.post(f"/api/saves/{save['id']}/turns", json=body)).status_code == 200
-    await act(client, save, "contact_wang")
+    await act(client, save, "contact_wang", "wang")
     stale = await client.post(
         f"/api/saves/{save['id']}/turns",
         json={
@@ -135,8 +129,10 @@ async def test_proposal_survives_refresh_replay_and_expires(v2):
     assert stale.status_code == 409
     await confirm(client, save, "public_confront")
     await act(client, save, "verify_notice", "li")
+    await act(client, save, "draft_exit", params={"kind": "resign", "reason": "希望更换工作环境"})
     await confirm(client, save, "leave")
-    assert "未查明" in save["ending_summary"]
+    assert "谣言" not in save["ending_summary"]
+    assert "已正式提交离职申请" in save["ending_summary"]
     assert "谢川" not in save["ending_summary"]
 
 
@@ -144,6 +140,7 @@ async def test_proposal_race_has_exactly_one_winner(v2):
     client, _ = v2
     save = await create(client)
     await act(client, save, "begin")
+    await act(client, save, "draft_exit", params={"kind": "resign", "reason": "希望更换工作环境"})
     proposal, _ = await act(client, save, "propose", proposed_action="leave")
     payload = {
         "version": save["version"],
@@ -190,7 +187,7 @@ async def test_explicit_intent_and_deterministic_finance(v2):
     await act(client, save, "next")
     await act(client, save, "speak", "li", "还缺哪些材料？")
     assert "requirements" in save["state"]["flags"]
-    await act(client, save, "supplement")
+    await act(client, save, "supplement", params={"evidence": ["quote", "purpose"]})
     await act(client, save, "approve_purchase", "li")
     assert save["state"]["procurement"] == "approved"
 
@@ -204,7 +201,13 @@ async def test_private_branch_never_enters_coworker_context(v2):
         ("supplement", "sun"),
         ("approve_purchase", "li"),
     ]:
-        await act(client, save, action, npc)
+        await act(
+            client,
+            save,
+            action,
+            npc,
+            **({"params": {"evidence": ["quote", "purpose"]}} if action == "supplement" else {}),
+        )
     await confirm(client, save, "partner_distance")
     await act(client, save, "next")
     for npc in ("sun", "li", "zhang"):
@@ -370,6 +373,7 @@ async def test_reflection_and_cards_are_persistent_and_sourced(v2):
         },
     )
     assert invalid.status_code == 422
+    await act(client, save, "draft_exit", params={"kind": "resign", "reason": "希望更换工作环境"})
     await confirm(client, save, "leave")
     body = {"request_id": str(uuid4()), "version": save["version"], "kind": "reflection"}
     response = await client.post(f"/api/saves/{save['id']}/jobs", json=body)
@@ -381,7 +385,12 @@ async def test_reflection_and_cards_are_persistent_and_sourced(v2):
     by_id = {e["id"]: e for e in events}
     assert reflection["status"] == "completed"
     for node in reflection["result"]["nodes"]:
-        assert node["actual_expression"] == by_id[node["event_id"]]["text"]
+        event = by_id[node["event_id"]]
+        assert node["actual_expression"] == (
+            event["text"]
+            if event.get("action") == "speak" and event.get("speaker") == "player"
+            else ""
+        )
     assert (await client.post(f"/api/saves/{save['id']}/jobs", json=body)).json()[
         "id"
     ] == reflection["id"]
@@ -417,10 +426,11 @@ async def test_model_major_intent_only_creates_a_proposal(v2):
     client, runtime = v2
     save = await create(client)
     await act(client, save, "begin")
-    result, _ = await act(client, save, "speak", text="我决定离开公司。")
-    assert result["proposal"]["action"] == "leave"
+    await act(client, save, "draft_exit", params={"kind": "resign", "reason": "希望更换工作环境"})
+    result, _ = await act(client, save, "speak", text="确认提交退出申请")
+    assert result["proposal"]["action"] == "submit_exit"
     assert save["state"]["ending"] is None
-    await act(client, save, "leave", proposal_id=result["proposal"]["id"])
+    await act(client, save, "submit_exit", proposal_id=result["proposal"]["id"])
     async with runtime.sessions() as db:
         proposal = await db.get(Proposal, result["proposal"]["id"])
         assert proposal.status == "confirmed"
@@ -432,7 +442,7 @@ async def test_intent_fact_survives_a_later_reply_failure(v2):
     await act(client, save, "begin")
 
     async def failing(turn, checkpointer, usage):
-        await runtime.service.player_intent(turn.id, "sun", "boundary")
+        await runtime.service.player_intent(turn.id, "sun", "boundary", turn.input.text)
         raise RuntimeError("fixture after commit")
         yield "unreachable"  # pragma: no cover
 

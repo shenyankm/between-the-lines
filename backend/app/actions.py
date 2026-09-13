@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from .domain import RuleError, apply_npc, apply_player
-from .game_types import Action, GameState, GameStateV2, Npc
+from .game_types import Action, GameState, GameStateV2, GameStateV3, Npc
 
 MAJOR = {
     "public_confront",
@@ -126,7 +126,17 @@ CATALOG: dict[str, tuple[str, set[int], Npc | None, str, str]] = {
 }
 
 
-def transition(state: GameState, action: str, npc: str = "sun") -> tuple[GameState, str]:
+def transition(
+    state: GameState,
+    action: str,
+    npc: str = "sun",
+    params: dict[str, Any] | None = None,
+    event_id: str = "preview",
+) -> tuple[GameState, str]:
+    if isinstance(state, GameStateV3):
+        from .story_rules import transition_v3
+
+        return transition_v3(state, action, npc, params, event_id)
     if not isinstance(state, GameStateV2):
         return apply_player(state, action)
     if action in {"propose", "cancel_proposal"}:
@@ -201,6 +211,61 @@ def transition(state: GameState, action: str, npc: str = "sun") -> tuple[GameSta
 
 
 def available_actions(state: GameState) -> list[AvailableAction]:
+    if isinstance(state, GameStateV3):
+        from .story_rules import CATALOG as V3_CATALOG
+        from .story_rules import MAJOR as V3_MAJOR
+
+        result: list[AvailableAction] = []
+        if state.ending:
+            return result
+        for action, (label, acts, target, flag, effect) in V3_CATALOG.items():
+            if state.act not in acts or action == "leave":
+                continue
+            reason = ""
+            try:
+                transition(
+                    state,
+                    action,
+                    target or "sun",
+                    params={"evidence": ["quote", "purpose"]}
+                    if action == "supplement"
+                    else {"boundary_response": "decline"}
+                    if action == "follow_up"
+                    else {"support_kind": "leave", "reason": "预览", "plan": "预览"}
+                    if action == "draft_support"
+                    else None,
+                )
+            except RuleError as exc:
+                reason = str(exc)
+            result.append(
+                AvailableAction(
+                    action=action,
+                    label=label,
+                    target=target,
+                    enabled=not reason,
+                    completed=bool(
+                        flag
+                        and (
+                            f"{flag}:act_{state.act}"
+                            if action
+                            in {
+                                "boundary",
+                                "appease",
+                                "public_confront",
+                                "rest",
+                                "request_help",
+                                "report",
+                            }
+                            else flag
+                        )
+                        in state.flags
+                    ),
+                    requires_confirmation=action in V3_MAJOR,
+                    reason=reason,
+                    effect=effect,
+                )
+            )
+        return result
     if not isinstance(state, GameStateV2) or state.ending:
         return []
     result = []
@@ -245,7 +310,11 @@ def effects(before: GameState, after: GameState, text: str) -> list[dict[str, An
             "text": text,
             "changes": {
                 key: getattr(after, key) - getattr(before, key)
-                for key in ("credit", "stress", "heat")
+                for key in (
+                    ("credit", "rumination", "pressure", "heat")
+                    if isinstance(before, GameStateV3)
+                    else ("credit", "stress", "heat")
+                )
                 if getattr(after, key) != getattr(before, key)
             },
         }
@@ -254,6 +323,13 @@ def effects(before: GameState, after: GameState, text: str) -> list[dict[str, An
 
 def role_actions(state: GameState, npc: str) -> list[AvailableAction]:
     """The agent sees the same catalogue, scoped to its work/confirmation tools."""
+    if isinstance(state, GameStateV3):
+        return [
+            a
+            for a in available_actions(state)
+            if (a.target in {None, npc} or (a.action == "request_materials" and npc == "li"))
+            and not a.action.startswith("partner_")
+        ]
     allowed = {
         "boundary",
         "report",

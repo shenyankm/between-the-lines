@@ -465,9 +465,9 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 2,
+              "maximum": 3,
               "minimum": 1,
-              "default": 1,
+              "default": 3,
               "title": "Version"
             }
           },
@@ -479,6 +479,18 @@
               "type": "string",
               "default": "workplace-s1",
               "title": "Story Id"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2,
+              "minimum": 1,
+              "default": 2,
+              "title": "Revision"
             }
           }
         ],
@@ -807,6 +819,50 @@
             }
           },
           {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "scene",
+                    "dm",
+                    "group",
+                    "work"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Channel"
+            }
+          },
+          {
+            "name": "target",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "sun",
+                    "li",
+                    "zhang",
+                    "wang"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -830,6 +886,96 @@
                     "$ref": "#/components/schemas/GameEventOut"
                   },
                   "title": "Response Events Api Saves  Save Id  Events Get"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/saves/{save_id}/events/{event_id}": {
+      "get": {
+        "summary": "Event Detail",
+        "operationId": "event_detail_api_saves__save_id__events__event_id__get",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Save Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameEventOut"
                 }
               }
             }
@@ -1215,6 +1361,100 @@
                 }
               }
             },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/saves/{save_id}/reading": {
+      "post": {
+        "summary": "Reading",
+        "operationId": "reading_api_saves__save_id__reading_post",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Save Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadingInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Reading Api Saves  Save Id  Reading Post"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2266,6 +2506,119 @@
         ],
         "title": "Act"
       },
+      "ActionParameters": {
+        "properties": {
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "quote",
+                    "purpose",
+                    "urgency"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "support_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "leave",
+                  "help"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Kind"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
+          },
+          "boundary_response": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "decline",
+                  "agree",
+                  "ask_details"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Response"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "resign",
+                  "transfer",
+                  "withdraw"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ActionParameters"
+      },
       "ActiveTurn": {
         "properties": {
           "id": {
@@ -2292,12 +2645,15 @@
               "speak",
               "begin",
               "contact_wang",
+              "join_farewell",
+              "attend_farewell",
               "boundary",
               "public_confront",
               "next",
               "supplement",
               "report",
               "clarify",
+              "review_clarification",
               "deliver",
               "cut_ties",
               "keep_distance",
@@ -2311,7 +2667,30 @@
               "partner_breakup",
               "partner_distance",
               "propose",
-              "cancel_proposal"
+              "cancel_proposal",
+              "submit_purchase",
+              "dispute_return",
+              "trace_rumor",
+              "confirm_responsibility",
+              "change_rules",
+              "apply_rules",
+              "repair_friendship",
+              "acknowledge_harm",
+              "complete_remedy",
+              "follow_up",
+              "partner_undecided",
+              "draft_support",
+              "submit_support",
+              "review_support",
+              "rest",
+              "request_help",
+              "appease",
+              "request_extension",
+              "project_review",
+              "correct_loss",
+              "draft_exit",
+              "submit_exit",
+              "close_story"
             ],
             "title": "Action"
           },
@@ -2326,7 +2705,8 @@
                 "enum": [
                   "sun",
                   "li",
-                  "zhang"
+                  "zhang",
+                  "wang"
                 ]
               },
               {
@@ -2401,12 +2781,15 @@
               "speak",
               "begin",
               "contact_wang",
+              "join_farewell",
+              "attend_farewell",
               "boundary",
               "public_confront",
               "next",
               "supplement",
               "report",
               "clarify",
+              "review_clarification",
               "deliver",
               "cut_ties",
               "keep_distance",
@@ -2420,7 +2803,30 @@
               "partner_breakup",
               "partner_distance",
               "propose",
-              "cancel_proposal"
+              "cancel_proposal",
+              "submit_purchase",
+              "dispute_return",
+              "trace_rumor",
+              "confirm_responsibility",
+              "change_rules",
+              "apply_rules",
+              "repair_friendship",
+              "acknowledge_harm",
+              "complete_remedy",
+              "follow_up",
+              "partner_undecided",
+              "draft_support",
+              "submit_support",
+              "review_support",
+              "rest",
+              "request_help",
+              "appease",
+              "request_extension",
+              "project_review",
+              "correct_loss",
+              "draft_exit",
+              "submit_exit",
+              "close_story"
             ],
             "title": "Action"
           },
@@ -2431,7 +2837,8 @@
                 "enum": [
                   "sun",
                   "li",
-                  "zhang"
+                  "zhang",
+                  "wang"
                 ]
               },
               {
@@ -2439,6 +2846,21 @@
               }
             ],
             "title": "Target"
+          },
+          "entry": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "phone",
+                  "work"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry"
           }
         },
         "type": "object",
@@ -2490,6 +2912,27 @@
         ],
         "title": "ConfigOut"
       },
+      "ContactOut": {
+        "properties": {
+          "preview": {
+            "type": "string",
+            "title": "Preview",
+            "default": ""
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "default": 0
+          },
+          "unread": {
+            "type": "boolean",
+            "title": "Unread",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ContactOut"
+      },
       "CreateSaveInput": {
         "properties": {
           "story_version": {
@@ -2498,7 +2941,8 @@
                 "type": "integer",
                 "enum": [
                   1,
-                  2
+                  2,
+                  3
                 ]
               },
               {
@@ -2590,6 +3034,56 @@
           "kind"
         ],
         "title": "DiagnosticInput"
+      },
+      "EndingResult": {
+        "properties": {
+          "id": {
+            "enum": [
+              "active_exit",
+              "career_cost",
+              "rules_rewritten",
+              "limited_repair",
+              "professional_boundary",
+              "unresolved"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "achievements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Achievements",
+            "type": "array"
+          },
+          "unresolved": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unresolved",
+            "type": "array"
+          },
+          "key_event_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Key Event Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "achievements",
+          "unresolved",
+          "key_event_ids"
+        ],
+        "title": "EndingResult",
+        "type": "object"
       },
       "ErrorBody": {
         "properties": {
@@ -2695,6 +3189,59 @@
         ],
         "title": "ErrorEnvelope"
       },
+      "ExitDraft": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "resign",
+              "transfer",
+              "withdraw"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "submitted": {
+            "default": false,
+            "title": "Submitted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "reason",
+          "event_id"
+        ],
+        "title": "ExitDraft",
+        "type": "object"
+      },
+      "Fact": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "detail"
+        ],
+        "title": "Fact",
+        "type": "object"
+      },
       "FailureCode": {
         "enum": [
           "turn_timeout",
@@ -2777,9 +3324,50 @@
             "enum": [
               "sun",
               "li",
-              "zhang"
+              "zhang",
+              "wang"
             ],
             "title": "Npc"
+          },
+          "speaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "scene",
+              "dm",
+              "group",
+              "work"
+            ],
+            "title": "Channel",
+            "default": "scene"
+          },
+          "audience": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Audience"
+          },
+          "scene": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene"
           },
           "act": {
             "anyOf": [
@@ -2800,12 +3388,15 @@
                   "speak",
                   "begin",
                   "contact_wang",
+                  "join_farewell",
+                  "attend_farewell",
                   "boundary",
                   "public_confront",
                   "next",
                   "supplement",
                   "report",
                   "clarify",
+                  "review_clarification",
                   "deliver",
                   "cut_ties",
                   "keep_distance",
@@ -2819,7 +3410,30 @@
                   "partner_breakup",
                   "partner_distance",
                   "propose",
-                  "cancel_proposal"
+                  "cancel_proposal",
+                  "submit_purchase",
+                  "dispute_return",
+                  "trace_rumor",
+                  "confirm_responsibility",
+                  "change_rules",
+                  "apply_rules",
+                  "repair_friendship",
+                  "acknowledge_harm",
+                  "complete_remedy",
+                  "follow_up",
+                  "partner_undecided",
+                  "draft_support",
+                  "submit_support",
+                  "review_support",
+                  "rest",
+                  "request_help",
+                  "appease",
+                  "request_extension",
+                  "project_review",
+                  "correct_loss",
+                  "draft_exit",
+                  "submit_exit",
+                  "close_story"
                 ]
               },
               {
@@ -3011,6 +3625,174 @@
         "title": "GameStateV2",
         "type": "object"
       },
+      "GameStateV3": {
+        "properties": {
+          "act": {
+            "maximum": 4,
+            "minimum": 0,
+            "title": "Act",
+            "type": "integer"
+          },
+          "credit": {
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Credit",
+            "type": "integer"
+          },
+          "stress": {
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Stress",
+            "type": "integer"
+          },
+          "heat": {
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Heat",
+            "type": "integer"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "procurement": {
+            "enum": [
+              "pending",
+              "approved"
+            ],
+            "title": "Procurement",
+            "type": "string"
+          },
+          "ending": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ending"
+          },
+          "story_version": {
+            "const": 3,
+            "default": 3,
+            "title": "Story Version",
+            "type": "integer"
+          },
+          "content_revision": {
+            "default": 1,
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Content Revision",
+            "type": "integer"
+          },
+          "support_requests": {
+            "items": {
+              "$ref": "#/components/schemas/SupportApplication"
+            },
+            "title": "Support Requests",
+            "type": "array"
+          },
+          "node": {
+            "default": "prologue",
+            "title": "Node",
+            "type": "string"
+          },
+          "tick": {
+            "default": 0,
+            "title": "Tick",
+            "type": "integer"
+          },
+          "rumination": {
+            "default": 25,
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Rumination",
+            "type": "integer"
+          },
+          "pressure": {
+            "default": 25,
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Pressure",
+            "type": "integer"
+          },
+          "work": {
+            "$ref": "#/components/schemas/WorkState"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/RelationState"
+          },
+          "partner_choice": {
+            "anyOf": [
+              {
+                "enum": [
+                  "breakup",
+                  "distance",
+                  "undecided"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Partner Choice"
+          },
+          "exit_draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitDraft"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EndingResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "scored": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scored",
+            "type": "array"
+          },
+          "quiet_turns": {
+            "default": 0,
+            "title": "Quiet Turns",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "act",
+          "credit",
+          "stress",
+          "heat",
+          "flags",
+          "procurement",
+          "ending"
+        ],
+        "title": "GameStateV3",
+        "type": "object"
+      },
       "Interlude": {
         "properties": {
           "image": {
@@ -3050,7 +3832,8 @@
             "type": "string",
             "enum": [
               "reflection",
-              "discussion"
+              "discussion",
+              "ending"
             ],
             "title": "Kind"
           },
@@ -3142,6 +3925,38 @@
       },
       "PlayStateOut": {
         "properties": {
+          "performance": {
+            "items": {
+              "$ref": "#/components/schemas/SceneLine"
+            },
+            "type": "array",
+            "title": "Performance"
+          },
+          "performance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Performance Version"
+          },
+          "contacts": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ContactOut"
+            },
+            "type": "object",
+            "title": "Contacts"
+          },
+          "reading": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Reading"
+          },
           "save": {
             "$ref": "#/components/schemas/SaveOut"
           },
@@ -3234,12 +4049,15 @@
               "speak",
               "begin",
               "contact_wang",
+              "join_farewell",
+              "attend_farewell",
               "boundary",
               "public_confront",
               "next",
               "supplement",
               "report",
               "clarify",
+              "review_clarification",
               "deliver",
               "cut_ties",
               "keep_distance",
@@ -3253,7 +4071,30 @@
               "partner_breakup",
               "partner_distance",
               "propose",
-              "cancel_proposal"
+              "cancel_proposal",
+              "submit_purchase",
+              "dispute_return",
+              "trace_rumor",
+              "confirm_responsibility",
+              "change_rules",
+              "apply_rules",
+              "repair_friendship",
+              "acknowledge_harm",
+              "complete_remedy",
+              "follow_up",
+              "partner_undecided",
+              "draft_support",
+              "submit_support",
+              "review_support",
+              "rest",
+              "request_help",
+              "appease",
+              "request_extension",
+              "project_review",
+              "correct_loss",
+              "draft_exit",
+              "submit_exit",
+              "close_story"
             ],
             "title": "Action"
           },
@@ -3323,6 +4164,16 @@
           },
           "zhang": {
             "$ref": "#/components/schemas/PublicNpc"
+          },
+          "wang": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicNpc"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -3332,6 +4183,27 @@
           "zhang"
         ],
         "title": "PublicNpcs"
+      },
+      "ReadingInput": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^(prologue|act_[123](_follow_up|_invitation|_farewell)?|dm_(sun|li|zhang|wang)|group|work)$",
+            "title": "Key"
+          },
+          "position": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Position"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "position"
+        ],
+        "title": "ReadingInput"
       },
       "ReadyOut": {
         "properties": {
@@ -3362,6 +4234,29 @@
         ],
         "title": "ReadyOut"
       },
+      "RelationState": {
+        "properties": {
+          "intention": {
+            "default": "undecided",
+            "enum": [
+              "undecided",
+              "friendship",
+              "professional"
+            ],
+            "title": "Intention",
+            "type": "string"
+          },
+          "facts": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "title": "Facts",
+            "type": "object"
+          }
+        },
+        "title": "RelationState",
+        "type": "object"
+      },
       "Relationship": {
         "properties": {
           "id": {
@@ -3379,6 +4274,13 @@
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "evidence_event_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Event Ids",
+            "type": "array"
           }
         },
         "required": [
@@ -3388,6 +4290,50 @@
           "description"
         ],
         "title": "Relationship",
+        "type": "object"
+      },
+      "ReviewRecord": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "actor": {
+            "enum": [
+              "sun",
+              "li",
+              "zhang",
+              "wang"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "time": {
+            "title": "Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "version",
+          "actor",
+          "decision",
+          "detail",
+          "time"
+        ],
+        "title": "ReviewRecord",
         "type": "object"
       },
       "SaveManagement": {
@@ -3423,6 +4369,9 @@
           "state": {
             "anyOf": [
               {
+                "$ref": "#/components/schemas/GameStateV3"
+              },
+              {
                 "$ref": "#/components/schemas/GameStateV2"
               },
               {
@@ -3430,6 +4379,11 @@
               }
             ],
             "title": "State"
+          },
+          "read_only": {
+            "default": false,
+            "title": "Read Only",
+            "type": "boolean"
           },
           "story_id": {
             "default": "workplace-s1",
@@ -3531,7 +4485,8 @@
               "enum": [
                 "sun",
                 "li",
-                "zhang"
+                "zhang",
+                "wang"
               ]
             },
             "title": "Npc Greetings",
@@ -3545,6 +4500,58 @@
         ],
         "title": "SaveOut",
         "type": "object"
+      },
+      "SceneLine": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "speaker": {
+            "type": "string",
+            "title": "Speaker"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "portraits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Portraits"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "background": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "speaker",
+          "text"
+        ],
+        "title": "SceneLine"
       },
       "SnapshotOut": {
         "properties": {
@@ -3608,6 +4615,16 @@
             "type": "string",
             "title": "Adaptation Note"
           },
+          "scenes": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/SceneLine"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Scenes"
+          },
           "wang_reply": {
             "type": "string",
             "title": "Wang Reply"
@@ -3624,6 +4641,125 @@
           "wang_reply"
         ],
         "title": "StoryOut"
+      },
+      "Submission": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "returned",
+              "resubmitted",
+              "approved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "feedback": {
+            "default": "",
+            "title": "Feedback",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "version",
+          "purpose",
+          "evidence",
+          "status"
+        ],
+        "title": "Submission",
+        "type": "object"
+      },
+      "SupportApplication": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "leave",
+              "help"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "plan": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Plan",
+            "type": "string"
+          },
+          "act": {
+            "title": "Act",
+            "type": "integer"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/Fact"
+          },
+          "submitted": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fact"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fact"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "completion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fact"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "kind",
+          "reason",
+          "plan",
+          "act",
+          "draft"
+        ],
+        "title": "SupportApplication",
+        "type": "object"
       },
       "Tip": {
         "properties": {
@@ -3700,7 +4836,8 @@
             "enum": [
               "sun",
               "li",
-              "zhang"
+              "zhang",
+              "wang"
             ],
             "title": "Npc",
             "default": "sun"
@@ -3711,12 +4848,15 @@
               "speak",
               "begin",
               "contact_wang",
+              "join_farewell",
+              "attend_farewell",
               "boundary",
               "public_confront",
               "next",
               "supplement",
               "report",
               "clarify",
+              "review_clarification",
               "deliver",
               "cut_ties",
               "keep_distance",
@@ -3730,7 +4870,30 @@
               "partner_breakup",
               "partner_distance",
               "propose",
-              "cancel_proposal"
+              "cancel_proposal",
+              "submit_purchase",
+              "dispute_return",
+              "trace_rumor",
+              "confirm_responsibility",
+              "change_rules",
+              "apply_rules",
+              "repair_friendship",
+              "acknowledge_harm",
+              "complete_remedy",
+              "follow_up",
+              "partner_undecided",
+              "draft_support",
+              "submit_support",
+              "review_support",
+              "rest",
+              "request_help",
+              "appease",
+              "request_extension",
+              "project_review",
+              "correct_loss",
+              "draft_exit",
+              "submit_exit",
+              "close_story"
             ],
             "title": "Action",
             "default": "speak"
@@ -3741,6 +4904,51 @@
             "title": "Text",
             "default": ""
           },
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "scene",
+                  "dm",
+                  "group",
+                  "work"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sun",
+                  "li",
+                  "zhang",
+                  "wang",
+                  "group"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionParameters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "proposed_action": {
             "anyOf": [
               {
@@ -3749,12 +4957,15 @@
                   "speak",
                   "begin",
                   "contact_wang",
+                  "join_farewell",
+                  "attend_farewell",
                   "boundary",
                   "public_confront",
                   "next",
                   "supplement",
                   "report",
                   "clarify",
+                  "review_clarification",
                   "deliver",
                   "cut_ties",
                   "keep_distance",
@@ -3768,7 +4979,30 @@
                   "partner_breakup",
                   "partner_distance",
                   "propose",
-                  "cancel_proposal"
+                  "cancel_proposal",
+                  "submit_purchase",
+                  "dispute_return",
+                  "trace_rumor",
+                  "confirm_responsibility",
+                  "change_rules",
+                  "apply_rules",
+                  "repair_friendship",
+                  "acknowledge_harm",
+                  "complete_remedy",
+                  "follow_up",
+                  "partner_undecided",
+                  "draft_support",
+                  "submit_support",
+                  "review_support",
+                  "rest",
+                  "request_help",
+                  "appease",
+                  "request_extension",
+                  "project_review",
+                  "correct_loss",
+                  "draft_exit",
+                  "submit_exit",
+                  "close_story"
                 ]
               },
               {
@@ -4052,6 +5286,44 @@
         ],
         "title": "UserOut"
       },
+      "WorkState": {
+        "properties": {
+          "purchase": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "returned",
+              "review",
+              "approved"
+            ],
+            "title": "Purchase",
+            "type": "string"
+          },
+          "submissions": {
+            "items": {
+              "$ref": "#/components/schemas/Submission"
+            },
+            "title": "Submissions",
+            "type": "array"
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewRecord"
+            },
+            "title": "Reviews",
+            "type": "array"
+          },
+          "facts": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "title": "Facts",
+            "type": "object"
+          }
+        },
+        "title": "WorkState",
+        "type": "object"
+      },
       "StatusEvent": {
         "properties": {
           "turn_id": {
@@ -4076,7 +5348,8 @@
             "enum": [
               "sun",
               "li",
-              "zhang"
+              "zhang",
+              "wang"
             ],
             "title": "Npc",
             "type": "string"

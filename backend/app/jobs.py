@@ -21,6 +21,11 @@ from .services import GameService, owned_save
 PROMPT_VERSION = "3"
 
 
+class EndingText(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=1500)
+
+
 class ReflectionNode(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_id: str
@@ -90,6 +95,23 @@ class JobRunner:
     async def _submit(self, save_id: str, user_id: str, body: JobInput) -> AIJob:
         if not self.accepting or len(self.tasks) >= self.service.settings.max_concurrent_turns:
             raise ApiError(429, "concurrency_budget_exhausted", headers={"Retry-After": "5"})
+        live_sources: list[dict[str, Any]] = []
+        source_label = "已审核资料 · AI 整理"
+        if body.kind == "discussion":
+            async with self.service.sessions() as lookup:
+                owned = await owned_save(lookup, save_id, user_id)
+                if (
+                    owned.story_version == 3
+                    and owned.state.get("content_revision", 1) == 2
+                    and self.service.settings.discussions_enabled
+                ):
+                    from .zhihu_search import topic_sources
+
+                    live_sources, source_label = await topic_sources(
+                        self.service.sessions,
+                        self.service.settings.zhihu_access_secret,
+                        owned.state["act"],
+                    )
         async with self.service.sessions.begin() as db:
             user = cast(
                 User, await db.scalar(select(User).where(User.id == user_id).with_for_update())
@@ -104,6 +126,8 @@ class JobRunner:
                 if existing.kind != body.kind or existing.payload.get("version") != body.version:
                     raise ApiError(409, "request_id_reused")
                 return existing
+            if save.story_version < 3 or save.state.get("content_revision", 1) < 2:
+                raise ApiError(422, "rule_violation", "旧版存档不能新增 AI 产物。")
             if save.version != body.version:
                 raise ApiError(409, "version_conflict")
             if await db.scalar(
@@ -132,7 +156,7 @@ class JobRunner:
                 "story_version": save.story_version,
                 "prompt_version": PROMPT_VERSION,
             }
-            if body.kind == "reflection":
+            if body.kind in {"reflection", "ending"}:
                 if not save.state.get("ending"):
                     raise ApiError(422, "rule_violation", "请先结束故事再生成复盘。")
                 events = list(
@@ -147,14 +171,36 @@ class JobRunner:
                 selected = [
                     e
                     for e in events
-                    if e.data.get("kind") == "player"
+                    if e.data.get("kind") in {"player", "work"}
                     and e.data.get("action")
                     not in {"begin", "next", "propose", "cancel_proposal", "epilogue"}
-                ][-3:]
+                ]
+                priorities = save.state.get("outcome", {}).get("key_event_ids", [])
+                selected = sorted(
+                    selected,
+                    key=lambda e: (
+                        e.id not in priorities,
+                        priorities.index(e.id) if e.id in priorities else 99,
+                    ),
+                )[:3]
+                if body.kind == "ending":
+                    payload["outcome"] = save.state.get("outcome")
+                    payload["confirmed_facts"] = {
+                        "work": save.state.get("work", {}).get("facts", {}),
+                        "relationship": save.state.get("relationship", {}).get("facts", {}),
+                    }
+                    payload["metrics"] = {
+                        k: save.state[k] for k in ("heat", "credit", "rumination", "pressure")
+                    }
                 payload["facts"] = [
                     {
                         "event_id": e.id,
-                        "actual_expression": e.data["text"],
+                        "actual_expression": e.data["text"]
+                        if e.data.get("action") == "speak"
+                        and e.data.get("speaker", "player") == "player"
+                        else "",
+                        "event_summary": e.data["text"],
+                        "speaker": e.data.get("speaker", "player"),
                         "feedback": [
                             other.data["text"]
                             for other in events
@@ -213,6 +259,10 @@ class JobRunner:
                     }
                     for r in rows
                 ]
+                if live_sources:
+                    payload["sources"] = live_sources
+                    payload["live_sources"] = True
+                payload["source_label"] = source_label
                 payload["cache_key"] = hashlib.sha256(
                     json.dumps(
                         [
@@ -233,11 +283,15 @@ class JobRunner:
                         AIJob.kind == "discussion",
                         AIJob.status == "completed",
                         AIJob.payload["cache_key"].astext == payload["cache_key"],
-                        AIJob.result["label"].astext == "已审核资料 · AI 整理",
+                        AIJob.created_at >= utcnow() - timedelta(hours=24),
                     )
                     .limit(1)
                 )
-                if cached or not rows or not self.service.settings.discussions_enabled:
+                if (
+                    cached
+                    or not payload["sources"]
+                    or not self.service.settings.discussions_enabled
+                ):
                     job = AIJob(
                         save_id=save.id,
                         user_id=user.id,
@@ -321,7 +375,7 @@ class JobRunner:
                                 for fact in payload["facts"]
                             ]
                         }
-                        if kind == "reflection"
+                        if kind in {"reflection", "ending"}
                         else {
                             "cards": [
                                 {
@@ -336,12 +390,31 @@ class JobRunner:
                     )
                 else:
                     raw = await self.generate(kind, payload, usage)
+                if kind == "ending" and self.service.settings.agent_mode == "mock":
+                    raw = {
+                        "text": "本局主结局："
+                        + payload["outcome"]["title"]
+                        + "。"
+                        + "；".join(
+                            payload["outcome"]["achievements"] + payload["outcome"]["unresolved"]
+                        )
+                    }
                 result = self.validate(kind, payload, raw)
         except (Exception, asyncio.CancelledError):
             failed = True
             result = (
                 editorial()
                 if kind == "discussion"
+                else {
+                    "label": "生成未完成，以下为已保存事实",
+                    "text": "；".join(
+                        payload.get("outcome", {}).get("achievements", [])
+                        + payload.get("outcome", {}).get("unresolved", [])
+                    ),
+                    "outcome": payload.get("outcome"),
+                    "interactions": payload.get("facts", []),
+                }
+                if kind == "ending"
                 else {"label": "生成未完成，以下为已保存事实", "nodes": payload.get("facts", [])}
             )
         async with self.service.sessions.begin() as db:
@@ -352,6 +425,14 @@ class JobRunner:
                 saved.result = result
 
     def validate(self, kind: str, payload: dict[str, Any], raw: Any) -> dict[str, Any]:
+        if kind == "ending":
+            ending_text = EndingText.model_validate(raw)
+            return {
+                "label": "结局演出 · AI 生成",
+                "text": ending_text.text,
+                "outcome": payload["outcome"],
+                "interactions": payload.get("facts", []),
+            }
         if kind == "reflection":
             parsed = Reflection.model_validate(raw)
             facts = {f["event_id"]: f for f in payload["facts"]}
@@ -371,7 +452,7 @@ class JobRunner:
         cards = Cards.model_validate(raw)
         sources = {s["id"]: s for s in payload["sources"]}
         return {
-            "label": "已审核资料 · AI 整理",
+            "label": payload.get("source_label", "已审核资料 · AI 整理"),
             "cards": [
                 {
                     "id": str(i),
@@ -387,7 +468,7 @@ class JobRunner:
 
     async def generate(self, kind: str, payload: dict[str, Any], usage: dict[str, Any]) -> Any:
         model = make_model(self.service.settings)
-        schema = Reflection if kind == "reflection" else Cards
+        schema = EndingText if kind == "ending" else Reflection if kind == "reflection" else Cards
         prompt_payload = payload
         if kind == "discussion":
             prompt_payload = {

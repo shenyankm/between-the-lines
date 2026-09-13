@@ -14,11 +14,12 @@ from app.story import load_story  # noqa: E402 - source-root bootstrap
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", type=Path, default=root / "backend/openapi.json")
 parser.add_argument("--story-output", type=Path, default=root / "frontend/src/testing/story.json")
+parser.add_argument("--story-version", type=int, choices=[1, 2, 3], default=1)
 args = parser.parse_args()
 app = create_app(Settings(_env_file=None, environment="test", agent_mode="mock"))
 args.output.write_text(json.dumps(app.openapi(), ensure_ascii=False, indent=2))
 
 args.story_output.write_text(
-    json.dumps(load_story().public().model_dump(exclude_none=True), ensure_ascii=False, indent=2)
+    json.dumps(load_story(args.story_version).public().model_dump(exclude_none=True), ensure_ascii=False, indent=2)
     + "\n"
 )
