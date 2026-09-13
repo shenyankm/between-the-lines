@@ -1,27 +1,27 @@
-# 场景美术与剧情依据
+# Scene art and narrative references
 
-依据：[内容总结与角色分析](https://ocn2ki5kcbpc.feishu.cn/docx/C6LWdjODtoROluxOl80cCVJtnMe)（读取版本 6）、[职场原文](https://ocn2ki5kcbpc.feishu.cn/wiki/JhD3w2j8NihO89kEZPIcR3aynWd)（读取版本 216），以及用户指定的六类背景清单。
+References: [Content summary and character analysis](https://ocn2ki5kcbpc.feishu.cn/docx/C6LWdjODtoROluxOl80cCVJtnMe), read at version 6; [workplace source text](https://ocn2ki5kcbpc.feishu.cn/wiki/JhD3w2j8NihO89kEZPIcR3aynWd), read at version 216; and the user's list of six background categories.
 
-本文档刻意做到自足：抓取上述飞书文档时产生的私有 HTML 缓存位于 `doc-fetch-resources/`，已被 `.gitignore` 排除且不会进入版本库。因此美术方向的依据、风格约束与取舍必须完整记录在这里，删除该缓存目录后本文档仍能独立表达全部结论；下文表格与段落即为该记录，不依赖任何未提交的本地产物。
+This document is intentionally self-contained. Private HTML caches from those Feishu documents are in `doc-fetch-resources/`, excluded by `.gitignore` and never committed. Art rationale, style constraints, and decisions are recorded here so the conclusions remain understandable after deleting the cache; no uncommitted local artifact is required.
 
-整体风格：现代现实题材的编辑插画 / 轻写实视觉小说。沿用原实验室的蓝灰色、暖光、玻璃隔间与城市环境。场景不含角色、标识或正文，供界面叠加对白。图片均保存在 `frontend/public/assets/`，原有 `office.png` 保留。
+Style: contemporary editorial illustration / lightly realistic visual novel. Retain the original laboratory's blue-gray palette, warm light, glass partitions, and urban setting. Scenes contain no characters, logos, or body text, leaving room for dialogue overlays. Images live in `frontend/public/assets/`; the original `office.png` is retained.
 
-| 场景 | 素材 | 游戏使用节点 |
-|---|---|---|
-| 研发工位 | office-morning.png | 序幕，周一 09:10 |
-| 食堂 | cafeteria-noon.png | 第一幕，周五午间，散席后的空杯与餐盘 |
-| 卧室 | bedroom-night.png | 第一幕后，夜间自我复盘 |
-| 财务窗口 | finance-rain.png | 第二幕，阴雨天的采购审核 |
-| 走廊 | corridor-evening.png | 第二幕后，下班整理事实并回顾当晚的私人决定 |
-| 会议室 | meeting-morning.png | 第三幕，项目例会 |
-| 研发工位（落日） | office.png | 首页及终幕 |
+| Scene                   | Asset                | Game use                                                                           |
+| ----------------------- | -------------------- | ---------------------------------------------------------------------------------- |
+| R&D workspace           | office-morning.png   | Prologue, Monday 09:10                                                             |
+| Cafeteria               | cafeteria-noon.png   | Act 1, Friday lunch; empty cups and plates after the gathering                     |
+| Bedroom                 | bedroom-night.png    | Nighttime reflection after Act 1                                                   |
+| Finance counter         | finance-rain.png     | Act 2 procurement review on a rainy day                                            |
+| Corridor                | corridor-evening.png | After Act 2: organize facts after work and revisit that evening's private decision |
+| Meeting room            | meeting-morning.png  | Act 3 project meeting                                                              |
+| R&D workspace at sunset | office.png           | Home and ending                                                                    |
 
-主角统一为周凌，昵称菱菱；张工明确为女性研发负责人。卧室采用普通都市居所，保留黑色长羽绒服、研究笔记等人物线索。第一处幕间结合学姐的关系分类、妈妈表达笨拙的关爱与家人问候；第二处幕间交代与谢川分手、保留母女关爱并明确生活自主权。均使用新编文本，不将这些私密内容注入 NPC 对话上下文。
+In this iteration, the protagonist is Zhou Ling, nicknamed Lingling, and Engineer Zhang is explicitly a female R&D lead. The bedroom is an ordinary urban home, with a long black down coat and research notes as character details. The first interlude combines the senior schoolmate's relationship categories, the mother's awkward care, and family greetings. The second covers the breakup with Xie Chuan, preserves mother-daughter affection, and makes personal autonomy explicit. Both use newly written text and keep private content out of NPC conversation context. Later content-revision decisions are recorded separately in [document conformance](document-conformance.md).
 
-当前仍为已确定的三幕职场改编，采购与流言事件顺序沿用游戏方案；谢川、母亲、学姐作为固定幕间叙事中的背景人物，不新增自治 Agent，也不声称已实现小说的全部恋爱、家庭或远期结局支线。天气与具体时间为游戏美术设计。
+This remains the agreed three-act workplace adaptation, with procurement and rumor events in the game's established order. Xie Chuan, the mother, and the senior schoolmate are background figures in fixed interludes, not new autonomous Agents. This does not implement every romantic, family, or distant-future branch of the novel. Weather and exact times are art-direction choices.
 
-幕间可返回当前剧情或按 Escape 关闭；只有“进入下一幕”才发送原有 next 行动，仍由后端校验幕次条件。取消幕间不改存档。刷新根据服务器存档恢复当前幕。
+Interludes can return to the current scene or close with Escape. Only “进入下一幕” (Enter the next act) sends the existing next action, whose prerequisites remain backend-validated. Cancellation does not change saves; refresh restores the current act from the server.
 
-验证：TypeScript/Vite 构建、ESLint、桌面及手机场景浏览测试通过。浏览测试拦截 API，不产生真实 LLM 调用；验证全部背景解码、两处幕间展示、取消不发送行动、继续只发送一次行动与页面宽度。
+Verification at this stage: TypeScript/Vite build, ESLint, and desktop/mobile scene browser tests passed. Browser tests intercepted APIs without real LLM calls. They checked all background decoding, both interludes, cancellation without actions, continuation with exactly one action, and page width.
 
-关系状态、第三幕最终选择与旧存档兼容规则见 [人物关系与结局](story-relationships.md)。
+See [relationships and endings](story-relationships.md) for relationship state, the final Act 3 choice, and legacy-save compatibility.

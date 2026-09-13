@@ -1,11 +1,11 @@
-# 单进程运行与恢复
+# Single-process operation and recovery
 
-本地 mock：先 `make dev-up`，备份现有数据库，再 `make migrate`、`make api` 和 `make web`。API 启动由 PostgreSQL advisory lock 强制单实例；遇到另一实例持锁时，关闭旧实例后再启动，不能绕过锁执行恢复。
+For local mock development, run `make dev-up`, back up any existing database, then run `make migrate`, `make api`, and `make web`. A PostgreSQL advisory lock enforces one API instance. If another instance holds the lock, stop it before starting the new one; do not bypass the lock to run recovery.
 
-发布前保留数据库备份与对应代码版本。0003 为增量迁移，增加状态版本和约束，不清空演示数据。迁移演练必须使用隔离数据库。应用新代码前执行 `make migrate`，随后 `make migrate-check`。先确认不存在重复 running 回合或非法历史状态；迁移遇到冲突会失败，不自动删除记录。
+Keep a database backup and its corresponding code version before release. Migration 0003 is additive: it adds state versions and constraints without clearing demo data. Rehearse migrations in an isolated database. Run `make migrate` before applying the new code, then `make migrate-check`. Check for duplicate running turns and invalid historical states first. Conflicting data causes migration failure; records are not deleted automatically.
 
-停止 API 时使用正常终止信号，容器保留 90 秒宽限。强制退出后，下一次启动会把遗留 running 标为 failed，保留已提交工具事实。玩家恢复原请求结果后主动继续，服务端不自动重放工具。
+Stop the API with a normal termination signal; containers allow a 90-second grace period. After a forced exit, the next startup marks leftover running turns as failed while retaining committed tool facts. Players recover the original request result and explicitly continue. The server does not automatically replay tools.
 
-`sh scripts/verify-restore.sh` 从当前 Compose 数据库 dump 到临时文件，在临时数据库恢复并检查存档与检查点，最后清理临时副本；它验证恢复机制，不验证机外备份。`sh scripts/backup.sh` 的机外复制需要配置实际目标，运行前阅读脚本。备份可能包含对话和会话摘要，应限制文件访问。
+`sh scripts/verify-restore.sh` dumps the current Compose database to a temporary file, restores it into a temporary database, checks saves and checkpoints, and removes the temporary copy. It validates restoration mechanics, not off-host backups. `sh scripts/backup.sh` requires a real off-host destination; read the script before running it. Backups can contain conversations and session digests, so restrict access.
 
-回滚先停止 API，使用与旧代码匹配的数据库副本验证，再切换服务。不要在仍有流量的数据库执行 downgrade；恢复备份会丢失备份之后的写入。0003 保留旧客户端读取接口，一般无需为客户端回退而降级数据库。
+For rollback, stop the API, validate a database copy against the old code, then switch the service. Do not downgrade a database that is still receiving traffic. Restoring a backup loses writes made after that backup. Migration 0003 retains legacy client read APIs, so client rollback generally does not require a database downgrade.

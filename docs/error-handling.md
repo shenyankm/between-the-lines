@@ -1,77 +1,83 @@
-# 接口错误与回合恢复契约
+# API errors and turn-recovery contract
 
-接口路径与原有成功字段保留，前后端同步发布。错误目录由 `backend/app/error_catalog.py` 定义，OpenAPI 导出错误码枚举；页面通过生成类型引用 HTTP 错误码。未知新增响应字段可忽略，未知错误码显示安全提示，不据此推断回合未受理。
+Endpoint paths and existing success fields remain unchanged; deploy backend and frontend together. `backend/app/error_catalog.py` defines the error catalog, and OpenAPI exports the error-code enum used by generated frontend types. Unknown additional fields may be ignored. Unknown error codes produce a safe message, not an assumption that a turn was never accepted.
 
-## HTTP 错误
+## HTTP errors
 
-除 `/api/ready` 使用独立探针响应外，错误统一为：
+Except for the independent `/api/ready` probe response, errors use this structure. User-facing strings remain Chinese in the application:
 
 ```json
 {
   "error": {
     "code": "validation_failed",
     "message": "请求格式不正确。",
-    "request_id": "服务端请求追踪编号",
+    "request_id": "server-request-trace-id",
     "recovery": "edit",
-    "details": [{"field": "body.text", "code": "string_too_long", "message": "文字长度超出限制。"}]
+    "details": [
+      {
+        "field": "body.text",
+        "code": "string_too_long",
+        "message": "文字长度超出限制。"
+      }
+    ]
   }
 }
 ```
 
-`code` 是稳定标识，`message` 可调整。`request_id` 与 `X-Request-Id` 一致，和回合提交体中的幂等 `request_id` 是两个概念。校验详情最多 20 项，只返回公开字段路径、校验规则码与固定提示；未知字段名替换为 `unknown`，不回显字段值、异常原文或校验上下文。校验日志使用路由模板及排序后的字段名。
+`code` is stable; `message` can change. `request_id` matches `X-Request-Id` and is distinct from the idempotency `request_id` in a turn submission. Validation details are capped at 20 entries and expose only public field paths, rule codes, and fixed messages. Unknown field names become `unknown`; values, raw exceptions, and validation context are not echoed. Validation logs use route templates and sorted field names.
 
-| HTTP | 错误码 | 页面处理 |
-|---|---|---|
-| 400 | `request_body_invalid` | 检查 JSON 格式和编码，不自动重试 |
-| 400 | `oauth_failed` | 重新登录 |
-| 401 | `not_authenticated` | 暂停回合查询，保留原用户 pending，重新登录 |
-| 403 / 415 | `forbidden_origin` / `json_required` | 提示刷新页面 |
-| 404 | `not_found` / `save_not_found` | 返回入口检查资源 |
-| 404 | `turn_not_found` | 查询确认缺失；仅完整原请求允许同 ID 自动重放一次 |
-| 409 | `request_id_reused` / `version_conflict` | 刷新进度，保留输入，由玩家主动操作 |
-| 409 | `turn_still_running` / `save_busy` | 查询原回合或存档当前回合 |
-| 409 | `unsupported_save_version` | 联系管理员升级服务 |
-| 422 | `validation_failed` / `empty_message` / `rule_violation` | 检查输入或选择其他行动 |
-| 429 | `daily_limit_reached` / `concurrency_budget_exhausted` | 等待后再主动提交 |
-| 500 | `internal_error` | 结果可能未知，提交路径先查询原回合 |
-| 503 | `oauth_not_configured` / `model_unconfigured` | 联系管理员配置 |
-| 503 | `monthly_cost_cap_reached` | 显示等待时间，联系管理员 |
-| 404 / 405 | `http_404` / `http_405` | 框架路由错误；不能作为回合不存在的证据 |
+| HTTP      | Error code                                               | UI behavior                                                                                                  |
+| --------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 400       | `request_body_invalid`                                   | Check JSON syntax and encoding; no automatic retry                                                           |
+| 400       | `oauth_failed`                                           | Log in again                                                                                                 |
+| 401       | `not_authenticated`                                      | Pause turn queries, retain the original user's pending request, and log in again                             |
+| 403 / 415 | `forbidden_origin` / `json_required`                     | Suggest refreshing the page                                                                                  |
+| 404       | `not_found` / `save_not_found`                           | Return to the entry page and check the resource                                                              |
+| 404       | `turn_not_found`                                         | Confirm absence by querying; only a complete original request may replay automatically once with the same ID |
+| 409       | `request_id_reused` / `version_conflict`                 | Refresh progress, retain input, and wait for player action                                                   |
+| 409       | `turn_still_running` / `save_busy`                       | Query the original turn or the save's current turn                                                           |
+| 409       | `unsupported_save_version`                               | Ask the administrator to upgrade the service                                                                 |
+| 422       | `validation_failed` / `empty_message` / `rule_violation` | Check input or choose another action                                                                         |
+| 429       | `daily_limit_reached` / `concurrency_budget_exhausted`   | Wait, then submit explicitly                                                                                 |
+| 500       | `internal_error`                                         | Outcome may be unknown; query the original turn after submission                                             |
+| 503       | `oauth_not_configured` / `model_unconfigured`            | Ask the administrator to configure the service                                                               |
+| 503       | `monthly_cost_cap_reached`                               | Show the wait time and contact the administrator                                                             |
+| 404 / 405 | `http_404` / `http_405`                                  | Framework routing error, not evidence of an absent turn                                                      |
 
-限额响应携带 `Retry-After` 与 `retry_after_seconds`，服务端输出整数秒。前端也兼容代理的 HTTP 日期格式；两处都有效时使用较长等待时间，不提前请求。错误响应和正常 API 响应均禁止缓存，包含请求追踪信息。
+Quota responses carry `Retry-After` and `retry_after_seconds`; the server emits integer seconds. The frontend also accepts HTTP-date headers from proxies. If both values are valid, use the longer delay. Error and successful API responses prohibit caching and include request-tracing information.
 
-入参使用 UUID 路径参数，版本必须是非负 JSON 整数（拒绝布尔值、浮点数及数字字符串）；请求体拒绝未知字段。登录名去除首尾空白且不能全空白，对白原文及现有动作默认值保留。
+Paths use UUID parameters. Versions must be nonnegative JSON integers; booleans, floats, and numeric strings are rejected. Request bodies reject unknown fields. Login names are trimmed and cannot be whitespace-only. Original dialogue text and existing action defaults are preserved.
 
-## 回合终态与 SSE
+## Terminal turns and SSE
 
-`TurnResult.failure` 为可空结构，包含 `code/message/request_id/recovery`。失败种类：
+`TurnResult.failure` is nullable and contains `code/message/request_id/recovery`. Failure types:
 
-- `turn_timeout`：执行或上游调用超时。
-- `execution_budget_exhausted`：模型、工具调用次数或图执行预算耗尽。
-- `model_unavailable`：上游连接或 HTTP 调用失败。
-- `empty_reply`：未返回有效对白或回顾文字。
-- `turn_interrupted`：执行取消、重启或遗留回合恢复。
-- `turn_failed`：未分类异常，或旧失败结果没有结构化信息。
+- `turn_timeout`: execution or upstream-call timeout.
+- `execution_budget_exhausted`: model, tool-call, or graph-execution budget exhausted.
+- `model_unavailable`: upstream connection or HTTP failure.
+- `empty_reply`: no valid dialogue or reflection text returned.
+- `turn_interrupted`: cancellation, restart, or leftover-turn recovery.
+- `turn_failed`: unclassified exception, or a legacy failure without structured information.
 
-分类依据异常类型；不匹配供应商异常文案。失败消息说明已保存的行动仍然有效。`retryable` 保留兼容用途，不授权自动重放已经执行的行动；失败后玩家刷新进度并以新 ID 主动继续。
+Classification uses exception types, not provider message matching. Failure messages explain that saved actions remain valid. `retryable` remains for compatibility; it does not authorize automatic replay of executed actions. After failure, players refresh progress and explicitly continue with a new ID.
 
-旧结果在读取时补齐 failure，不改写数据库 JSON、原请求 payload、存档版本或检查点。成功终态不能携带 failure。HTTP 查询和 SSE 使用同一终态模型。
+Legacy failures receive defaults on read without rewriting database JSON, original payloads, save versions, or checkpoints. Successful terminal results cannot carry failure. HTTP queries and SSE use the same terminal model.
 
-SSE 事件：`status`（状态文字）、`dialogue`（已提交的完整对白）、`done`（已提交终态），以及 `error`（订阅失败，结果未知）。`error` 的 code 固定为 `subscription_failed`，携带回合 ID 和请求追踪编号，恢复方式为 `recover`。落库失败不得伪造 `done`；保留 running，待数据库恢复后由现有清理服务或重启恢复提交终态。
+SSE events are `status` (status text), `dialogue` (complete committed dialogue), `done` (committed terminal state), and `error` (subscription failure with unknown outcome). `error` always uses `subscription_failed`, includes the turn ID and request trace ID, and specifies recovery `recover`. Persistence failure must not fabricate `done`: keep running until the existing cleanup service or restart recovery can commit a terminal result after database recovery.
 
-## 客户端恢复预算
+## Client recovery budgets
 
-- 普通 JSON 请求每次超时 15 秒。GET 网络错误、超时及 502/503/504 最多重试两次，默认等待 1、2 秒；累计自动等待上限 15 秒，超过上限返回页面处理。写请求不自动重试。
-- SSE 空闲 90 秒取消订阅。收到数据重置空闲计时，主动取消不显示错误，也不取消后台回合。
-- 回合恢复独立采用 1、2、4、5 秒间隔，不嵌套 GET 重试。订阅结束后开始新的 90 秒恢复窗口；有效 Retry-After 延后查询，超过窗口则保留手动恢复入口。
-- 网络故障、代理错误、非法响应、SSE 截断及订阅错误均保留 pending。只有明确业务未受理错误才清除；旧记录也必须收到 `turn_not_found` 才能按不存在清除。
-- pending 按用户和存档隔离。合法 UUID 配合损坏的 payload 时退化为仅查询；不合法的请求编号直接丢弃，避免无法恢复的记录锁住页面。不会用损坏 payload 重放请求。仅有旧 ID 的记录不自动重放。
-- 终态已确认后先清 pending，再刷新缓存；刷新失败独立提示，不重新提交。跨用户/存档切换与卸载后的迟到结果不会更新新页面。
+- Ordinary JSON requests time out after 15 seconds each. GET network failures, timeouts, and 502/503/504 responses retry at most twice, normally after 1 and 2 seconds. Total automatic waiting is capped at 15 seconds before returning control to the page. Writes do not retry automatically.
+- SSE subscriptions cancel after 90 seconds idle. Data resets the timer. Intentional cancellation shows no error and does not cancel the backend turn.
+- Turn recovery independently uses 1, 2, 4, and 5-second intervals without nested GET retries. A new 90-second recovery window starts after subscription ends. Valid Retry-After delays queries; delays beyond the window retain manual recovery.
+- Network failures, proxy errors, invalid responses, truncated SSE, and subscription errors retain pending. Only explicit business non-admission errors clear it. Legacy records also require `turn_not_found` before being cleared as absent.
+- Pending records are isolated by user and save. A valid UUID with a corrupt payload becomes query-only. Invalid IDs are discarded so unrecoverable records cannot lock the UI. Corrupt payloads and legacy ID-only records are never automatically replayed.
+- After terminal confirmation, clear pending before refreshing caches. Refresh failure is reported separately and does not resubmit. Late results after user/save switches or unmounting cannot update the new page.
 
-错误提示含本地操作入口及可展开复制的错误码、请求编号。退出失败保留页面和身份；取消操作不显示故障。现有无外部传输的 reporting 设置保留。
+Error messages include local recovery actions and expandable, copyable error codes and request IDs. Failed logout retains the page and identity. Cancellation is not shown as failure. Existing reporting settings without external transmission are retained.
 
-## 验证与发布
+## Verification and rollout
 
-新增前后端故障注入、运行时响应校验及恢复测试，覆盖真实数据库下的持久化失败。浏览器测试的全局准备阶段先读取 `/api/config`，只有确认 `agent_mode=mock` 才执行写操作，避免误用占用默认端口的真实服务。
+Frontend/backend fault injection, runtime response validation, and recovery tests cover persistence failures against a real database. Browser global setup first reads `/api/config` and permits writes only after confirming `agent_mode=mock`, avoiding accidental use of a real service on the default port.
 
-无需数据库结构迁移；同步部署后端、前端及生成契约。可用 `make contract-generate` 更新生成产物，再用 `make contract` 检查漂移。测试结果及本轮验证边界见 [验证记录](verification.md)。
+No schema migration is required. Deploy backend, frontend, and generated contracts together. Run `make contract-generate` to update artifacts, then `make contract` to check drift. See [verification records](verification.md) for results and limitations.

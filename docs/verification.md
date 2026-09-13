@@ -1,95 +1,94 @@
-# 单故事工程化重构验证记录
+# Single-story engineering refactor verification
 
-2026-09-13，本机 Miniconda Python 3.13.15、固定 pnpm 11.19.0、PostgreSQL Docker；全部模型测试使用 mock。
+2026-09-13: local Miniconda Python 3.13.15, pinned pnpm 11.19.0, and Docker PostgreSQL. All model tests in this initial section use mock.
 
-| 检查 | 本轮结果 |
-|---|---|
-| 后端 pytest（单元及数据库集成） | 136 passed；分支覆盖率 85.73%，门槛 82% |
-| 前端 Vitest | 147 passed；语句／行 82.73%、分支 94.40%、函数 80%，HTTP 边界四项 100%，原门槛保留 |
-| 类型、lint、格式、构建 | mypy、TypeScript、Ruff、ESLint、Prettier、Vite 通过 |
-| 契约与锁 | 临时目录生成后比较通过，检查不修改工作区 |
-| 数据库结构 | Alembic 0003 应用成功，漂移检查无新增操作 |
-| Docker | 隔离 db/api/web 全部 healthy，Nginx 配置通过 |
-| Playwright | 桌面／手机共 6 passed：完整通关、场景素材、幕间取消、抽屉 Escape、刷新后原回合恢复 |
-| 容器优雅关闭 | exec 入口使 Uvicorn 成为 PID 1；0.91 秒关闭并完成 lifespan 清理，CI 增加该门禁 |
-| 真实 TCP 断开 | 已受理回合继续完成；重复工具 0、重复对白 0 |
-| 强制退出并重启 | 已提交工具事实和会话保留；重复工具 0，未保存未完成对白 |
-| 旧演示库 | 77 个存档在隔离副本迁移并校验；实际应用迁移后再次核对全部表哈希，原业务数据及检查点未改变 |
-| 旧公共协议 | 490 条事件、335 个回合通过新 DTO 兼容校验 |
-| 备份恢复 | 隔离 CI 数据库恢复成功，检查到 62 个存档、768 条检查点；未覆盖源库 |
+| Check                                         | Result for this iteration                                                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Backend pytest, unit and database integration | 136 passed; branch coverage 85.73%, floor 82%                                                                                                    |
+| Frontend Vitest                               | 147 passed; statements/lines 82.73%, branches 94.40%, functions 80%; HTTP boundary 100% in all four metrics; existing thresholds retained        |
+| Types, lint, formatting, build                | mypy, TypeScript, Ruff, ESLint, Prettier, and Vite passed                                                                                        |
+| Contracts and locks                           | Temporary regeneration/comparison passed without workspace writes                                                                                |
+| Database schema                               | Alembic 0003 applied; drift check proposed no operations                                                                                         |
+| Docker                                        | Isolated db/api/web healthy; Nginx configuration passed                                                                                          |
+| Playwright                                    | 6 desktop/mobile tests passed: complete playthrough, assets, interlude cancellation, drawer Escape, original-turn recovery after refresh         |
+| Graceful container shutdown                   | exec makes Uvicorn PID 1; shutdown and lifespan cleanup completed in 0.91 seconds; CI gate added                                                 |
+| Real TCP disconnection                        | Accepted turn completed; zero duplicate tools/dialogue                                                                                           |
+| Forced exit and restart                       | Committed tool facts and session retained; zero duplicate tools; no partial dialogue saved                                                       |
+| Legacy demo database                          | 77 saves migrated/validated in an isolated copy; all table hashes checked again after actual migration, with business data/checkpoints unchanged |
+| Legacy public protocol                        | 490 events and 335 turns passed new DTO compatibility checks                                                                                     |
+| Backup restoration                            | Isolated CI database restored with 62 saves and 768 checkpoint records; source not overwritten                                                   |
 
-剧情测试覆盖现有四种结局，检查核心行动数值和采购条件；权限测试覆盖用户、存档、NPC、私聊上下文与检查点隔离。恢复测试覆盖重复请求、原 ID 不同 payload、过期版本、并发竞争、满额重放、超时和工具提交后失败。前端测试覆盖未知结果、非法 SSE、一次性 404 对账重发、存储异常、旧 pending、切换存档、延迟结果与取消订阅。
+Story tests cover the four existing endings, core action values, and procurement prerequisites. Permission tests cover users, saves, NPCs, private contexts, and checkpoints. Recovery tests cover repeated requests, same ID with different payloads, stale versions, concurrent races, replay at full quota, timeouts, and failure after tool commit. Frontend tests cover unknown outcomes, invalid SSE, one-time 404 reconciliation/resend, storage exceptions, legacy pending records, save switching, late results, and unsubscribe.
 
-浏览器截图已查看桌面与手机布局，未见素材缺失或横向溢出。刷新测试在后端完成但浏览器尚未得到回复时中断响应；处理中断线另由真实 TCP 测试验证。
+Desktop/mobile screenshots were inspected without missing assets or horizontal overflow. Refresh testing interrupted the response after backend completion but before the browser received it. Real TCP tests separately cover disconnection during execution.
 
-## mock 压测
+## Mock load tests
 
-| 并发 | 完成 | 失败率 | p50 | p95 | 模型调用 |
-|---|---|---|---|---|---|
-| 10 | 10 | 0% | 0.374s | 0.380s | 20 |
-| 20 | 20 | 0% | 1.632s | 1.679s | 40 |
-| 30 | 30 | 0% | 2.402s | 2.500s | 60 |
+| Concurrency | Completed | Failure rate | p50    | p95    | Model calls |
+| ----------- | --------- | ------------ | ------ | ------ | ----------- |
+| 10          | 10        | 0%           | 0.374s | 0.380s | 20          |
+| 20          | 20        | 0%           | 1.632s | 1.679s | 40          |
+| 30          | 30        | 0%           | 2.402s | 2.500s | 60          |
 
-这是本机模拟负载结果，不代表真实模型延迟或生产容量。原始报告在忽略入库的 artifacts 目录：load-test.json、disconnect-test.json、restart-test.json、shutdown-test.json、legacy-migration.json。迁移前备份为 artifacts/before-runtime-migration.dump，包含原始数据，未加入版本管理。
+These are local simulated-load results, not real-model latency or production capacity. Git-ignored artifacts include load-test.json, disconnect-test.json, restart-test.json, shutdown-test.json, and legacy-migration.json. The pre-migration backup, artifacts/before-runtime-migration.dump, contains original data and is not version-controlled.
 
-本轮未调用真实 DeepSeek、未联调真实知乎 OAuth、未发布或部署到外部环境。远端 CI 结果不以本机验证代替。
+This iteration did not call real DeepSeek, integrate real Zhihu OAuth, or publish/deploy externally. Local verification does not replace remote CI results.
 
-## 接口与错误处理完善（2026-09-13）
+## API and error-handling improvements (2026-09-13)
 
-本节记录后续接口可靠性改动的验收；上方历史部署、压测及备份结果未在本轮重复执行。
+This section records subsequent reliability changes. Earlier deployment, load, and backup checks were not repeated in this iteration.
 
-| 检查 | 本轮结果 |
-|---|---|
-| 后端单元与 PostgreSQL 集成 | 159 passed；分支覆盖率 87.14%，保留 82% 门槛 |
-| 前端 Vitest | 189 passed；语句／行 93.91%、分支 93.55%、函数 86.50%，HTTP 客户端四项 100% |
-| 浏览器 | 隔离 mock 环境桌面／手机 14 passed；错误详情换行后 8 项故障场景复测通过 |
-| 静态检查 | mypy、TypeScript、Ruff、ESLint、Prettier 与生产构建通过 |
-| 生成契约 | OpenAPI、TypeScript 与公开故事数据无漂移 |
-| 数据兼容 | 旧失败结果仅在读取时补齐；回合 payload、事实与幂等标识保留；无需结构迁移 |
+| Check                               | Result                                                                                                               |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Backend unit/PostgreSQL integration | 159 passed; branch coverage 87.14%, 82% floor retained                                                               |
+| Frontend Vitest                     | 189 passed; statements/lines 93.91%, branches 93.55%, functions 86.50%; HTTP client 100% in all four metrics         |
+| Browser                             | 14 isolated mock desktop/mobile tests passed; 8 error scenarios retested after error-detail wrapping                 |
+| Static checks                       | mypy, TypeScript, Ruff, ESLint, Prettier, production build passed                                                    |
+| Generated contracts                 | No OpenAPI, TypeScript, or public-story drift                                                                        |
+| Data compatibility                  | Legacy failures receive read-time defaults only; payloads, facts, and idempotency IDs preserved; no schema migration |
 
-新增数据库用例验证：模型超时输出稳定失败码并保留玩家行动；终态落库故障只发送订阅错误，不伪造 done，随后由恢复逻辑提交中断终态。客户端用例验证代理 404、会话失效、等待时间、长连接超时、响应损坏、取消订阅、结构化失败、退出失败与终态后刷新失败。
+New database cases verify stable timeout codes with retained player actions, and terminal persistence failure emitting only a subscription error rather than fabricated done, followed by recovery committing an interrupted terminal state. Client cases cover proxy 404, expired sessions, wait times, stream timeouts, corrupt responses, cancellation, structured failures, logout failure, and post-terminal refresh failure.
 
-浏览器使用临时数据库 `btl_reliability_20260913`，API 端口 18001、前端端口 15173。首次默认端口验证因已有服务配置不同、登录失败而中止，未进入回合流程；改用专用端口并验证 mock 后完成全部浏览器场景。新增全局 mock 检查，防止后续测试写入真实模型服务。原 8000 端口服务未修改。
+Browser tests used temporary database `btl_reliability_20260913`, API port 18001, and frontend port 15173. An initial attempt on default ports stopped at login because the existing service configuration differed; no turn flow ran. Dedicated ports and explicit mock verification enabled all scenarios. A new global mock check prevents future tests from writing to real-model services. The original port-8000 service was unchanged.
 
-新增终态失败浏览器场景在真实 mock 回合提交后替换响应以验证 UI 分支；真实失败落库和已提交事实保持由后端集成测试验证。真实断线后通过查询恢复的浏览器场景沿用真实 API 提交。未联调真实 OAuth、未部署或修改现有业务数据库。
+Terminal-failure browser cases replace responses after real mock commits to exercise UI branches. Backend integration verifies actual failure persistence and committed facts. Disconnection/query recovery continues to use real API submissions. No real OAuth, deployment, or existing business-database modification occurred.
 
-### 未提交更改审查修复（2026-09-13）
+### Uncommitted-change review fixes (2026-09-13)
 
-- JSON 成功响应读取时的传输异常按网络故障处理，GET 保留 1、2 秒重试；JSON 语法/结构错误不重试，写请求不重试。保留响应头中的请求编号。
-- 框架请求体解析 400 映射为 `request_body_invalid`，固定中文提示及 `edit` 恢复建议；开发登录与回合提交声明对应响应，已同步生成契约。
-- 回归验证：前端 193 项通过，后端纯单元 78 项通过；另直接运行 3 项错误目录/契约一致性检查通过。类型检查、lint、格式检查、前端构建、契约同步检查通过。
-- 本轮未运行数据库集成或浏览器测试；新增请求编码测试使用实际应用路由，在请求体解析阶段拒绝，不启动 lifespan、不访问数据库或模型。
+- Transport errors while reading successful JSON responses are treated as network failures, retaining GET retries after 1 and 2 seconds. JSON syntax/structure errors and writes do not retry. Response-header request IDs are preserved.
+- Framework body-parsing 400 errors map to `request_body_invalid`, with a fixed Chinese message and `edit` recovery. Development-login and turn-submission responses are declared in synchronized generated contracts.
+- Regression: 193 frontend and 78 backend unit tests passed; three direct error-catalog/contract checks also passed. Types, lint, formatting, frontend build, and contract synchronization passed.
+- No database integration or browser tests ran in this iteration. New request-encoding tests use actual routes and reject during body parsing, without lifespan, database, or model access.
 
+## Relationship full-flow E2E (2026-09-13)
 
-## 人物关系全流程 E2E（2026-09-13）
+The workspace passed 60 desktop/mobile browser checks, thirty per viewport, with zero failures, skips, or flakes. Coverage includes both relationship endings, early departure in each act, all opening options, procurement permissions/prerequisites, multiple saves, private messages/reflections, interlude cancellation, multi-tab conflicts, and network/error recovery. Fixes addressed repeated completed actions, an unnamed mobile save entry, and failure to clear the original draft after recovery.
 
-当前工作区完成桌面／手机 60 项浏览器验收（每种视口 30 项），零失败、零跳过、零偶发失败。覆盖两种关系结局、三幕提前离开、全部开场选项、采购权限与前置条件、多个存档、私信和回顾、幕间取消、多标签页冲突、断网与异常恢复。发现并修复已完成选项可重复提交、手机存档入口没有可访问名称、恢复成功后原草稿未清理的问题。
+All 199 frontend tests and 59 relevant backend unit/PostgreSQL integration tests passed, alongside types, lint, formatting, and production build. See [full-flow E2E](e2e-flows.md) for scope and fault-injection boundaries. Deployment, load, and restoration were not rerun; real Zhihu OAuth and DeepSeek were not tested in this iteration.
 
-前端 199 项通过，后端相关单元／PostgreSQL 集成 59 项通过；类型、lint、格式、生产构建通过。完整范围与故障注入边界见 [全流程 E2E 验收](e2e-flows.md)。本轮未重新运行部署、压测、备份恢复；真实知乎 OAuth 与真实 DeepSeek 未联调。
+## Real DeepSeek integration (2026-09-13)
 
-## 真实 DeepSeek 联调（2026-09-13）
+Using a key from a local ignored file, the existing `ChatDeepSeek` / Deep Agents chain verified `deepseek-flash` with thinking disabled. After minimal connectivity, independent player saves in `btl_test` exercised real-model lifespan, HTTP routes, SSE turns, and PostgreSQL persistence. The existing preview service's mode was unchanged.
 
-使用本地忽略文件中的密钥，通过项目原有 `ChatDeepSeek` / Deep Agents 调用链验证 `deepseek-flash`，关闭思考模式。先完成最小连通请求，再在 `btl_test` 的独立玩家存档中，以真实模型运行应用 lifespan、HTTP 路由、SSE 回合和 PostgreSQL 持久化；未修改现有预览服务的模式。
+Initially, finance listed materials verbally without registering requirements. Further investigation found Li Jie processing historical material requests instead of the current review request. The fix clarified tool conditions and supplied the current player message separately, marking historical dialogue as reference only. Backend permissions and prerequisites remained authoritative.
 
-首次发现财务只口头列出材料而未登记要求；进一步发现李姐收到当前审核请求时仍处理历史材料请求。修复为明确各工作操作的调用条件，并在模型上下文单独提供本轮玩家对白，要求历史对话仅作参考。领域权限与前置条件继续由后端校验。
+The repaired main route completed all 14 steps: Sun Miao dialogue, material registration/submission, project report, Engineer Zhang support, Li Jie review, Act 3 clarification/delivery, ending private contact, and AI reflection. `requirements`, `supported`, `procurement=approved`, the final ending, and refreshed reads were verified. Five AI turns made ten model requests, with 29,650 input and 443 output tokens; AI turns took approximately 1.46–2.79 seconds. The application estimated 0.0094266 USD for this route, excluding preliminary probes and failed reproductions; this is not provider billing.
 
-修复后的主线 14 步全部完成，覆盖孙淼对话和材料登记、补交材料、项目汇报、张工支持、李姐审核、第三幕澄清交付、切割私人关系和 AI 结局回顾。核实 `requirements`、`supported`、`procurement=approved`、最终结局及刷新读取一致。5 个 AI 回合共 10 次模型请求，输入 29,650 tokens、输出 443 tokens；各 AI 回合约 1.46–2.79 秒。该次主线应用估算费用为 0.0094266 USD，不含前置探测与失败复现，亦非供应商账单。
+Details are in ignored `artifacts/ai-smoke.json`. This is one real-service smoke test, not proof of reliable behavior for arbitrary wording. Desktop/mobile frontend evidence remains the mock E2E results above.
 
-本地详细结果保存在忽略的 `artifacts/ai-smoke.json`。这是一次真实服务冒烟验证，不代表模型对任意措辞都能稳定执行；前端桌面／手机仍以上述 mock E2E 为验证依据。
+Related regressions passed: four Agent tests and 31 domain/relationship/API tests, plus Ruff and diff whitespace checks.
 
-相关回归：Agent 4 项、领域／人物关系／API 31 项全部通过；Ruff 与差异空白检查通过。
+## v2 product upgrade acceptance (2026-09-13)
 
-## v2 产品升级验收（2026-09-13，本轮）
+See the [v2 release guide](product-v2-release.md) for implementation and rollout. New behavior is evaluated separately from the earlier v1 real-model smoke test; that run does not count as v2 semantic acceptance.
 
-实现和发布顺序见 [v2 发布手册](product-v2-release.md)。本轮新增行为与上方既有 v1 真实模型联调分开验收；不将那次联调记为新版语义评估通过。
+- v1 save/turn compatibility retained; new stories use v2. Free actions and AI budgets are separated, with proposal confirmation, three-act relationship branches, private interludes, guest state-bound migration, independent replay, reflections, and reviewed perspectives.
+- All 66 desktop/mobile browser tests passed against independent containers with a production Web build, Nginx, mock Agent, and PostgreSQL. Coverage includes legacy main routes/recovery and v2 partner branches, drafts, confirmation, and guest gates.
+- All ninety fixed mock semantic samples passed, with 100% rule accuracy and zero automatic major commitments, private leaks, or fabricated successes. The ninety real-model cases had not run.
+- TCP disconnection and forced-process-restart drills passed: facts retained, no duplicate tools/dialogue, no partial dialogue saved. Real HTTP OAuth success/failure callback logs through Uvicorn/Nginx were redacted, using a partner fixture.
+- An independent restore recovered 153 saves, eight branches, 74 snapshots, and 1044 checkpoint records. Review dry-run, stale-hash rejection, expiry cleanup, and checkpoint deletion passed; 137 cost records remained after cleanup. Source and existing user databases were not cleared.
+- Mock Agent load tests completed at 10/20/30 concurrency with zero failures and local-container p95 approximately 0.63/1.09/1.49 seconds. This does not represent real-model speed.
+- Thirty hashed WebP assets; conservative critical first-screen image bound 367,064 bytes; production JS approximately 115KB gzip. Non-root TLS, HTTP redirects, static pages, and API proxy checks passed.
+- Existing coverage floors were not lowered. Final checks and aggregate results are in local `artifacts/product-verification.json`, reproducible using the release guide.
 
-- 保留 v1 存档/回合兼容；新故事使用 v2。免费行动与 AI 预算分开，支持重大提议确认、三幕关系分支、私人幕间、访客 state 绑定迁移、独立重玩、复盘和审核观点卡。
-- 桌面/手机 66 项完整浏览器测试通过，使用独立容器中的生产 Web 构建、Nginx、mock Agent 和 PostgreSQL。涵盖旧版本主线/恢复与新版本伴侣分支、草稿、确认和访客门禁。
-- 90 个固定 mock 语义样本全部通过，规则正确率100%，重大自动提交/私人信息泄漏/虚构成功三个单独门禁均为零。真实模型九十例尚未执行。
-- TCP 断线和进程终止/重启演练通过；工具事实保留、无重复工具与对白、不保存中途对白。真实 HTTP 经 Uvicorn/Nginx 的 OAuth 成功/失败回调日志脱敏通过（合作方为 fixture）。
-- 独立副本恢复153个存档、8个分支、74个快照、1044条检查点记录；审核 dry-run、内容哈希过期拒绝、过期清理及检查点删除通过，137笔费用记录在清理后保留。源库及用户既有数据库未清空。
-- 10/20/30 并发 mock Agent 压测全部完成，失败率0；本机容器 p95 约0.63/1.09/1.49秒。这不代表真实模型响应速度。
-- 30张哈希 WebP，关键首屏图片保守上界367,064字节；生产 JS gzip 约115KB。非 root TLS、HTTP跳转、静态页/API代理检查通过。
-- 原有覆盖率门槛未降低。最终代码检查和汇总结果记录在本地 `artifacts/product-verification.json`，可按发布手册重新运行。
-
-生成报告位于忽略的 artifacts 目录（语义样本包含合成对白；不应覆盖旧的真实调用报告）。本轮未执行真实 DeepSeek、真实知乎 OAuth、机外部署或目标用户研究，仍是公开上线前的独立门禁。未创建计划任务，未提交或推送代码，保留原有未提交改动。
+Generated reports are in ignored artifacts (semantic samples contain synthetic dialogue and must not overwrite older real-call reports). This iteration did not run real DeepSeek, real Zhihu OAuth, off-host deployment, or target-user research; these remain separate public-launch gates. No scheduled task, commit, or push was created, and pre-existing uncommitted changes were preserved.

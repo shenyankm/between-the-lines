@@ -1,27 +1,27 @@
-# 持续集成
+# Continuous integration
 
-`.github/workflows/ci.yml` 定义后端、前端、Docker 集成及汇总门禁。日常验证全部使用 mock，无需真实模型密钥，不发布或部署。审计工作流在 `.github/workflows/audit.yml`；本轮结果见 [验证记录](verification.md)。
+`.github/workflows/ci.yml` defines backend, frontend, Docker integration, and aggregate gates. Daily verification uses mock, requires no real model keys, and does not publish or deploy. The audit workflow is `.github/workflows/audit.yml`; see [verification records](verification.md) for historical results.
 
-## 代码门禁
+## Code gates
 
-- 后端：uv 锁与哈希导出一致性、Ruff lint/format、mypy strict、Alembic 迁移与漂移检查、pytest。覆盖率下限为 82%，包含迁移后的模块。
-- 前端：固定 pnpm 锁安装、类型感知 ESLint、Prettier、TypeScript、Vitest 覆盖率及 Vite 构建。总体阈值保留在 `vitest.config.ts`，HTTP 边界 `src/api.ts` 四项均要求 100%。
-- 契约：OpenAPI、生成的 TypeScript、公开故事测试数据在临时目录重新生成后比较。`make contract` 不写工作区，显式更新使用 `make contract-generate`。
-- 依赖：`make lock-check` 不写工作区，仅忽略 uv 导出注释中的临时输出路径；显式更新使用 `make deps-update`。
+- Backend: uv lock/hashed-export consistency, Ruff lint/format, strict mypy, Alembic migration and drift checks, and pytest. The coverage floor is 82%, including modules moved during the refactor.
+- Frontend: frozen installation with pinned pnpm, type-aware ESLint, Prettier, TypeScript, Vitest coverage, and Vite build. Global thresholds remain in `vitest.config.ts`; all four metrics for the HTTP boundary `src/api.ts` require 100%.
+- Contracts: OpenAPI, generated TypeScript, and public story fixtures are regenerated in a temporary directory and compared. `make contract` does not write to the workspace; use `make contract-generate` for explicit updates.
+- Dependencies: `make lock-check` does not write to the workspace and ignores only temporary output paths in uv export comments. Use `make deps-update` for explicit updates.
 
-`make check` 执行代码门禁；浏览器、断线、重启、压测和备份恢复是独立集成门禁。`make migrate-check` 只读，执行前必须显式迁移目标数据库。
+`make check` runs the Makefile's code gates. Run `make coverage` separately for frontend coverage. Browser, disconnection, restart, load, and backup-restoration checks are independent integration gates. `make migrate-check` is read-only; explicitly migrate the target database first.
 
-## 隔离
+## Isolation
 
-本机使用已有 Miniconda Python 3.13，不创建虚拟环境；前端命令从 frontend 目录执行，由 Corepack 读取 pnpm 11.19.0。CI 使用独立 Python 3.13 和锁定依赖。
+Local development uses the existing Miniconda Python 3.13 interpreter without a virtual environment. Run frontend commands from frontend so Corepack selects pnpm 11.19.0. CI uses a separate Python 3.13 installation and locked dependencies.
 
-后端非 unit 测试使用专用 `btl_test`，每项测试前清空业务与检查点表，保留迁移元数据。迁移测试先降级到 0002，写入各幕旧格式记录，再升级并验证读取、终态重放与原 JSON 未变。不要把测试连接指向演示库。
+Non-unit backend tests use dedicated `btl_test`, clearing business and checkpoint tables before each test while retaining migration metadata. Migration tests downgrade to 0002, write legacy records for each act, then upgrade and verify reads, terminal replay, and unchanged original JSON. Never point tests at the demo database.
 
-`scripts/test-disconnect.py` 使用真实 TCP 关闭订阅，验证后台完成且无重复工具或对白。`scripts/test-restart.py` 在工具提交后强制终止独立进程，验证重启恢复保留事实与会话。两者顺序执行，不与共享 btl_test 的测试并行。
+`scripts/test-disconnect.py` closes a real TCP subscription and verifies background completion without duplicate tools or dialogue. `scripts/test-restart.py` forcibly terminates an independent process after tool commit and verifies that restart recovery preserves facts and sessions. Run these sequentially, not alongside tests sharing btl_test.
 
-## 容器和浏览器
+## Containers and browsers
 
-`compose.ci.yaml` 不加载本地 .env，以独立 btl-ci 项目启动 PostgreSQL、API、Nginx。浏览器通过 localhost:18080 访问，覆盖桌面与手机通关、场景资源、幕间取消、抽屉键盘操作以及刷新对账。CI 保留失败截图、trace 和报告。
+`compose.ci.yaml` does not load local .env. It starts PostgreSQL, API, and Nginx as the independent btl-ci project. Browsers access localhost:18080 and cover desktop/mobile completion, scene assets, interlude cancellation, drawer keyboard interaction, and refresh reconciliation. CI retains failure screenshots, traces, and reports.
 
 ```sh
 make ci-stack
@@ -37,20 +37,20 @@ sh scripts/verify-restore.sh
 make ci-stack-down
 ```
 
-压测调用真实 Agent 图与 mock 模型 transport，先核实目标为 mock，再执行 10/20/30 并发；失败率须为零，p95 须低于配置预算。容器内测试直连 Uvicorn，Nginx 路径由 Playwright 验证。隔离栈并发预算为 64，默认应用预算仍为 30；额度拒绝另有确定性测试。
+Load tests use the real Agent graph with mock model transport, confirm mock mode first, and run 10/20/30 concurrent turns. Failure rate must be zero and p95 below the configured budget. Container tests connect directly to Uvicorn; Playwright covers Nginx. The isolated stack has a concurrency budget of 64; the application default remains 30. Deterministic tests cover quota rejection separately.
 
-恢复脚本只在临时数据库执行 restore，不覆盖源数据库。`make ci-stack-down` 仅清理隔离测试栈和卷。CI 无论成功失败均执行清理，并保留报告 7 天。远端 Actions 执行结果需在实际仓库运行中确认，不能以本机结果代替。
+The restore script uses a temporary database without overwriting its source. `make ci-stack-down` removes only the isolated test stack and volumes. CI cleans up on success or failure and retains reports for seven days. Remote Actions results require verification of the actual run; local results are not substitutes.
 
-## Audit 修复与运行时镜像
+## Audit repairs and runtime images
 
-历史密钥扫描仅在 `.gitleaksignore` 排除一个已核实的指纹：空 API key 跨行误匹配额度配置。默认规则及全历史扫描保留；新增凭据不会因文件名而被放行。示例空值使用行内注释阻止跨行误匹配。
+Historical secret scanning excludes only one verified fingerprint in `.gitleaksignore`: an empty API key falsely matching quota configuration across lines. Default rules and full-history scanning remain enabled; new credentials are not allowlisted by filename. Empty example values use inline comments to prevent multiline false matches.
 
-API 保持 Python 3.13 与原依赖锁，运行镜像改用固定摘要的 Python 3.13.15 / Alpine 3.24，并安装发行版安全更新。两个 Debian slim 候选仍有未修复系统包命中，因此不采用忽略未修复漏洞的办法。锁定依赖安装完成后删除 pip 和 ensurepip（含其 vendored 依赖），运行中的 API 不支持安装包；修改依赖需重新构建镜像。本机继续使用原 Miniconda。
+The API retains Python 3.13 and the original dependency locks, using a digest-pinned Python 3.13.15 / Alpine 3.24 runtime with distribution security updates. Two Debian slim candidates still had unfixed system-package findings; unfixed vulnerabilities were not ignored. After hashed dependency installation, pip and ensurepip, including vendored dependencies, are removed. Runtime dependency installation is unsupported; rebuild the image for dependency changes. Local development continues using the existing Miniconda installation.
 
-Web 使用固定摘要的 Nginx 1.30.4 / Alpine，安装安全更新，以 UID/GID 101 运行。PID 和临时数据写入 /tmp，内部端口改为 8080/8443，Compose 对外端口保持原值。生产 TLS 私钥读取权限见 README；`scripts/test-web-runtime.sh` 使用隔离的临时证书和卷验证非 root、HTTP 跳转、HTTPS 静态页面和 API 代理。
+Web uses digest-pinned Nginx 1.30.4 / Alpine with security updates, running as UID/GID 101. PID and temporary data use /tmp; internal ports are 8080/8443, with unchanged external Compose ports. See README for TLS key permissions. `scripts/test-web-runtime.sh` uses isolated temporary certificates and volumes to verify non-root operation, HTTP redirects, HTTPS static pages, and API proxying.
 
-Audit 仍阻断 HIGH/CRITICAL，不使用漏洞忽略列表。两个镜像都扫描并保留报告，即使第一个失败也继续检查第二个。汇总等待全部适用 job，只有未安排镜像扫描的事件才接受 skipped。`scripts/test-audit.py` 检查失败传播与跳过逻辑。基础摘要固定，但 apk 安全更新随仓库变化，未来出现新漏洞仍会使审计失败，需要再次更新和验证。
+Audit blocks HIGH/CRITICAL findings without vulnerability ignore lists. Both images are scanned and reports retained even if the first scan fails. The aggregate waits for all applicable jobs and accepts skipped only for events where image scanning was not scheduled. `scripts/test-audit.py` checks failure propagation and skip logic. Base digests are fixed, but apk security updates vary over time; future vulnerabilities can fail the audit and require another update and verification.
 
-2026-09-13 本地修复验证：Gitleaks 全历史通过，示例文件负例和合成凭据正例符合预期；Trivy 0.74.0 文件系统及两份最终镜像的 HIGH/CRITICAL 命中均为 0。Alpine API 镜像安装原哈希锁成功，隔离运行 62 项后端单元测试通过，10/20/30 并发 mock 压测失败率均为 0。审计门禁测试覆盖 162 种汇总状态及首／末镜像失败传播。生产 TLS 检查以 UID 101 完成。
+Historical local verification on 2026-09-13: Gitleaks full-history scanning passed; example negative cases and synthetic credential positive cases behaved as expected. Trivy 0.74.0 reported zero HIGH/CRITICAL findings for the filesystem and both final images. The Alpine API installed the original hashed lock successfully; 62 isolated backend unit tests passed, and 10/20/30-concurrency mock load tests had zero failures. Audit-gate tests covered 162 aggregate-state combinations and first/last-image failure propagation. Production TLS checks ran as UID 101.
 
-复测同时定位并修复游戏页的草稿竞态：上一回合刷新结束后只清空未被修改的提交草稿，避免覆盖玩家新输入。新增回归测试在原实现失败、修复后通过；前端 148 项测试及覆盖率、类型和 lint 检查通过。云端执行结果以本次推送后的 Actions 为准。
+The same verification found and fixed a game-page draft race: completion of an earlier turn now clears only an unchanged submitted draft, preserving new player input. The regression test failed before the fix and passed afterward. All 148 frontend tests, coverage, type, and lint checks passed. Remote execution results remain those of the Actions run after the push.

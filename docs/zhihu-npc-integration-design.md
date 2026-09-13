@@ -1,102 +1,102 @@
-# 知乎众议与 NPC 资料接入设计
+# Zhihu perspectives and NPC reference integration design
 
-设计依据：[游戏幕次与素材清单](https://ccnoz23f7y98.feishu.cn/wiki/Ka47wg91jiUW1ekAcbFc9Fuonqe)，本次读取版本 801；以及现有三幕规则、独立 NPC 检查点和 319 条 `zhihu_contents` 候选资料。本文件为设计方案，以下新增接口、数据表与交互尚未实现。
+Design references: [Game acts and asset list](https://ccnoz23f7y98.feishu.cn/wiki/Ka47wg91jiUW1ekAcbFc9Fuonqe), read at version 801, plus existing three-act rules, independent NPC checkpoints, and 319 candidate `zhihu_contents` records. This is a design proposal: the new APIs, tables, and interactions below were not implemented at the time of this document.
 
-## 产品目标
+## Product goal
 
-知乎众议帮助玩家比较做法；NPC 依据自身身份回应玩家带来的观点。外部文章不是剧情事实，也不是角色私聊记忆。不得把整库一次性注入系统提示词，不得用知乎观点直接裁决数值、审批或结局。
+Zhihu perspectives help players compare approaches. NPCs respond in character to ideas the player brings into conversation. External articles are neither story facts nor private NPC memories. Do not inject the entire library into system prompts or use Zhihu opinions to adjudicate values, approvals, or endings.
 
-主路径：当前幕次 → 主题限定检索 → 候选筛选 → DeepSeek 提炼 2–3 类有依据的观点 → 来源校验 → 众议卡 → 玩家选择“带入对话” → 填入输入框 → 玩家发送 → 当前 NPC 回应。
+Main flow: current act → topic-limited retrieval → candidate filtering → DeepSeek extracts 2–3 evidence-based perspectives → source validation → perspective card → player selects “Bring into conversation” → populate draft → player sends → current NPC responds.
 
-## 三层信息边界
+## Three information boundaries
 
-| 层 | 内容 | 存储与权限 |
-|---|---|---|
-| 剧情事实 | 已经发生的行动、材料状态、项目进度 | 业务存档与事件；Python 规则裁决，按角色可见性读取 |
-| NPC 记忆 | 与该 NPC 的对白及角色可见事件 | 用户＋存档＋NPC 隔离；现有最近 30 条上下文与 PostgreSQL 检查点保留 |
-| 公共参考资料 | 知乎摘要、作者、链接、观点卡 | 独立内容库；不是玩家账号，不默认写进 NPC 记忆 |
+| Layer             | Content                                               | Storage and permissions                                                                             |
+| ----------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Story facts       | Completed actions, material status, project progress  | Business saves/events, adjudicated by Python and filtered by role visibility                        |
+| NPC memory        | Dialogue with that NPC and role-visible events        | Isolated by user + save + NPC; retain the existing last-30-event context and PostgreSQL checkpoints |
+| Public references | Zhihu excerpts, authors, links, and perspective cards | Independent content library, not player accounts or default NPC memory                              |
 
-玩家打开或收藏众议卡不通知 NPC。只有发送出去的表达及其选定引用，才成为目标 NPC 的可见事件。换 NPC 不传播私聊；公共知识可被多个 NPC 独立检索，但不因此共享玩家行为。
+Opening or bookmarking a card does not notify NPCs. Only sent expressions and selected citations become visible events for the target NPC. Switching NPCs does not propagate private chats. Multiple NPCs may independently retrieve public knowledge without sharing player behavior.
 
-## 按幕次组织众议
+## Organizing perspectives by act
 
-| 节点 | 检索范围 | 可能呈现的观点方向，最终以检索证据为准 |
-|---|---|---|
-| 序幕 | 辨认玩笑与贬低、情绪感受 | 仅展示剧情，不弹出查询打断序幕 |
-| 第一幕，欢送会 | 被排挤、直接询问、维护与前辈的联系 | 先确认事实；表达不适；降低私人关系期待 |
-| 第二幕，采购 | 材料清单、跨部门协作、风险汇报 | 明确规则；补全记录；同步项目影响 |
-| 第三幕，谣言 | 澄清事实、专业交付、传播边界 | 在适当范围澄清；向上同步；避免扩大传言 |
-| 幕间/终幕 | 内耗、自主选择、关系调整 | 提供自我复盘材料；不提前透露结局 |
+| Point                     | Retrieval scope                                                          | Possible perspective directions, subject to evidence                               |
+| ------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Prologue                  | Distinguishing jokes from belittling; emotional responses                | Story only, without interrupting with search                                       |
+| Act 1: farewell gathering | Exclusion, direct questions, maintaining contact with a senior colleague | Confirm facts; express discomfort; lower expectations of private friendship        |
+| Act 2: procurement        | Material lists, cross-team cooperation, risk reporting                   | Clarify rules; complete records; communicate project impact                        |
+| Act 3: rumors             | Fact clarification, professional delivery, propagation boundaries        | Clarify within an appropriate audience; inform leadership; avoid amplifying rumors |
+| Interludes/ending         | Rumination, autonomy, relationship adjustments                           | Reflection material without revealing future endings                               |
 
-这些是检索与分类候选，不预先把文案写成“知乎共识”。319 条内容来自有限检索样本，不能据此称为统计意义上的主流观点或热榜。UI 使用“知乎众议 / 不同观点”，标注“基于 X 篇检索资料整理”。
+These are retrieval/classification candidates, not predetermined “Zhihu consensus.” The 319 records are a limited search sample, not statistically representative opinions or a trending list. The UI should say “Zhihu perspectives / Different views” and “Compiled from X retrieved sources.”
 
-## 检索与内容处理
+## Retrieval and content processing
 
-第一阶段不增加向量数据库或其他模型：使用现有 PostgreSQL 的主题映射、关键词与摘要匹配。30 个扩充主题先映射为排挤、边界、采购、汇报、谣言、亲密关系、家庭等标签，再限制在当前幕允许的标签内排序。
+Phase one adds no vector database or other model. Use PostgreSQL topic mappings, keywords, and excerpt matching. Map the 30 expansion topics to exclusion, boundaries, procurement, reporting, rumors, intimate relationships, family, and similar tags, then rank only within the current act's allowed tags.
 
-先召回最多 12 条，经重复内容、广告倾向、空摘要和主题相关性过滤，选取最多 6 条提供给 DeepSeek。缺少作者昵称时显示“作者信息未返回”，不能编造。保留原始溯源 URL，引用展示为摘要而非全文。
+Retrieve at most 12 candidates. Filter duplicates, advertising, empty excerpts, and irrelevant topics, then provide at most six to DeepSeek. If the author is missing, show “Author information was not returned”; do not invent one. Preserve original provenance URLs and display excerpts, not full articles.
 
-为 `zhihu_contents` 增加审核状态 candidate / approved / rejected、主题标签、内容哈希和审核备注。高赞只作辅助信号，不等于可信。已有 319 条初始维持 candidate，不批量宣称已精选。
+Add candidate / approved / rejected review status, topic tags, content hashes, and review notes to `zhihu_contents`. Upvotes are only a supporting signal, not proof of reliability. Keep all 319 initial records as candidate until reviewed.
 
-本地已审核资料不足时，再按幕次固定的通用主题请求知乎搜索，最多一次、最多 10 条。外发请求不包含玩家原始私聊、身份或存档 ID。先核对缓存与额度，限制短时请求速率。失败或额度不足回退编辑建议，并明确标注来源类型。
+If local approved content is insufficient, make at most one Zhihu search for a fixed generic act topic, returning at most ten items. Outbound queries contain no raw private chats, identity, or save IDs. Check cache/quota first and limit short-term request rates. Failure or insufficient quota falls back to clearly labeled editorial advice.
 
-## 观点生成与引用约束
+## Generation and citation constraints
 
-所有生成沿用后端统一 ChatDeepSeek 工厂，固定 `deepseek-flash`、非思考模式，不调用知乎直答。
+Use the backend's unified ChatDeepSeek factory, fixed `deepseek-flash`, and non-thinking mode. Do not call Zhihu's direct-answer service.
 
-模型输入只有允许的场景主题与候选资料，不包含隐藏结局、其他 NPC 私聊、玩家账户数据或网页操作指令。检索文本被标记为外部资料，不能改变系统约束或获得工具权限。
+Model input contains only allowed scene topics and candidate references, excluding hidden endings, other NPC chats, account data, and webpage instructions. Retrieved text is marked as external material and cannot change system constraints or grant tool access.
 
-结构化输出建议字段：perspectives[{title, summary, suggested_expression, tradeoff, source_ids}]。每类观点必须关联输入中已有的来源 ID，最终标题、作者和链接均由后端根据来源 ID 回填，不能信任模型自行生成的 URL。验证未知来源、空引用、过长内容和不符合主题的结果；来源校验不能证明语义忠实，仍需来源比对评估和抽查。
+Suggested structured output: perspectives[{title, summary, suggested_expression, tradeoff, source_ids}]. Every perspective references IDs present in the input. The backend fills source titles, authors, and links from those IDs; never trust model-generated URLs. Reject unknown sources, empty citations, excessive length, and off-topic results. Source validation does not prove faithful summarization; source-comparison evaluation and spot checks are still needed.
 
-资料仅支持一个观点时只展示一个，无法支持观点时使用编辑建议；不强行凑出 2–3 类。明确区分“资料观点总结”与“结合场景生成的表达建议”。
+Show one perspective if the evidence supports only one; use editorial advice if it supports none. Do not force 2–3 categories. Distinguish summaries of source viewpoints from generated expressions tailored to the scene.
 
-## NPC 接入方式
+## NPC integration
 
-优先实现玩家主动带入：众议卡上的“带入对话”只填充输入框，玩家可修改并发送。发送时提交 card_id 和 perspective_id；后端校验卡片所属存档、幕次与来源白名单，冻结引用快照。请求不能直接指定任意数据库记录或任意 URL。
+Prioritize player-initiated use. “Bring into conversation” only fills the input; the player can edit and send it. Submit card_id and perspective_id with the message. The backend verifies save ownership, act, and source allowlist, then freezes a citation snapshot. Requests cannot select arbitrary database records or URLs.
 
-如果需要 NPC 主动引用，再提供只读工具 `lookup_public_advice(topic)`：后端从已授权的场景卡中取最多两条观点，不开放自由联网搜索。每回合最多一次检索，计入现有工具预算；无需额外的检索模型调用。
+If proactive NPC citations are later needed, add read-only `lookup_public_advice(topic)`, returning at most two perspectives from authorized scene cards without unrestricted web search. Allow at most one lookup per turn within the existing tool budget; no additional retrieval-model call is needed.
 
-- 孙淼可以辩解、弱化问题或回应明确边界，不因读到建议变成辅导员。
-- 李姐侧重资料、审核步骤与流程责任，不把外部文章当作本公司的制度。
-- 张工侧重项目事实与风险，不因观点卡自动替财务审批。
+- Sun Miao may defend herself, minimize the issue, or respond to clear boundaries, without turning into a counselor after reading advice.
+- Li Jie focuses on materials, review steps, and process responsibility; external articles are not company policy.
+- Engineer Zhang focuses on project facts and risks; cards do not authorize finance approval.
 
-阅读资料和选择卡片都不直接改变数值。真正的材料提交、汇报、澄清仍走现有领域动作；任何 LLM 建议均不能直接写业务状态。
+Reading or selecting cards does not directly change values. Material submission, reports, and clarification still use existing domain actions. LLM advice cannot directly write business state.
 
-## 接口、缓存与持久化
+## APIs, caching, and persistence
 
-建议新增：
+Proposed additions:
 
-- `POST /api/saves/{id}/discussions`：按 request_id、存档版本和当前幕次创建或复用众议生成请求。
-- `GET /api/saves/{id}/discussions`：获取本存档已生成卡片与来源。
-- 现有 turn 请求可选携带 discussion_id / perspective_id，后端校验后作为玩家带入的参考内容。
+- `POST /api/saves/{id}/discussions`: create or reuse generation by request_id, save version, and current act.
+- `GET /api/saves/{id}/discussions`: retrieve this save's generated cards and sources.
+- Existing turn requests may optionally include discussion_id / perspective_id, validated as player-supplied reference material.
 
-新增 discussion_jobs（幂等键、状态、用量、错误）、discussion_cards（存档、幕次、正文、生成版本）、discussion_sources（来源快照与哈希）。生成共享缓存仅依赖幕次主题、资料哈希、提示词版本、模型版本；不含玩家私聊或姓名。玩家自己的选择和发送记录仍按存档隔离。
+Add discussion_jobs (idempotency key, status, usage, error), discussion_cards (save, act, body, generation version), and discussion_sources (source snapshots and hashes). Shared generation caches depend only on act topics, content hashes, prompt version, and model version, never private chats or names. Player selections and sends remain save-isolated.
 
-初版不增加 Redis 或任务队列：复用 PostgreSQL 唯一约束与短事务抢占任务、应用内超时限制和重启恢复。不要持有数据库事务等待外部接口。完成后原子发布卡片；中断时标记可重试，不保存半张“成功”卡。
+Initially, add neither Redis nor a task queue. Reuse PostgreSQL unique constraints and short transactions to claim jobs, application timeouts, and restart recovery. Do not hold database transactions while waiting for external APIs. Publish completed cards atomically; interrupted work becomes retryable instead of a partially successful card.
 
-默认预算建议：每幕首开生成一次；每次最多一次知乎搜索、一次 DeepSeek 汇总，重复打开复用结果。限制单用户每日次数、全局在途请求和模型输出长度；与现有用户额度、模型成本上限共同结算。上述数字是初始产品预算，不是知乎平台限额。
+Suggested initial budget: generate once on first opening per act, with at most one Zhihu search and one DeepSeek summary; reopenings reuse results. Limit daily user requests, global in-flight work, and output length, accounting alongside existing quotas and cost caps. These are proposed product budgets, not Zhihu platform limits.
 
-## UI 优化
+## UI improvements
 
-保留“编辑锦囊”作为明确的降级内容，增加独立“知乎众议”入口，避免把原静态建议直接换名后误称来自知乎。
+Retain clearly labeled editorial advice as fallback and add a separate Zhihu perspectives entry point. Renaming existing static advice must not imply Zhihu provenance.
 
-卡片包含观点、适用场景、可能代价、可展开的原文来源以及“带入对话”。显示加载中、暂无资料、部分来源缺失和可重试状态；阅读不会耗掉玩家行动回合。手机端抽屉可滚动，链接可键盘操作，生成完成后不抢输入焦点。
+Cards contain viewpoints, applicable situations, possible costs, expandable sources, and “Bring into conversation.” Support loading, no data, missing sources, and retryable states. Reading does not consume a player action turn. Mobile drawers scroll, links support keyboard navigation, and generation completion does not steal input focus.
 
-## 文档中其他差异的处理
+## Other source-document differences
 
-本次知识接入不顺带改动数值和结局。文档存在需要单独统一的设计：
+This integration does not also change values or endings. Separate decisions are needed:
 
-1. 原作分析使用“周凌（菱菱）”，本方案使用“周菱菱”；目前项目采用前者。建议把身份显示名集中配置，再确定游戏改编最终命名。
-2. 文档新增独立“内耗值”和“工作压力”，当前只有一个 stress。拆分需要存档迁移与明确增减规则，不应由模型自由评分。
-3. 文档前半段与后半段的结局分类不一致。建议采用四个稳定 ending_id，叙事标题和关系选择分开；完成映射后再改结局文案。
-4. 文档提出高压力强制离职，现项目保留主动离开的选择。建议先表现为危机提示与可选行动；强制终局需确定阈值及可恢复窗口后单独实现。
-5. 序幕轮播、同事群像开场、关系图和系统联系人可按后续 UI/剧情迭代落地，不增加自治导演 Agent。分享到知乎应由玩家明确触发，默认仅生成预览，不自动发布。
+1. Source analysis uses Zhou Ling (Lingling), while the proposal uses Zhou Lingling. The project currently uses the former. Centralize the display name before settling the adaptation's final naming.
+2. The document separates rumination and work stress; the project currently has one stress value. Splitting it requires save migration and explicit rules, not free-form model scoring.
+3. Ending categories differ between the document's first and second halves. Use four stable ending_id values, separating narrative titles from relationship choices; map them before rewriting ending copy.
+4. The document proposes forced resignation at high stress; the game retains voluntary departure. Start with crisis prompts and optional actions. Forced endings require separately defined thresholds and recovery windows.
+5. Prologue slides, ensemble openings, relationship graphs, and system contacts can follow in UI/story iterations without an autonomous director Agent. Zhihu sharing must be player-triggered, with preview generation by default and no automatic publishing.
 
-## 验收与实施顺序
+## Implementation and acceptance order
 
-第一步：资料审核标签、按幕检索和来源快照。
-第二步：DeepSeek 观点整理、幂等缓存、知乎众议抽屉与降级状态。
-第三步：玩家将观点带入对话，角色权限过滤；确认有需要后再开放 NPC 的只读检索工具。
-第四步：单独处理四指标、序幕与结局分支的规则迁移。
+1. Content review tags, act-based retrieval, and source snapshots.
+2. DeepSeek summaries, idempotent caching, the perspective drawer, and fallback states.
+3. Player-introduced perspectives and role filtering; add NPC read-only lookup only if needed.
+4. Separate migrations for four metrics, the prologue, and ending branches.
 
-CI 用固定资料和模拟 LLM，新增验证：当前幕不能拿到未来幕卡片；跨存档/角色不能获取私聊；提示注入资料不能触发业务工具；虚构来源被拒绝；重复请求与刷新不重复扣费；外部限流/超时/重启能恢复；选择观点不改变数值；桌面和手机可查看引用并编辑待发送内容。真实接口另做少量有额度上限的联调，不进入常规 CI。
+CI uses fixed references and a mock LLM. Verify: no future-act cards; no cross-save/role private-chat access; injected source instructions cannot trigger business tools; fabricated sources are rejected; duplicate requests and refresh do not double-charge; external rate limits/timeouts/restarts recover; selecting a view does not change values; desktop/mobile users can inspect citations and edit drafts. Real APIs receive separate, small, budget-capped integration checks outside routine CI.

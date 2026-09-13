@@ -1,133 +1,134 @@
-# 文档贴合实施记录
+# Source-document conformance implementation record
 
-依据：https://ccnoz23f7y98.feishu.cn/wiki/Ka47wg91jiUW1ekAcbFc9Fuonqe
+Reference: https://ccnoz23f7y98.feishu.cn/wiki/Ka47wg91jiUW1ekAcbFc9Fuonqe
 
-原文读取版本 1011；2026-09-13 写入 11 处飞书蓝色 callout 备注后版本 1022；随后按产品经理阅读习惯改写为通俗备注，版本 1033。
-取舍全文见 `conformance-decisions.json`。备注已逐条回读；图片和附件块写入前后逐块一致。
+The source was read at version 1011. Eleven blue Feishu callout notes added on 2026-09-13 produced version 1022; rewriting them in plain language for a product manager produced version 1033. Full decisions are in `conformance-decisions.json`. Every note was read back; image and attachment blocks were unchanged before and after writing.
 
-## 验收清单（未勾选均未完成或证据不足）
+## Acceptance checklist (unchecked means incomplete or insufficient evidence)
 
-- [x] R01–R11 冲突和实现补充写入原文旁备注，保留原文。
-- [x] 冻结原 v3 故事为 story-v3-r1.json；缺失 content_revision 的存档解释为修订 1。
-- [x] 新档明确 content_revision=2；旧修订只读，禁止新回合、分支及 AI 任务，不计新版容量。
-- [x] 切换前排空旧回合/任务；切换后逐行核对原 3 个存档、4 个回合、1 个 AI 任务及 1 条费用记录完全未变（`/tmp/btl-old-state-preserved.json`）。
-- [ ] 全三幕原文对白、出场顺序、地点、服装、说话者强调及三个原文入口验收。
-  - 修订 2 已写入三幕开屏 15 段原文对白，增加逐句地点/背景；移除强制私人生活幕间。
-  - 第一幕原文三个入口、请求参加与实际到场分开，已添加食堂节点；浏览器验收待做。
-  - 第二幕自动保留昨日普通申请与模糊退回，已支持原材料复核直接通过；审核与材料版本分离。加急申请和真实缺项的完整演出仍待补齐。
-- [ ] 第二幕开局即有昨日申请、未读模糊退回；原始模板/证据、真实缺项与不合理退回双路径。
-- [ ] 采购材料版本与审核处理记录分离；李姐审核、张工协调、王会计建议权限完整。
-- [ ] 第三幕将跳槽谣言落实到事实规则、传播、澄清及纠正反馈，未知源头保持未知。
-- [ ] 项目复核预告、延期/替代安排、实际损失与后续纠正；时间只随节点推进。
-- [ ] 修复/边界/规则改变由请求—回应—执行—后续协作完成，不直接按结果按钮写入成功。
-- [ ] 请假、求助、退出完整申请与处理流程；退出启动不等于手续完成。
-- [ ] 六结局每条浏览器通关、组合优先级、成果/未解决事项独立保存。
-- [ ] 四指标高低阈值后果可见、按事件去重、不能刷分或自动离职。
-- [ ] 全目录自然表达、原文依据、否定/引用/假设/冲突澄清、持久化重大确认。
-- [ ] 四联系人/工作群独立会话、历史分页、未读、私密可见性和草稿隔离。
-- [ ] 关系图节点/连线/事件原文及移动端等价列表。
-- [ ] 知乎真实检索、缓存/并发/限流/空结果/非法来源/失败降级验证。
-- [ ] AI 结局正文在结局页直接呈现、关键互动、四指标余波、失败回退及独立复盘。
-- [ ] 分享卡图片导出/复制/知乎入口，实际选择依据，不自动发布。
-- [ ] 修复重复回合控制器；深校验状态/渠道/参数/三类 AI 契约；旧历史分页。
-- [ ] 桌面/手机逐场验证，长文本、键盘/软键盘、焦点、无横溢、减少动态。
-- [ ] 断线恢复、重复请求、过期确认、零 AI 全路线、完整回归与合同生成检查。
-- [ ] 源图及版式映射、未使用生成中间图整理、最终交付报告。
+- [x] R01–R11 conflicts and implementation supplements recorded beside the source, preserving original text.
+- [x] Original v3 story frozen as story-v3-r1.json; saves without content_revision interpreted as revision 1.
+- [x] New saves explicitly use content_revision=2; old revisions are read-only, prohibit new turns/branches/AI tasks, and do not count against new-version capacity.
+- [x] Old turns/tasks drained before switching; afterward, row-by-row comparison confirmed the original three saves, four turns, one AI task, and one cost record were unchanged (`/tmp/btl-old-state-preserved.json`).
+- [ ] All three acts' source dialogue, appearance order, locations, clothing, speaker emphasis, and three original entry points accepted.
+  - Revision 2 contains fifteen opening source-dialogue segments across three acts, with per-line location/background; mandatory private-life interludes removed.
+  - Act 1 separates its three source entries, requesting participation, and actual attendance; cafeteria node added. Browser acceptance pending at this checkpoint.
+  - Act 2 automatically retains yesterday's ordinary application and vague return, and supports approval by rechecking original materials. Review and material versions are separated. Full expedited-request and actual-missing-material performance remains incomplete.
+- [ ] Act 2 starts with yesterday's application and unread vague return; original templates/evidence and both genuine omissions and unreasonable-return paths.
+- [ ] Material versions separated from review records; complete permissions for Li Jie review, Zhang coordination, and Accountant Wang advice.
+- [ ] Act 3 job-change rumors implemented through facts, propagation, clarification, and corrective feedback; unknown sources remain unknown.
+- [ ] Project-review advance notice, delays/alternatives, actual losses, and subsequent correction; time advances only at nodes.
+- [ ] Repair/boundaries/rule changes follow request → response → execution → later cooperation, without outcome buttons writing success directly.
+- [ ] Full leave, help, and exit application/handling flows; initiating exit does not mean procedures are complete.
+- [ ] Browser completion for all six endings, combination precedence, independently stored achievements/unresolved matters.
+- [ ] Visible high/low consequences for four metrics, event deduplication, no score farming or automatic resignation.
+- [ ] Natural expression across the catalog, source grounding, negation/quotation/hypothesis/conflict clarification, persistent consequential confirmation.
+- [ ] Independent conversations for four contacts/work group, history pagination, unread state, privacy, and draft isolation.
+- [ ] Relationship nodes/edges/original events and equivalent mobile list.
+- [ ] Real Zhihu search, caching/concurrency/rate limits/empty results/invalid sources/fallback verification.
+- [ ] AI ending text directly on the ending page, key interactions, aftermath for four metrics, failure fallback, and independent reflection.
+- [ ] Share-card image export/copy/Zhihu entry, actual-choice grounding, no automatic publishing.
+- [ ] Duplicate turn controller fixed; deep state/channel/parameter/three-AI-contract validation; legacy history pagination.
+- [ ] Per-scene desktop/mobile checks, long text, hardware/software keyboards, focus, no horizontal overflow, reduced motion.
+- [ ] Disconnection recovery, repeated requests, expired confirmation, zero-AI routes, full regression and generated-contract checks.
+- [ ] Source-image/layout mapping, unused generated intermediate asset cleanup, and final delivery report.
 
-## 已有验证（不等于全项目验收）
+## Existing verification (not whole-project acceptance)
 
-- 新增内容修订单元 + 原六结局规则：17 passed。
-- 内容修订只读 API + 既有 v3 API + 修订单元：13 passed，隔离库 btl_upgrade_test_v3_checks。
-- 旧修订历史未变；新回合/分支/任务被拒绝，原版故事可通过 revision=1 获取。
-- 当前主预览库 btl_upgrade_test_v3_20260913 不清空；端口 8000 / 18732 与原数据库不操作。
-- 真实模型既有两轮累计 0.034458 USD；后续仍受总计 2 USD 上限约束。
+- New content-revision units plus original six-ending rules: 17 passed.
+- Read-only content-revision APIs, existing v3 APIs, and revision units: 13 passed in isolated btl_upgrade_test_v3_checks.
+- Legacy-revision history unchanged; new turns/branches/tasks rejected; original story accessible with revision=1.
+- Main preview database btl_upgrade_test_v3_20260913 is not cleared; ports 8000 / 18732 and their original database are untouched.
+- Two earlier real-model rounds cost a cumulative 0.034458 USD; subsequent work remains under the total 2 USD cap.
 
-## 当前限制
+## Current limitations
 
-新修订仍在施工，不能宣称贴合完成。跳槽谣言已替换采购进度说法，澄清发送与群内更正回应已分开；其他结局过程仍需补齐后再切换预览；本记录只证明已列出的验证。
+The new revision remains under construction; conformance is not complete. Job-change rumors replaced procurement-progress wording, and sending clarification is separate from corrective group responses. Other ending processes need completion before switching preview. This record proves only the listed verification.
 
-## 本轮增量验证
+## Incremental verification
 
-- 第一幕/采购新增规则与现有六结局规则：17 passed。
-- 本轮规则调整后，原 v3 API 与规则组合：24 passed（新增 3 项单元测试随后单独通过）。
-- Ruff 与 ESLint 通过；前端类型检查与后端 mypy 均通过。
+- New Act 1/procurement rules and existing six-ending rules: 17 passed.
+- Existing v3 API/rule combination after adjustments: 24 passed; three additional unit tests subsequently passed separately.
+- Ruff, ESLint, frontend type checks, and backend mypy passed.
 
-## 谣言与历史增量
+## Rumor and history increment
 
-- `clarify` 只记录发出说明；`review_clarification` 呈现相关转述者在原传播范围更正的脚本事件后，才记录 `clarified`。没有更正不能触发“改写规则”等工作已处理条件。
-- 第二、三幕已配置原文三个入口；第二幕私聊/工作系统入口只打开对应界面，不自动替玩家发送或提交。
-- 第三幕仍可向张工同步项目，与第二幕风险汇报分开记录，不重复获得同一种汇报分数。
-- 新版舞台与旧版页面条件挂载，消除同时存在两套回合恢复控制器。
-- 完整历史新增游标分页；旧档也能翻阅更早记录。手机新增同渠道/联系人分页。
-- 本轮规则/API 组合 29 passed；随后规则单独 19 passed。Play 页面回归 19 passed；历史分页新增 1 passed。
-- 上次全前端回归为 218 passed / 1 failed（错误页缺少首页链接）；已修复并定向重跑 Play 19 项通过，其他测试未重复跑。
-- 整体仍未验收，下一优先级：修复/边界/规则改变的请求—回应—执行过程、完整人事流程及结局页。
+- `clarify` records only sending an explanation. `review_clarification` records `clarified` only after the scripted event of relevant repeaters correcting it within the original audience. Without correction, work-handled conditions such as rewriting rules cannot trigger.
+- Acts 2 and 3 have the three source entry points. Act 2 private-chat/work-system entries only open their interfaces; they do not send or submit for the player.
+- Act 3 can still report project status to Zhang, recorded separately from Act 2 risk reporting without duplicate report scores.
+- New and legacy stages mount conditionally, removing simultaneous turn-recovery controllers.
+- Complete history has cursor pagination, including legacy saves. Phone history adds per-channel/contact pagination.
+- Rule/API combination: 29 passed; subsequent rule-only run: 19 passed. Play regression: 19 passed; new history pagination: one passed.
+- Previous full frontend run: 218 passed / one failed due to a missing Home link on an error page. Fixed and retested with nineteen Play tests; other tests were not repeated.
+- Overall acceptance remains incomplete. Next priorities: request/response/execution for repair, boundaries, rule changes, full personnel flows, and the ending page.
 
-## 关系与规则增量
+## Relationship and rule increment
 
-- 保留友谊请求改为 `friendship_offer`；孙淼实际回应时才写入双方愿意修复及具体伤害承认。
-- 补救对白明确更正对外说法、补齐后续工作通知，承认无法挽回已错过的机会。
-- 后续协作必须提交 `boundary_response`，参加/拒绝/先问安排分别保存玩家原意及不同回应；缺失参数拒绝，不推定玩家拒绝或同意。
-- `change_rules` 只记录李姐确认新约定；项目复核后的 `apply_rules` 才记录实际应用并满足改写规则条件。
-- 原规则/API 29 项通过；新增意愿/后续三种回答/规则执行测试后，规则单元合计 24 项通过。
-- 仍需真实页面通关验证这些过程，完整人事申请/阈值情境/AI结局整合尚未完成。
+- Keeping friendship now creates `friendship_offer`; mutual willingness to repair and acknowledgment of specific harm are recorded only after Sun Miao actually responds.
+- Repair dialogue explicitly corrects outside statements and restores later work notifications while acknowledging missed opportunities cannot be recovered.
+- Later cooperation requires `boundary_response`. Attend/decline/ask-about-arrangements preserve the player's intent and distinct replies. Missing parameters are rejected without assuming agreement or refusal.
+- `change_rules` records only Li Jie's agreement. `apply_rules` after project review records actual application and satisfies the rewriting-rules condition.
+- Original rule/API suite: 29 passed. After willingness, three-response, and rule-application tests, rule units totaled 24 passed.
+- Real-page playthrough remains necessary. Full personnel applications, threshold situations, and AI ending integration were incomplete at this checkpoint.
 
-## 请假与求助增量
+## Leave and help increment
 
-- 新增 SupportApplication：理由、交接/分工方案、草稿/提交/审批/落实分别引用事件。
-- `draft_support` 保存预览，`submit_support` 正式提交，`review_support` 由张工处理；既有 `rest` / `request_help` 只负责落实获批安排。
-- 未提交不能审核，未批准不能落实；仅落实后压力 -10，重复完成被拒绝。已提交且未完成的申请不能被新草稿覆盖。
-- Work 中拆出 SupportForm 展示预览、状态、处理意见和历史。申请理由不进入普通 NPC 群体可见的事件正文。
-- 规则/API 组合 37 passed；前端类型、ESLint、后端 mypy 通过。Ruff 导入排序已修复。
-- 以上还需浏览器实际提交/刷新/恢复验证；不等于人事功能全体验验收。
+- Added SupportApplication with reasons, handover/work-allocation plans, and separate event references for draft/submission/approval/implementation.
+- `draft_support` saves a preview, `submit_support` submits formally, and Zhang processes `review_support`. Existing `rest` / `request_help` only implement approved arrangements.
+- Unsubmitted applications cannot be reviewed; unapproved ones cannot be implemented. Stress decreases by ten only after implementation; repeats are rejected. New drafts cannot overwrite submitted unfinished applications.
+- Work extracts SupportForm for previews, status, decisions, and history. Application reasons do not enter ordinary NPC group-visible event text.
+- Rule/API combination: 37 passed. Frontend types, ESLint, and backend mypy passed; Ruff import ordering fixed.
+- Actual browser submit/refresh/recovery remains necessary; this is not complete personnel-feature acceptance.
 
-## 结局页增量
+## Ending-page increment
 
-- EndingNarrative 直接显示生成状态、AI 正文、关键互动、失败事实回退；请求号按用户/存档/最终版本持久保存，刷新重用原请求。
-- 结局页增加四项最终数值的不同余波，避免断言原谅/释然；提供独立新故事入口。
-- 生成输入补充完整已确认工作/关系事实。关键事件筛选包含真实工作事件，不再漏掉来自工具的后果。
-- 将系统行动摘要与玩家实际说过的原话分开，避免把按钮产生的系统文案当成玩家发言。
-- 结局正文重挂载复用请求与生成失败回退：2 项前端测试通过。隔离库结局任务事实/原话/幂等：1 项 API 测试通过。原搜索/生成验证 3 项通过。
-- 前端类型、ESLint、后端 mypy、Ruff 通过。仍未进行新版完整浏览器通关；三类 AI 结果的完整类型契约尚待补齐。
+- EndingNarrative directly displays generation state, AI text, key interactions, and fact fallback. Request IDs persist by user/save/final version and are reused on refresh.
+- Ending pages show distinct aftermath for all four final values without asserting forgiveness or emotional closure, and offer an independent new story.
+- Generation input includes all confirmed work/relationship facts. Key-event selection includes actual work events and tool consequences.
+- System action summaries are separated from words actually spoken by the player, avoiding treating button-generated copy as player speech.
+- Two frontend tests passed for remount request reuse and generation fallback. One isolated API test passed for ending-job facts/original wording/idempotency; three existing search/generation checks passed.
+- Frontend types, ESLint, backend mypy, and Ruff passed. Full new-version browser completion and complete typed contracts for all three AI result types remained pending.
 
-## 关系图增量
+## Relationship-graph increment
 
-- 桌面关系图以周菱菱为中心，连线到四位联系人；移动端用可操作列表展示同样关系。
-- 后端为每条关系投影关联事件 ID；前端选人后可读取原始依据，不再只显示截断编号。
-- 新增单事件读取接口，验证存档归属和事件归属；跨存档和跨用户读取均返回不可用。
-- 孙淼描述按当前意愿与已发生事实生成，旧 sun_cut 等标记不会覆盖新的修复意愿；王会计描述不再凭一次联系自动声称已回信。
-- 关系证据权限/API 与状态投影 5 项通过；原规则/内容修订 30 项通过。关系节点读取原文的前端测试 1 项通过。
-- 类型与代码检查通过；桌面和移动端实际呈现仍待浏览器验收。
+- Desktop graph centers on Zhou Lingling with edges to four contacts; mobile uses an actionable list with equivalent relationships.
+- The backend projects event IDs per relationship. Selecting someone retrieves original evidence rather than truncated identifiers.
+- A single-event endpoint validates both save and event ownership. Cross-save/user access returns unavailable.
+- Sun Miao's description uses current willingness and actual facts; old sun_cut flags do not override new repair intent. Contacting Accountant Wang once no longer implies a reply was received.
+- Five evidence-permission/API/projection tests passed; thirty existing rule/revision tests passed; one frontend original-evidence retrieval test passed.
+- Types and code checks passed; actual desktop/mobile appearance still required browser acceptance.
 
-## 自由表达增量
+## Natural-expression increment
 
-- v3 NPC 工具读取完整当前行动目录；普通明确行动走与按钮相同的 transition，重大动作统一使用 v3 确认集合。
-- 补充名单请求、边界反问、复核依据、友谊意愿、收束等明确表达；整句包含引用、否定、假设或冲突时不执行。
-- 自动识别的群内澄清后果使用工作群渠道和在职同事可见范围，不错误保存在单人私聊。
-- 自然邀请 API 验证请求加入名单而不自动参加。新增意图/实际 API 13 项通过；此前规则/API 回归 39 项通过。
-- 仍有限制：自由表达依赖已定义的表达及原文行动名称，任意改写未验证；表单参数尚不会从自由文本自动抽取，缺项要求补填。不能将此标为全部语义验收完成。
+- v3 NPC tools read the complete current action catalog. Clear ordinary actions use the same transition as buttons; major actions use one v3 confirmation set.
+- Added explicit expressions for list requests, boundary questions, review evidence, friendship willingness, and closure. Sentences containing quotation, negation, hypotheses, or conflicts do not execute.
+- Automatically recognized group clarification uses the work-group channel and employed-colleague audience, not a private chat.
+- Natural invitation API verification requests joining the list without automatically attending. Thirteen new intent/API tests passed; earlier rule/API regression had 39 passed.
+- Limits remain: matching depends on defined expressions and source action names; arbitrary paraphrases are unverified. Form parameters are not extracted automatically from free text; missing fields must be filled. This is not complete semantic acceptance.
 
-### 最新素材确认：茶水间与男性张工
-- 第一幕茶水间开场及名单确认采用用户补充的茶水间背景 `tea-room.png`，实际参加欢送会仍使用食堂。
-- 新故事张工采用素材目录原图 `zhang-male.png`，同步男性人设及混合性别称呼；旧故事仍引用原图，保留历史呈现。
-- 飞书版本 1039 已确认产品备注采用男性张工，与本地决定保持一致。
+### Latest asset confirmation: tea room and male Engineer Zhang
 
-### 2026-09-13 整合回归与首次页面通关
-- 原 19 个后端集成失败已逐项处理：更新旧三结局/无表单/旧角色权限等断言；保留幂等、竞态、额度停止、事实不回滚、隐私隔离及 AI 产物来源验证。
-- 修复实际问题：李姐自然表达请求材料被权限校验误挡；“材料齐全，请审核”被误识别为两个请求；同事行动目录泄露私人感情选项。
-- 后端全量集成 153 项通过（`/tmp/btl-integration-current.log`）；之后结局事实修改的相关集成 32 项通过。单元 176 项通过，mypy 36 个模块通过。前端 223 项通过、生产构建通过（新增舞台回归检查另行记录）。
-- 当前演出由后端按事实投影，并附独立版本；新状态与旧演出短暂不同步时禁止继续阅读。已通过采购不会再显示“采购尚未结束”，未交付不自动保证按期交付。
-- 桌面浏览器完整走通“各自为界”：`ee314bc5-d808-4dea-a0e5-59a993038173`。经过序幕、茶水间名单确认、实际食堂到场、原材料复核、李姐审批、群内纠正、交付、职业关系确认、后续拒绝被尊重及主动收束。
-- 手机尺寸 390×844 走通“主动转身”调岗路径：`68060229-9db6-4da0-a0e0-50f7b0ab58e4`。草稿不结束；Escape 取消确认后草稿仍在；正式确认后收束。重大确认改为原生模态对话框，展示具体申请类型与理由。
-- 已目视确认羽绒服、茶水间背景、男性张工，手机结局未横向溢出；全部六路线、真实软键盘仍未完成。上述两局在部分修正前产生的历史记录保持原样。
-- 发现并补齐第三幕收束按钮、后续协作三种回答，修正序幕后自由输入、确认时空事件覆盖当前对白、桌面对白下方多余空白；减少动态设置按用户保留。
-- 分享预览与复制反馈可见；内置浏览器导出未捕获到下载事件，不能视为导出通过，需继续修复/验证。
-- 早期退出不再把尚未发生的采购争议和谣言列为未解决；退出事实明确“申请已提交、手续仍待办理”。飞书原有产品备注已同步并读取验证至版本 1042（`/tmp/btl-notes-verified-current.json`）。
+- Act 1 tea-room opening/list confirmation uses the user-supplied `tea-room.png`; actual farewell attendance remains in the cafeteria.
+- New stories use original `zhang-male.png`, with male persona and mixed-gender forms of address. Legacy stories retain the original image and historical presentation.
+- Feishu version 1039 confirmed the male Engineer Zhang product note, consistent with local decisions.
 
-- 新增舞台回归 2 项通过：不同步演出不可推进阅读、后续协作三回应及收束入口始终可达；前端类型和 ESLint 通过。旧存档/终态/费用逐行比较均未变化。
+### 2026-09-13 combined regression and first browser completions
 
-### 分组提交检查
-- 本次将当前实现按素材、后端、前端、验收文档与评估工具分组提交；提交不代表完整产品验收结束。
-- 提交前重新运行前端全量测试：23 个文件、225 项通过；后端单元测试 176 项通过。接口契约无漂移，提交涉及的 Python 文件通过 Ruff 检查。
-- 未使用的主角中间图及过期 WebP 已移至本地忽略目录归档，当前素材清单仅引用保留的成品；用户素材目录未改动。
-- 待完成项仍包括其余四条结局的浏览器通关、分享图片实际导出、真实软键盘、最新真实模型与知乎接口验证，以及上文列出的玩法与契约缺口。
+- Addressed nineteen backend integration failures by updating obsolete three-ending/no-form/role-permission assertions while preserving idempotency, races, quota stopping, committed facts, privacy, and AI-source validation.
+- Fixed actual defects: Li Jie's natural material request was incorrectly blocked by permissions; “materials are complete, please review” was interpreted as two requests; coworker action catalogs exposed private romantic choices.
+- Full backend integration: 153 passed (`/tmp/btl-integration-current.log`); after ending-fact changes, 32 relevant integration tests passed. Units: 176 passed; mypy: 36 modules passed. Frontend: 223 passed and production build passed; new stage regressions are recorded separately.
+- Current performance is projected from backend facts with its own version. Reading cannot advance while new state and old performance are temporarily out of sync. Approved procurement no longer displays “not finished,” and undelivered work is not guaranteed on time.
+- Desktop completed “各自为界” (Separate Boundaries), save `ee314bc5-d808-4dea-a0e5-59a993038173`: prologue, tea-room list confirmation, cafeteria attendance, original-material review, Li Jie approval, group correction, delivery, professional-relationship confirmation, respected later refusal, and explicit closure.
+- Mobile 390×844 completed the transfer route “主动转身” (Choosing to Move On), save `68060229-9db6-4da0-a0e0-50f7b0ab58e4`. Drafting did not end the story; Escape preserved the draft; formal confirmation closed it. Consequential confirmation uses a native modal showing application type and reason.
+- Down coats, tea-room background, and male Zhang were visually confirmed; mobile ending had no horizontal overflow. All six routes and a real software keyboard were not yet completed. Historical records created before some corrections remain unchanged.
+- Added the missing Act 3 closure button and three later-cooperation replies; fixed free input after the prologue, confirmation-time blank events overwriting current dialogue, and excess desktop whitespace below dialogue. User reduced-motion settings are retained.
+- Share preview and copy feedback are visible. No download event was captured for in-app browser export, so export is not accepted and needs further repair/verification.
+- Early exits no longer list nonexistent procurement disputes or rumors as unresolved. Exit facts explicitly say the application is submitted but procedures remain pending. Existing Feishu product notes were synchronized and read back through version 1042 (`/tmp/btl-notes-verified-current.json`).
+- Two new stage regressions passed: out-of-sync performance cannot advance, and all three later-cooperation replies plus closure remain reachable. Frontend types and ESLint passed. Row comparisons showed unchanged legacy saves, terminal results, and costs.
+
+### Grouped commit checks
+
+- Implementation was grouped into assets, backend, frontend, acceptance documentation, and evaluation tooling. Committing does not mean complete product acceptance.
+- Before commit, all frontend tests passed: 23 files, 225 tests. Backend units: 176 passed. Contracts had no drift; committed Python files passed Ruff.
+- Unused intermediate protagonist images and obsolete WebP files were moved into a local ignored archive. The active manifest references only retained final assets; the user's asset directory was unchanged.
+- Remaining work includes browser completion of the other four endings, actual share-image export, a real software keyboard, latest real-model and Zhihu API verification, and the gameplay/contract gaps above.

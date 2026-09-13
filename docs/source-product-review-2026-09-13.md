@@ -1,116 +1,118 @@
-# 源码与产品力审查 · 2026-09-13
+# Source and product review · 2026-09-13
 
-**结论：这是能够完整通关、工程基础较好的职场互动小说 MVP；视觉与可靠性领先于玩法深度。下一阶段最有价值的投入，是让玩家表达产生可理解的后果，并验证玩家是否愿意继续体验。**
+**Assessment: a workplace interactive-fiction MVP with a complete playable route and solid engineering foundations. Visual quality and reliability are ahead of gameplay depth. The next useful investment is to give player expressions understandable consequences and test whether players want to continue.**
 
-审查基线为 `2b6cb6c` 加本次开始时已有的 `agents.py`、`test_agents.py`、`verification.md` 未提交改动。覆盖前后端业务源码、故事定义、接口与恢复状态机、角色权限、数据模型、测试、构建、部署和运维脚本；结合本地页面检查、现有测试与针对性复现。此报告没有修改业务源码。
+The review baseline was `2b6cb6c` plus pre-existing uncommitted changes to `agents.py`, `test_agents.py`, and `verification.md`. Coverage included frontend/backend business code, story definitions, APIs and recovery state machines, role permissions, data models, tests, builds, deployment, and operations scripts, supported by local page inspection, existing tests, and targeted reproductions. This report did not modify business code.
 
-以下评分是针对当前版本的评审判断，不是用户调查、市场排名或收入预测。
+The scores below are review judgments about that version, not user research, market rankings, or revenue forecasts.
 
-| 维度 | 评价 / 10 | 判断依据 |
-|---|---:|---|
-| 题材与情绪共鸣 | 7 | 被忽略、采购受阻、流言与边界有明确情境；玩家容易理解冲突 |
-| 视觉与基础交互 | 7 | 美术、色彩、排版统一，手机布局可用；对话与行动反馈仍单薄 |
-| 玩家能动性与重玩 | 4 | 大部分剧情固定；数值不控制分支，重要私人决定由幕间自动完成 |
-| AI 的必要性与表现验证 | 5 | 能处理采购工具与角色对白，但必经流程依赖工具调用；缺少系统性语义评估 |
-| 工程可靠性 | 8 | 事务、幂等、角色隔离、断线恢复、类型与端到端验证较扎实 |
-| 获客与持续运营准备 | 4 | 正式登录有外部依赖，缺少访客体验、产品漏斗、反馈和内容运营闭环 |
+| Dimension                         | Score / 10 | Basis                                                                                                                                   |
+| --------------------------------- | ---------: | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Theme and emotional resonance     |          7 | Being ignored, blocked procurement, rumors, and boundaries provide clear, relatable conflict                                            |
+| Visuals and basic interaction     |          7 | Consistent art, colors, typography, and usable mobile layout; dialogue/action feedback remains thin                                     |
+| Player agency and replay          |          4 | Mostly fixed plot; metrics do not control branches; major private decisions happen automatically in interludes                          |
+| AI necessity and validation       |          5 | Handles procurement tools and character dialogue, but required progression depends on tool calls without systematic semantic evaluation |
+| Engineering reliability           |          8 | Solid transactions, idempotency, role isolation, recovery, types, and E2E checks                                                        |
+| Acquisition and ongoing operation |          4 | External login dependency; missing guest experience, product funnel, feedback, and content-operations loop                              |
 
-整体约 **6/10**。适合受控的小范围用户测试；当前证据不足以证明付费意愿、复玩需求或规模化运营能力。
+Overall: approximately **6/10**. Suitable for controlled small-group user testing. Current evidence does not establish willingness to pay, replay demand, or scalable operations.
 
-**本轮验证与边界**
+## Verification and boundaries
 
-| 验证 | 结果 |
-|---|---|
-| 后端纯单元 | 98 passed |
-| 后端集成 | 96 passed；使用临时源码副本和新建隔离数据库 |
-| 后端去重口径 | 182 个测试全部被上述两组覆盖；12 个同时具有两种标记，不能直接相加 |
-| 前端 Vitest | 199 passed |
-| 桌面 / 手机 Playwright | 60 passed，约 2.5 分钟；生产前端构建连接隔离 mock API |
-| 静态与构建 | Ruff、mypy、ESLint、TypeScript / Vite build 通过 |
-| 额外复现 | 自由表达不推进边界行动、数值不同仍同结局、预算阻断免费行动、继续存档排序、草稿丢失、访问日志记录 OAuth 参数 |
+| Check                      | Result                                                                                                                                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend pure units         | 98 passed                                                                                                                                                                                                   |
+| Backend integration        | 96 passed in a temporary source copy and new isolated database                                                                                                                                              |
+| Deduplicated backend count | 182 tests covered by the two groups; twelve have both markers and must not be counted twice                                                                                                                 |
+| Frontend Vitest            | 199 passed                                                                                                                                                                                                  |
+| Desktop/mobile Playwright  | 60 passed in about 2.5 minutes; production frontend connected to isolated mock API                                                                                                                          |
+| Static/build checks        | Ruff, mypy, ESLint, TypeScript / Vite build passed                                                                                                                                                          |
+| Additional reproductions   | Free expression did not advance boundary actions; different metrics produced the same ending; AI budget blocked free actions; incorrect continue-save ordering; draft loss; OAuth parameters in access logs |
 
-数据库集成副本只调整测试数据库地址以及迁移用例的数据库名称保护条件，应用代码与审查基线一致；没有清空现有 `btl` 或 `btl_test`。浏览器包含真实 mock API 流程与故障注入场景，不代表真实模型语义质量。本轮未调用付费模型、未联调真实 OAuth，也未重复部署、压测、备份恢复或依赖漏洞审计。
+The integration copy changed only test database addresses and the migration test's database-name guard. Application code matched the review baseline. Existing `btl` and `btl_test` were not cleared. Browser checks included real mock API flows and fault injection, not real semantic evaluation. This review did not call paid models, integrate real OAuth, or repeat deployment, load, restoration, or dependency-vulnerability audits.
 
-`docs/verification.md` 已有一次真实 DeepSeek 主线冒烟记录，应保留这项正面证据；README 的“未来真实联调”描述已落后于该记录。一次冒烟仍不能证明任意措辞下的表现。
+`docs/verification.md` already records one real DeepSeek main-route smoke test, which remains positive evidence. README's then-current “future real integration” wording lagged behind that record. One smoke test still does not establish arbitrary-wording reliability.
 
-**已确认的代码问题（与产品设计建议分开）**
+## Confirmed code problems
 
-1. **[P1] 模型月度预算耗尽，会阻止不调用模型的剧情行动。**
+These findings concern the review baseline and are separate from product suggestions or later fixes.
 
-   位置：[services.py:137](../backend/app/services.py#L137)、[runner.py:113](../backend/app/runner.py#L113)。预算判断发生在识别行动是否需要模型之前。隔离复现中，已有估算费用 1 USD、上限 0.5 USD，新的 `begin` 返回 `503 monthly_cost_cap_reached`，尽管该操作不会执行模型。材料补交、边界选择等同样受此判断影响；前端还会按 Retry-After 禁用操作。
+1. **[P1] An exhausted monthly model budget blocks story actions that do not call a model.**
 
-   建议：先判定行动的模型需求；区分 AI 预算、接口防滥用限制与免费剧情推进。终幕固定结果应可提交，生成式回顾可以延后。验收：达到模型上限后，免费动作仍可完成，AI 请求被准确拒绝，已受理回合仍可查询。
+   Locations: [services.py:137](../backend/app/services.py#L137), [runner.py:113](../backend/app/runner.py#L113). The budget check happens before determining whether the action needs a model. In isolation, recorded estimated spending of 1 USD against a 0.5 USD cap made new `begin` return `503 monthly_cost_cap_reached`, despite no model call. Material submission and boundary choices are affected too; the frontend also disables actions according to Retry-After.
 
-2. **[P2] “继续上次的故事”实际选择最新创建的存档。**
+   Recommendation: identify model requirements first; separate AI budgets, API abuse limits, and free progression. Fixed endings should remain submittable while generated reflections can wait. Acceptance: free actions complete after the cap, AI requests are correctly rejected, and accepted turns remain queryable.
 
-   位置：[routes/game.py:69](../backend/app/routes/game.py#L69)、[Home.tsx:94](../frontend/src/features/Home.tsx#L94)。接口按 `created_at` 倒序，首页直接使用第一项。已复现：创建 A、创建 B，再推进 A，列表第一项仍是 B。对多存档玩家，按钮承诺与实际导航不符。
+2. **[P2] “Continue the last story” chooses the most recently created save.**
 
-   建议：定义“上次”为最后游玩的存档，持久化 `last_played_at` 或用户的 `last_save_id`，并明确已完结存档的选择规则。验收：新建存档后回到旧档游玩，首页继续入口指向旧档，跨设备一致。
+   Locations: [routes/game.py:69](../backend/app/routes/game.py#L69), [Home.tsx:94](../frontend/src/features/Home.tsx#L94). The endpoint sorts by created_at descending and Home selects the first item. Reproduction: create A, create B, then play A; B still appears first. The button's promise and navigation differ for multi-save players.
 
-3. **[P2] 点击剧情选项会清空尚未发送的对话草稿。**
+   Recommendation: define “last” as most recently played, persist last_played_at or a user's last_save_id, and specify handling for completed saves. Acceptance: returning to an older save makes Home continue that save consistently across devices.
 
-   位置：[Play.tsx:67](../frontend/src/features/game/Play.tsx#L67)。`act()` 在所有成功动作后清理当前输入，不区分是否发送了该草稿。浏览器复现：输入一段未发送内容，再点击“明确表达我的边界”，输入被清空。现有恢复测试保护了回合期间新输入的文本，没有覆盖这种同一草稿被其他动作清除的情况。
+3. **[P2] Story-option clicks clear unsent dialogue drafts.**
 
-   建议：仅在成功提交对应 `speak` 文本时清理；需要支持跨幕或刷新时，再按用户 / 存档 / NPC 保存草稿。验收：点击材料、汇报、边界等动作不删除未发送文字，成功发送只清理匹配文本。
+   Location: [Play.tsx:67](../frontend/src/features/game/Play.tsx#L67). `act()` clears input after every successful action without checking whether the draft was sent. Browser reproduction: type unsent text, then click the boundary-setting action; the text disappears. Existing recovery tests protect newly typed text during a turn, not a draft cleared by an unrelated action.
 
-4. **[P2] OAuth 回调查询参数进入访问日志。**
+   Recommendation: clear only successfully submitted matching speak text. If refresh/inter-act persistence is needed, scope drafts by user/save/NPC. Acceptance: material, report, and boundary actions preserve unsent text; successful speech clears only matching text.
 
-   位置：[logging_setup.py:98](../backend/app/logging_setup.py#L98)、[nginx.main.conf:9](../deploy/nginx.main.conf#L9)。应用自己的 OAuth 错误日志只记录异常类型，但访问日志是另一条链路。使用假参数请求隔离 API，真实 Uvicorn 日志包含完整的 `callback?code=REVIEW_FAKE_OAUTH_CODE&state=REVIEW_FAKE_STATE`。Nginx 使用默认访问日志格式，未对回调做独立处理。
+4. **[P2] OAuth callback query parameters enter access logs.**
 
-   这证明日志脱敏存在缺口，没有证明真实令牌泄漏或账号接管。建议在 Uvicorn 与 Nginx 两层移除回调 query，保留路径、状态、耗时与关联 ID。验收应经过真实 HTTP 访问日志，而非仅检查业务 logger 的 OAuth 异常分支。
+   Locations: [logging_setup.py:98](../backend/app/logging_setup.py#L98), [nginx.main.conf:9](../deploy/nginx.main.conf#L9). Business OAuth errors log only exception types, but access logging is separate. A fake-parameter request to the isolated API appeared in real Uvicorn logs as `callback?code=REVIEW_FAKE_OAUTH_CODE&state=REVIEW_FAKE_STATE`. Nginx used its default access format without callback-specific handling.
 
-本轮没有可确认的 Critical / P0 结论；这不等于完成了穷尽式安全审计。
+   This proves a redaction gap, not real token leakage or account takeover. Remove callback queries at both Uvicorn and Nginx while retaining path, status, duration, and correlation IDs. Verify through actual HTTP access logs rather than only business-logger exception branches.
 
-**产品最需要解决的五个问题**
+No Critical / P0 finding was confirmed. This was not an exhaustive security audit.
 
-1. **自由表达与剧情行动是两套入口，玩家却被引导认为两者等价。**
+## Five product priorities
 
-   [domain.py:26](../backend/app/domain.py#L26) 对 `speak` 原样返回状态；Agent 可执行的状态工具仅有材料要求、采购审批、项目支持。第一幕用自己的话表达明确边界，不能写入 `boundary`，仍必须点击按钮才能继续。第三幕的澄清、交付和关系选择也不通过自然语言落地。相比之下，第二幕却要求自然语言触发工具，交互规则前后不一致。
+1. **Free expression and story actions are separate mechanisms, while the UI implies equivalence.**
 
-   优先把第一幕做通：模型从表达中提出一个有限行动意图，后端校验条件，在界面显示“识别为：表达边界”；不可逆选择由玩家明确确认。若暂不做意图识别，就将文案明确区分为“与角色交谈”和“采取行动”。第二幕增加可直接点击的“询问材料”“请求审核”，工具失败时提供确定性操作入口，避免通关依赖猜措辞。不要让模型直接写自由数值或任意 flags。
+   [domain.py:26](../backend/app/domain.py#L26) returns unchanged state for speak. Agent state tools only cover material requirements, procurement approval, and project support. Expressing a clear boundary in Act 1 does not set boundary; the player still has to click. Act 3 clarification, delivery, and relationship choices also do not resolve through natural language, whereas Act 2 requires it to trigger tools. The interaction rules are inconsistent.
 
-2. **有数值显示，但缺少真实取舍和后续反馈。**
+   Start with Act 1: let the model propose one bounded intent, validate it in the backend, and display the recognized action. Consequential choices need explicit player confirmation. Without intent recognition, label conversation and action distinctly. Add deterministic “Ask for materials” and “Request review” buttons in Act 2 so completion does not require guessing phrasing when tools fail. Never let models assign arbitrary values or flags.
 
-   [domain.py:66](../backend/app/domain.py#L66) 的通关与结局判断读取 flags 和采购状态，不读取 credit、stress、heat；NPC 可见状态也不包含这些数值。复现两条路线：先表达边界，最终信用 80 / 心绪 5 / 热度 0；先当众质问，最终信用 70 / 心绪 20 / 热度 25；两者都能得到“找回自我 · 只留工作往来”。结局细节会提到质问经历，因此不是所有文本完全相同，但核心后果没有差异。
+2. **Metrics are visible but lack meaningful tradeoffs and feedback.**
 
-   建议先增加少量可观察后果：公开质问改变后续同事开场、沟通成本或可选解决方案；取得张工支持开放一个确实有用的路径。若数值只用于回顾，应明确用途或改为定性状态，不让仪表盘暗示不存在的策略系统。情绪高不应简单等同于失败，表达强硬也不应只有扣分。
+   [domain.py:66](../backend/app/domain.py#L66) checks flags and procurement, not credit, stress, or heat, for progression/endings; NPC-visible state also omits them. Two reproduced routes ended with credit/stress/heat of 80/5/0 after boundaries and 70/20/25 after public confrontation, yet both reached “找回自我 · 只留工作往来” (Rediscovering Yourself · Work Contact Only). Some ending text mentions confrontation, so not all text is identical, but core consequences do not differ.
 
-3. **叙事强调自主选择，但关键私人决定自动发生。**
+   Add a few observable effects first: confrontation changes later greetings, communication costs, or available solutions; Zhang's support unlocks a useful path. If metrics are only reflective, explain that or use qualitative states instead of suggesting a nonexistent strategy system. High emotion should not simply mean failure, nor firmness only penalties.
 
-   [story.json:69](../backend/app/story.json#L69) 将与谢川分手写在固定幕间，[domain.py:72](../backend/app/domain.py#L72) 在进入第三幕后设置 `personal_resolved`，不受玩家此前选择影响。学姐与家人的支持主要靠长段独白传达。它能保持改编叙事一致，但会减少互动小说中的参与感。
+3. **The narrative stresses autonomy while major private decisions happen automatically.**
 
-   建议保留作者叙事方向，同时提供至少一个有意义的回应选择，或者提前告诉玩家这是固定角色经历。结局正文中的“参照关系图”“与关系图终态不同”“不代表职位晋升”等说明适合放进可展开的改编说明，正文专注于角色经历与情绪收束。幕间应可从回顾中重读；目前事件模型没有幕间类型，行动日志不能完整重放这些文本。
+   [story.json:69](../backend/app/story.json#L69) fixes the breakup with Xie Chuan in an interlude, and [domain.py:72](../backend/app/domain.py#L72) sets personal_resolved on entering Act 3 regardless of earlier choices. Schoolmate/family support mostly appears as long monologues. This preserves adaptation direction but reduces participation.
 
-4. **用户尚未体验价值，就需要经过身份门槛。**
+   Retain the author's direction while offering at least one meaningful response, or make fixed character experiences explicit up front. Adaptation notes such as references to the relationship diagram, differences from its ending, and lack of promotion belong in expandable context; ending prose should focus on character experience and closure. Interludes should be rereadable in history; the current event model lacks an interlude type and cannot fully replay them.
 
-   [Home.tsx:103](../frontend/src/features/Home.tsx#L103) 未登录时主入口为知乎登录；试玩仅在开发模式出现。正式配置禁止开发登录，但 [config.py:59](../backend/app/config.py#L59) 不要求 OAuth 可用，已验证配置可以在没有任何正式登录通道时通过生产校验。这是可配置出不可进入产品的上线缺口，不能据此声称当前线上站点已经故障。
+4. **Identity is required before users experience value.**
 
-   建议提供一小段无需正式注册的访客体验，之后再引导保存进度，登录时迁移访客存档；访客同样需要服务端限额。若正式版确实只面向知乎渠道，应把登录回调、拒绝授权、会话过期、同账号恢复进度列为上线门禁，并防止“健康检查通过但用户无法登录”。
+   [Home.tsx:103](../frontend/src/features/Home.tsx#L103) offers Zhihu login to unauthenticated users, with trials only in development. Production disables development login, yet [config.py:59](../backend/app/config.py#L59) does not require usable OAuth. A configuration with no member-login path passed production validation. This is a launch configuration gap, not proof that the live site was failing.
 
-5. **通关后缺少让玩家继续体验或带走成果的理由。**
+   Offer a short guest experience before registration and migrate progress on login, with server-side guest quotas. If production is deliberately Zhihu-only, require callback, denial, expiry, and same-account recovery checks so a healthy service cannot be inaccessible to users.
 
-   当前为一个三幕故事、三名可对话 NPC、两个主要关系结局及主动离开分支。没有章节选择、关键节点重玩、表达对照或下一故事入口。生成式回顾主要接收最终状态与关系总结，没有读取玩家完整表达，难以形成真正个人化的沟通复盘。
+5. **Completion offers little reason to continue or take something away.**
 
-   建议围绕“我遇到这句话，下次可以怎么回应”制作结局成果：玩家实际表达、对方反馈、另一种可选表达、各自可能代价，并支持回到单个关键节点尝试。按章节推出后续情境，比立即扩建大量角色更容易验证持续需求。分享卡只包含玩家主动选中的内容，先预览再分享。
+   The version has one three-act story, three conversational NPCs, two main relationship endings, and voluntary departure. It lacks chapter selection, key-point replay, expression comparisons, or another story entry. Generated reflections mainly receive final state and relationship summaries, not complete player expressions, limiting personalization.
 
-**AI、内容与工程的下一步**
+   Build takeaways around “How could I respond next time?”: actual player wording, the other person's feedback, an alternative expression, and each approach's possible costs, with replay at one key point. Releasing further situations by chapter can test ongoing demand before adding many characters. Share cards should contain only player-selected content and provide a preview before sharing.
 
-- **补真实模型的语义评估集。** 当前 mock 测试证明流程和协议，但不能证明角色不跑偏、不虚构成功、对同义表达稳定调用工具。现有真实冒烟记录也显示曾出现“只口头要求材料”和“处理历史请求”的问题。以三名 NPC、关键前置状态、日常/委婉/愤怒表达、复合请求和诱导越权构建一组固定样本；分别评估工具轨迹、事实一致性、角色语气、重复度、耗时与 token。轨迹匹配和文本质量评估应分开，方法可参考 [LangChain Agent Evals](https://docs.langchain.com/oss/python/langchain/test/evals)。不需要先换模型或打开外部全量追踪。
-- **让知乎数据成为玩家可用的内容。** `zhihu_import.py` 和 `ZhihuContent` 已有导入与存储，但运行时 NPC / 锦囊没有消费该表，当前只有三个静态编辑建议。这不是已实现的检索增强产品。现有 [众议设计](zhihu-npc-integration-design.md) 可作为基础，先做一幕的精选来源卡和“带入对话”，测试是否改善表达，而不是直接实施所有新表与生成流程。来源数量与热门程度不能代替内容质量。
-- **优先优化图片。** 10 张 PNG 合计 19.54 MB；背景为 1672×941，角色为 1024×1536。JS 生产包为 338.18 kB，构建报告估算 gzip 后 108.72 kB。首页背景约 1.81 MB，游戏首屏场景加当前立绘约 4 MB；全量素材总和不等于一次首屏下载量。先生成合适尺寸的 WebP / AVIF 与缩略头像，再处理预加载、懒加载和缓存版本。更高压缩率格式与响应式资源的适用性见 [web.dev 图像格式指南](https://web.dev/articles/choose-the-right-image-format)。本轮未测真实移动网络 LCP，不把文件大小换算成伪造的加载时延。
-- **补运营闭环。** `reporting.ts:53` 的 reporter 默认为空函数，源码中没有生产安装点；后端指标聚焦回合数、耗时、调用和费用。需要加入匿名或最小化的章节进入/完成、审批卡点、恢复失败与反馈入口，才能知道流失发生在哪里。不要上传原始私人对白作为默认埋点。
-- **管理数据生命周期。** 存档与事件接口全量读取，创建存档无数量限制，未提供删除/归档或检查点保留策略。角色上下文只取最近 30 条事件，完整 play-state 与检查点存储仍会增长。先补存档归档、事件分页和清理边界，再按数据规模决定进一步优化。月度费用每次提交重新聚合，成本记账也主要发生在回合结束；该机制是估算保护，不是供应商级硬预算。
-- **维持当前单体边界。** 领域规则、事务服务、运行器和 HTTP 适配分开是合理的；单实例锁明确限制了多进程部署。现阶段没有证据要求微服务、Redis、向量库或新增自治 Agent。Deep Agents 虚拟文件与检查点的实际收益可以通过一次小型对照验证；角色连续记忆目前主要来自重建的事件上下文。先衡量 token、延迟和角色一致性，再决定是否简化。
-- **降低内容迭代成本。** `story.json` 已集中展示定义，但行动类型、规则、前端进度提示仍分散在多处，且终态以中文字符串作为判断依据。下一章前引入稳定 `story_id` / `story_version` / `ending_id`，展示标题可独立修改；先抽取必要规则描述，不必立即开发通用剧情编辑器。当前 CSS 约 995 行，可随页面变化逐步拆分。修正文档中的 Python 3.12 支持、真实联调状态和不存在的 ADR 引用。
+## Next steps for AI, content, and engineering
 
-**建议按三个阶段交付**
+- **Add real-model semantic evaluations.** Mock tests validate flows/protocols, not persona consistency, truthful success claims, or synonym-stable tool use. The real smoke test itself exposed verbal-only material requests and processing historical requests. Create fixed cases across three NPCs, prerequisite states, ordinary/indirect/angry wording, compound requests, and attempted permission violations. Evaluate tool trajectories, factual consistency, tone, repetition, latency, and tokens separately. Distinguish trajectory matching from text-quality assessment; see [LangChain Agent Evals](https://docs.langchain.com/oss/python/langchain/test/evals). Changing models or enabling full external tracing is not a prerequisite.
+- **Make Zhihu data useful to players.** `zhihu_import.py` and `ZhihuContent` import/store data, but runtime NPC/advice features did not consume it at this baseline; only three static editorial suggestions existed. This was not an implemented retrieval-enhanced product. Use the [perspectives design](zhihu-npc-integration-design.md) to build curated source cards and “Bring into conversation” for one act, then test whether they improve expression before implementing every proposed table/workflow. Popularity and source counts do not establish quality.
+- **Optimize images first.** Ten PNGs totaled 19.54 MB; backgrounds were 1672×941 and characters 1024×1536. Production JS was 338.18 kB, estimated 108.72 kB gzip. Home background was about 1.81 MB, and the game scene/current character about 4 MB. Total assets are not the initial download. Generate appropriately sized WebP/AVIF and avatar thumbnails, then address preloading, lazy loading, and cache versioning. See [web.dev image formats](https://web.dev/articles/choose-the-right-image-format). Real mobile-network LCP was not measured; file sizes cannot be converted into claimed loading times.
+- **Close the operations feedback loop.** The reporter in `reporting.ts:53` defaults to a no-op with no production installation point; backend metrics focus on turns, latency, calls, and cost. Add anonymous/minimal chapter entry/completion, approval bottlenecks, recovery failures, and feedback to identify drop-off. Do not upload raw private dialogue as default telemetry.
+- **Manage data lifecycle.** Save/event endpoints read everything; save creation has no count limit, deletion/archive, or checkpoint-retention policy. Character context uses only the last thirty events, but complete play-state and checkpoint storage keep growing. Start with archiving, event pagination, and cleanup boundaries before further scale-driven optimization. Monthly spending is reaggregated on submission and mostly recorded at turn end; this is estimated protection, not a provider-enforced hard budget.
+- **Keep current monolith boundaries.** Separating domain rules, transaction services, runner, and HTTP adapters is appropriate. The single-instance lock explicitly limits multiprocess deployment. There is no current evidence requiring microservices, Redis, vector storage, or additional autonomous Agents. A small comparison can measure Deep Agents virtual-file/checkpoint benefits; continuity currently comes mainly from reconstructed event context. Measure tokens, latency, and persona consistency before simplifying.
+- **Reduce content-iteration cost.** `story.json` centralizes presentation, but action types, rules, and frontend progress hints remain scattered, and Chinese ending strings drive state decisions. Before another chapter, add stable story_id/story_version/ending_id so titles can change independently. Extract only necessary rule descriptions, without immediately building a generic story editor. The roughly 995-line CSS can be split as pages evolve. Correct outdated Python 3.12 support, real-integration status, and nonexistent ADR references in documentation.
 
-| 阶段 | 交付内容 | 验收重点 |
-|---|---|---|
-| 1：公开试玩前 | 修复上述代码问题；确认正式登录或访客路径；压缩首屏图片；给第二幕增加明确操作入口 | 零模型预算仍能执行免费动作；正确续档；草稿保留；日志无 OAuth 参数；新用户不需指导能走完第一幕 |
-| 2：验证核心体验 | 第一幕自由表达映射有限意图；两种行动产生可观察差异；结局提供基于玩家实际表达的复盘 | 不需要重复点击等价行动；玩家能说清选择如何影响后续；错误识别可纠正 |
-| 3：验证持续价值 | 一组真实模型评估、匿名漏斗、关键节点重玩、一幕精选知乎观点卡 | 能比较各版本的卡点、通关、表达帮助程度与主动体验下一情境的意愿 |
+## Suggested delivery stages
 
-小范围测试可先招募 10–15 位目标用户，每人独立完成一个情境，再询问“哪句话像你会遇到的”“哪次选择真正改变了结果”“是否愿意再玩一个情境”。样本用于发现问题，不应包装成市场验证。建议首轮目标：80% 以上无需口头指导完成第一幕、70% 以上能准确描述一次选择的后果；这些是待验证的目标值，不是当前数据。
+| Stage                           | Deliverables                                                                                                                       | Acceptance focus                                                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1: before public trial          | Fix confirmed bugs; establish member/guest access; compress initial images; explicit Act 2 actions                                 | Free actions at zero model budget; correct continuation; retained drafts; no OAuth query logs; unaided Act 1 completion |
+| 2: validate the core experience | Map Act 1 expressions to bounded intents; observable differences between two choices; reflection grounded in actual player wording | No duplicate equivalent button action; players understand consequences; mistaken recognition can be corrected           |
+| 3: validate ongoing value       | Real-model evaluation suite, anonymous funnel, key-point replay, curated Zhihu cards for one act                                   | Compare bottlenecks, completion, expression support, and willingness to try another situation                           |
 
-产品投入的首要目标应是：**让玩家相信自己说的话被听见，并能看到它带来的后果。** 工程基础已经足够支持这轮验证。
+Start with 10–15 target users, each independently completing a situation, then ask which line felt familiar, which choice changed the outcome, and whether they want another situation. This sample identifies problems, not market validation. Suggested first-round targets: over 80% complete Act 1 without verbal guidance and over 70% accurately explain one consequence. These are proposed targets, not observed results.
+
+The priority is to **make players feel their words were heard and see the consequences**. The engineering foundation is sufficient to support that validation.

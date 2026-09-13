@@ -1,12 +1,14 @@
-# 言外之意 · Between the Lines
+# Between the Lines · 言外之意
 
-React + FastAPI 的职场互动小说。孙淼、李姐、张工由独立 Deep Agents 驱动；剧情规则与采购流程由后端裁决，PostgreSQL 保存游戏事实和独立的 Agent 检查点。
+English | [简体中文](README.zh-CN.md)
 
-## 本机运行
+A workplace interactive novel built with React and FastAPI. Sun Miao, Li Jie, and Engineer Zhang each run through an independent Deep Agent. The backend adjudicates story rules and procurement workflows, while PostgreSQL stores game facts and separate Agent checkpoints.
 
-**Python 使用已有 Miniconda，不创建 `.venv` 或新的 Conda 环境。数据库使用 Docker PostgreSQL。**
+## Run locally
 
-以下命令在项目根目录执行，`python` 应指向已激活的 Miniconda Python 3.13（本机为 `/Users/sheny/miniconda3/bin/python`）。
+**Use the existing Miniconda Python installation. Do not create a `.venv` or a new Conda environment. Run PostgreSQL with Docker.**
+
+Run the following from the repository root. `python` should resolve to the activated Miniconda Python 3.13 interpreter (`/Users/sheny/miniconda3/bin/python` on the original development machine).
 
 ```sh
 conda activate base
@@ -18,7 +20,7 @@ python -m alembic upgrade head
 AGENT_MODE=mock python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-另一个终端：
+In another terminal:
 
 ```sh
 cd frontend
@@ -26,40 +28,40 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-打开 [http://localhost:5173](http://localhost:5173)，可点击“立即试玩 · 第一幕”；测试完整三幕可点击“开发环境试玩”。开发登录每次创建独立身份；刷新保留登录，退出后再登录不会找回之前的开发身份。正式用户由知乎身份稳定映射。
+Open [http://localhost:5173](http://localhost:5173). Select “立即试玩 · 第一幕” (Try Act 1 now), or “开发环境试玩” (Development preview) to test all three acts. Each development login creates a separate identity. Refreshing preserves the session; logging out and back in does not recover the previous development identity. Member accounts use a stable Zhihu identity mapping.
 
-模拟模式不是跳过 Agent：`ChatDeepSeek → HTTPX 模拟 DeepSeek SSE → Deep Agents 工具循环 → 领域服务 → PostgreSQL`，包括流式工具参数拼接、工具执行和检查点。模拟 Token 数是测试估算，费用为零，不代表真实模型的延迟、语义能力或费用。
+Mock mode still runs the Agent: `ChatDeepSeek → HTTPX mock DeepSeek SSE → Deep Agents tool loop → domain services → PostgreSQL`, including streamed tool-argument assembly, tool execution, and checkpoints. Mock token counts are test estimates, with zero cost; they do not represent real-model latency, semantic quality, or billing.
 
-## 开发配置
+## Development configuration
 
-本机后端从 `backend/.env` 读取配置；不设置时，数据库默认为 `localhost:54329`，生产容器使用根目录 `.env`。请勿将容器地址 `db:5432` 直接用于本机 Python。
+The local backend reads `backend/.env`. Without overrides, the database uses `localhost:54329`; production containers use the root `.env`. Do not use the container address `db:5432` with host Python.
 
 ```dotenv
-# backend/.env 本机示例
+# Example backend/.env for local development
 AGENT_MODE=mock
 DATABASE_URL=postgresql+asyncpg://btl:btl@localhost:54329/btl
 CHECKPOINT_URL=postgresql://btl:btl@localhost:54329/btl
 PUBLIC_ORIGIN=http://localhost:5173
 ```
 
-未来真实联调改为 `AGENT_MODE=deepseek` 并配置 `DEEPSEEK_API_KEY`，重启后端。模型固定为 DeepSeek 官方 `deepseek-flash`，显式 `thinking.type=disabled`，不自动切换供应商。日常开发默认 mock；新版的真实模型和 OAuth 验收须按发布手册单独执行。
+For real integration testing, set `AGENT_MODE=deepseek`, configure `DEEPSEEK_API_KEY`, and restart the backend. The model is fixed to the official DeepSeek `deepseek-flash` endpoint, with explicit `thinking.type=disabled`; providers are not switched automatically. Use mock for daily development. Real-model and OAuth acceptance for a new version must be performed separately using the release guide.
 
-## 已实现流程
+## Implemented flows
 
-- 序幕、欢送会、采购审核、谣言澄清与结局；独立存档和跨设备云端进度。
-- 角色对话、手机联系人、朋友圈文本、采购材料和项目汇报、编辑锦囊、行动回顾。
-- 固定幕次前置条件、角色权限、重复请求幂等、乐观版本检查、单存档并发限制、每日 AI 任务额度；确定性剧情操作不消耗 AI 额度。
-- 角色可见事件过滤和独立检查点；失败回合保留已提交事实、不保存未完成对白。
-- 模型超时、调用与工具预算；仅展示最终对白，不暴露内部推理、工具参数或提示词。
+- Prologue, farewell gathering, procurement review, rumor clarification, and endings; independent saves and cloud progress across devices.
+- Character conversations, phone contacts, social-feed text, procurement materials and project reports, editorial advice, and action history.
+- Fixed act prerequisites, role permissions, request idempotency, optimistic version checks, per-save concurrency limits, and daily AI task quotas. Deterministic story actions do not consume AI quota.
+- Role-visible event filtering and independent checkpoints. Failed turns retain committed facts and do not save incomplete dialogue.
+- Model timeouts and call/tool budgets. Only final dialogue is shown; internal reasoning, tool arguments, and prompts remain private.
 
-新故事使用 v2，已有故事保留 v1。新增自由表达行动意图、重大选择确认、伴侣关系分支、个人化复盘、关键节点独立重玩，以及经审核并附来源的观点卡。访客第一幕进度可通过知乎绑定继承；支持草稿保护、归档和三十天回收站。
+New stories use v2; existing stories retain v1. Features include natural-language action intents, confirmation of consequential choices, partner-relationship branches, personalized reflections, independent replay from key checkpoints, and reviewed perspective cards with sources. Zhihu account linking can inherit guest Act 1 progress. Draft protection, archiving, and a 30-day recycle bin are supported.
 
-剧情与角色设定分别在 `backend/app/story.json`（v1）和 `backend/app/story-v2.json`（v2）；领域规则位于 `backend/app/domain.py`，v2 行动目录与后果位于 `backend/app/actions.py`。手机中的人物关系卡随进度更新；第三幕完成澄清与交付后，由玩家选择结束私人来往或保持距离继续观察。具体叙事、隐私与旧存档规则见 [人物关系与结局](docs/story-relationships.md)。编辑锦囊明确标为编辑建议，不伪装成实时知乎搜索结果。
+Story and character definitions are in `backend/app/story.json` (v1) and `backend/app/story-v2.json` (v2). Domain rules live in `backend/app/domain.py`; v2 action catalogs and consequences live in `backend/app/actions.py`. Relationship cards in the phone update with progress. After clarification and delivery in Act 3, the player chooses to end private contact or keep their distance and continue observing. See [Relationships and endings](docs/story-relationships.md) for narrative, privacy, and legacy-save rules. Editorial advice is labeled as such and is not presented as live Zhihu search results.
 
-## 验证
+## Verification
 
 ```sh
-# 单独测试数据库，只需创建一次
+# Create the dedicated test database once.
 docker compose exec -T db createdb -U btl btl_test
 cd backend
 DATABASE_URL=postgresql+asyncpg://btl:btl@localhost:54329/btl_test python -m alembic upgrade head
@@ -72,18 +74,18 @@ pnpm build
 pnpm test:e2e
 ```
 
-浏览器测试使用本机 Google Chrome，需要已启动模拟后端和 Vite。覆盖桌面与手机完整通关、采购工具、刷新恢复和横向溢出检查。
+Local browser tests use Google Chrome and require a running mock backend and Vite server. They cover desktop and mobile playthroughs, procurement tools, refresh recovery, and horizontal overflow.
 
 ```sh
-# 根目录，已启动 mock 后端
+# From the repository root, with the mock backend running.
 python scripts/load-test.py
 python scripts/test-restart.py
 sh scripts/verify-restore.sh
 ```
 
-压测覆盖 10/20/30 并发玩家回合，报告输出到 `artifacts/load-test.json`；脚本拒绝对真实模型执行压力测试。
+Load tests cover 10/20/30 concurrent player turns and write `artifacts/load-test.json`. The script refuses to load-test a real model.
 
-接口契约更新：
+Update API contracts with:
 
 ```sh
 python scripts/export-openapi.py
@@ -91,21 +93,21 @@ cd frontend
 pnpm generate:api
 ```
 
-## 单机部署
+## Single-server deployment
 
 ```sh
 cp .env.example .env
-# 编辑配置；正式环境务必按下述项目配置
+# Edit configuration; production requires the settings described below.
 docker compose up -d --build
 ```
 
-本地容器预览为 `http://localhost:8080`。生产设置 `ENVIRONMENT=production`、`DEV_LOGIN_ENABLED=false`、`AGENT_MODE=deepseek`、随机 `SESSION_SECRET`、HTTPS `PUBLIC_ORIGIN`、数据库密码、DeepSeek 密钥和知乎配置。正式环境启动时拒绝开发身份和模拟模式。
+The local container preview is at `http://localhost:8080`. Production requires `ENVIRONMENT=production`, `DEV_LOGIN_ENABLED=false`, `AGENT_MODE=deepseek`, a random `SESSION_SECRET`, HTTPS `PUBLIC_ORIGIN`, a database password, a DeepSeek key, and Zhihu configuration. Production startup rejects development identities and mock mode.
 
-知乎 OAuth 的授权、Token、用户信息端点和身份字段必须按合作方官方文档填写；当前没有猜测任何知乎端点，也尚未进行真实登录联调。OAuth 凭据不存入浏览器，本站使用可撤销的 HttpOnly Cookie 会话。
+Configure Zhihu OAuth authorization, token, user-info endpoints, and identity fields using the partner's official documentation. No endpoints were guessed in the initial setup, and real login had not yet been tested at that stage; subsequent integration records are in [Zhihu OAuth deployment](docs/zhihu-oauth-deployment.md). OAuth credentials are not stored in the browser. The site uses revocable HttpOnly Cookie sessions.
 
-Web 容器以 UID/GID `101:101` 运行，容器内 HTTP/HTTPS 使用 8080/8443；Compose 对外地址保持不变。
+The Web container runs as UID/GID `101:101`, with internal HTTP/HTTPS ports 8080/8443. Compose's external addresses remain unchanged.
 
-TLS 文件目录包含 `fullchain.pem` 和 `privkey.pem`。在 Linux 部署机将私钥设为 `root:101`、权限 `0640`，目录允许 GID 101 遍历（例如 `root:101`、`0750`），证书可设 `0644`。不要把私钥设为全员可读；证书续期后也须保留这些权限。配置示例：
+The TLS directory contains `fullchain.pem` and `privkey.pem`. On a Linux deployment host, set the private key to `root:101` with mode `0640`, and allow GID 101 to traverse the directory (for example, `root:101` with mode `0750`). The certificate can use `0644`. Do not make the private key world-readable; preserve these permissions after renewal. Example:
 
 ```sh
 sudo chown root:101 "$TLS_DIRECTORY" "$TLS_DIRECTORY/privkey.pem"
@@ -113,29 +115,29 @@ sudo chmod 0750 "$TLS_DIRECTORY"
 sudo chmod 0640 "$TLS_DIRECTORY/privkey.pem"
 ```
 
-设置 `TLS_DIRECTORY` 后，运行：
+After setting `TLS_DIRECTORY`, run:
 
 ```sh
 docker compose -f compose.yaml -f compose.production.yaml up -d --build
 ```
 
-生产数据库不暴露宿主机端口；仅本地开发覆盖文件绑定 `127.0.0.1:54329`。API 当前明确使用一个 Uvicorn worker，容量限制按单进程设计；需要多进程或多机时必须先改造全局并发预算与恢复协调。
+The production database exposes no host port. Only the local development overlay binds `127.0.0.1:54329`. The API explicitly uses one Uvicorn worker; capacity limits assume one process. Multiple processes or hosts require global concurrency budgets and recovery coordination to be redesigned first.
 
-### 备份、恢复与维护
+### Backup, recovery, and maintenance
 
-`scripts/backup.sh` 使用 `pg_dump -Fc`，通过 SCP 传到 `BACKUP_REMOTE` 指定的另一台主机，传输失败会返回非零退出码。部署主机配置 SSH 后，可安装每日任务，例如：
+`scripts/backup.sh` uses `pg_dump -Fc` and SCP to send the backup to another host specified by `BACKUP_REMOTE`. A failed transfer returns a nonzero exit code. After configuring SSH on the deployment host, a daily task could use:
 
 ```cron
 15 3 * * * BACKUP_REMOTE=backup@archive.example:/srv/btl-backups/ /bin/sh /srv/between-the-lines/scripts/backup.sh >> /var/log/btl-backup.log 2>&1
 ```
 
-该示例不会自动安装。必须替换真实目标并确认备份成功；远端保留策略由备份主机管理。`verify-restore.sh` 在临时数据库恢复并检查业务表与检查点，随后删除临时数据库，不覆盖运行中数据。
+This example does not install a scheduled task. Replace the destination and verify backup success; retention is managed on the backup host. `verify-restore.sh` restores into a temporary database, checks business tables and checkpoints, then deletes that database without overwriting live data.
 
-日志记录回合 ID、NPC、用量、耗时和失败类型，不记录密钥、完整私人对话或内部推理。默认不启用外部 LangSmith 追踪。真实费用是按可配置单价计算的估算，最终以 DeepSeek 账单为准。
+Logs include turn IDs, NPCs, usage, duration, and failure types, but not keys, complete private conversations, or internal reasoning. External LangSmith tracing is disabled by default. Real costs are estimates based on configurable prices; DeepSeek billing is authoritative.
 
-### 依赖升级
+### Dependency upgrades
 
-`backend/uv.lock` 为版本锁；`requirements.lock` 为带哈希的安装导出，兼容直接安装至 Miniconda。升级时仅使用 `uv lock` 和 `uv export`，不要使用会创建环境的 `uv sync`/`uv run`：
+`backend/uv.lock` is the version lock; `requirements.lock` is its hashed installation export, compatible with installation directly into Miniconda. Use `uv lock` and `uv export` for upgrades, not `uv sync` or `uv run`, which create environments:
 
 ```sh
 uv lock --project backend
@@ -143,12 +145,14 @@ uv export --project backend --frozen --no-emit-project --format requirements-txt
 uv pip install --python "$(command -v python)" --require-hashes -r backend/requirements.lock
 ```
 
-生产上线前仍须配置真实域名、证书、知乎合作方 OAuth、DeepSeek 密钥和机外备份目标。单机不提供高可用保障。
+Before production launch, configure a real domain, certificates, partner Zhihu OAuth, a DeepSeek key, and an off-host backup destination. A single-server deployment does not provide high availability.
 
-## CI
+## CI and contributing
 
-GitHub Actions 自动执行后端测试、接口契约同步、前端检查和构建、Docker 集成、桌面/手机端到端测试及备份恢复。测试使用模拟 LLM，不需要真实密钥。工作流与本地复现方法见 [CI 说明](docs/ci.md)。分支保护可使用汇总检查 `CI required`。
+GitHub Actions runs backend tests, API contract synchronization, frontend checks and builds, Docker integration, desktop/mobile end-to-end tests, and backup restoration. Tests use a mock LLM and require no real keys. See [CI documentation](docs/ci.md) for workflows and local reproduction. Branch protection can use the aggregate check `CI required`.
 
-单故事重构的模块边界、事务、SSE 契约和恢复状态机见 [架构说明](docs/architecture.md)。`make contract-generate` 用于显式生成，`make contract` 与 `make lock-check` 只检查、不修改文件。
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and development workflows.
 
-产品升级实现、运维命令与发布门禁见 [v2 发布手册](docs/product-v2-release.md)。
+The [architecture guide](docs/architecture.md) describes module boundaries, transactions, SSE contracts, and recovery state machines. `make contract-generate` explicitly generates artifacts; `make contract` and `make lock-check` only check them without changing files.
+
+See the [v2 release guide](docs/product-v2-release.md) for the product upgrade, maintenance commands, and release gates.

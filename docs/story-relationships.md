@@ -1,29 +1,29 @@
-# 人物关系与结局
+# Relationships and endings
 
-本轮以用户提供的《横扫恶意，找回自我》人物关系图作为主线终态参考；未重新取得小说全文。新增对白、王叔回信与幕间为游戏原创，不声称逐字还原原作。保留三个职场幕次与孙淼、李姐、张工三个对话 Agent。
+This iteration uses the user-provided relationship diagram for the source novel “横扫恶意，找回自我” (Overcoming Malice, Rediscovering Yourself) as the main ending reference. The full novel was not retrieved again. New dialogue, Uncle Wang's reply, and interludes are original game writing, not claimed as verbatim adaptations. The three workplace acts and conversation Agents for Sun Miao, Li Jie, and Engineer Zhang are retained.
 
-## 关系发展
+## Relationship development
 
-- 孙淼曾被周凌当作朋友；早期质问或表达边界影响经历与数值，不能替代第三幕的最终私人关系选择。切割私人关系仍保留必要工作沟通。
-- 李姐调停时核对通知与事实，不要求主角忍让；采购材料齐全后由她审批。张工只能提供项目支持，只有实际提交汇报、调用支持工具后才记录对应事实。
-- 王叔是退休前辈与忘年交。`contact_wang` 在同一事务内写入祝福与 `personal` 类型回信，回信使用空 audience，仅玩家可见，重复请求不会重复写入。
-- 第一幕之后，学姐帮助主角分辨关系，妈妈及家人表达关心。第二幕之后，主角与谢川分手，同时保留母女关爱、明确生活自主权。两处固定叙事分别在成功进入第二幕、第三幕后记录，关闭幕间不提交事实。
-- 小刘、小陈询问或转述流言，传播源头仍未核实。NPC 不能无依据认定孙淼制造传言。
+- Zhou Ling once considered Sun Miao a friend. Early confrontation or boundary-setting changes events and values but does not replace the final private-relationship choice in Act 3. Ending private contact still permits necessary work communication.
+- Li Jie verifies notices and facts while mediating, without asking the protagonist to endure mistreatment. She approves complete procurement materials. Engineer Zhang only provides project support; facts are recorded only after an actual report and support-tool execution.
+- Uncle Wang is a retired senior colleague and intergenerational friend. `contact_wang` atomically writes a greeting and a `personal` reply with an empty audience, visible only to the player. Repeated requests do not duplicate it.
+- After Act 1, a senior schoolmate helps the protagonist distinguish relationships, while her mother and family express care. After Act 2, the protagonist breaks up with Xie Chuan while retaining maternal affection and asserting autonomy. These fixed narratives are recorded only after successfully entering Acts 2 and 3 respectively. Closing the interlude does not commit facts.
+- Xiao Liu and Xiao Chen ask about or repeat rumors; the original source remains unverified. NPCs cannot accuse Sun Miao of originating them without evidence.
 
-## 行动与投影
+## Actions and projections
 
-第三幕同时具备 `clarified` 和 `delivered` 后，可执行 `cut_ties` 或 `keep_distance`。两者互斥且不重复计分，分别保存 `sun_cut` / `sun_observe`；选择完成后才允许 `next` 进入终幕。结局分别为“找回自我 · 只留工作往来”（主线）与“保持距离 · 继续观察”（游戏分支）。`leave` 仍可提前结束，只总结当时已发生的事。
+Once both `clarified` and `delivered` are present in Act 3, the player can choose `cut_ties` or `keep_distance`. These mutually exclusive actions do not score repeatedly and store `sun_cut` / `sun_observe`. Only then can `next` enter the ending. The endings are “找回自我 · 只留工作往来” (Rediscovering Yourself · Work Contact Only, the main route) and “保持距离 · 继续观察” (Keeping Distance · Continue Observing, a game branch). `leave` can still end early and summarizes only events that have already happened.
 
-`relationship_story` 标识采用本轮规则的存档，`reflection` / `personal_resolved` 记录幕间进展。状态继续使用原有 flags，不新增数据表、不改变 `state_schema_version`。
+`relationship_story` marks saves using these rules; `reflection` / `personal_resolved` track interlude progress. Existing flags are retained, with no new table or `state_schema_version` change.
 
-`SaveOut` 增加后端派生的 `relationships`（id、name、role、description）、`npc_greetings` 和 `ending_summary`。剧情资料集中在 `backend/app/story.json`；公开故事不包含 NPC persona 或未来关系变体。手机面板保留三位可聊天联系人，其余人物是只读卡片。终幕固定总结独立于可重试的生成式回顾，回顾只接收已确认的关系事实。
+`SaveOut` adds backend-derived `relationships` (id, name, role, description), `npc_greetings`, and `ending_summary`. Story material is centralized in `backend/app/story.json`. Public story data excludes NPC personas and future relationship variants. The phone retains three chat contacts; other characters have read-only cards. The fixed ending summary is independent of the retryable generated reflection, which receives only confirmed relationship facts.
 
-最终关系选择与边界事件只向孙淼可见；汇报与项目支持只向张工可见；王叔回信、家庭与感情状态不进入任何职场 NPC 的历史或可见 flags。NPC 的分幕语气也依据其可见事实。
+Final relationship choices and boundary events are visible only to Sun Miao; reports and project support only to Engineer Zhang. Uncle Wang's reply, family matters, and romantic status never enter workplace NPC history or visible flags. NPC tone by act also follows only visible facts.
 
-## 旧存档
+## Legacy saves
 
-已结束存档保留原结局、历史事件及历史回顾；没有 `relationship_story` 的终幕显示“旧版结局”，不推断已分手或已切割。旧的未结束存档沿用现有工作事实，在当前幕次采用对应叙事；第三幕须补做最终选择，后续提交时持久化叙事标记。故事内容在进程内缓存，发布剧情修改后须重启后端。
+Completed saves retain their original endings, events, and reflections. Endings without `relationship_story` show “旧版结局” (Legacy ending), without inferring a breakup or severed friendship. Unfinished legacy saves retain work facts and use the relevant narrative for their current act. Act 3 requires the final choice, and subsequent submissions persist the narrative marker. Story content is cached in-process, so restart the backend after story changes.
 
-## 验证入口
+## Verification entry points
 
-后端 `test_relationships.py` 覆盖关系分支、前置条件、互斥、提前离开和旧存档；`test_api.py` 验证重复请求、私人事件过滤与刷新后的关系投影。前端 `relationships.test.tsx` 验证选择门槛、关系卡和无模型回顾时的固定总结；浏览器 `game.spec.ts` 在桌面与手机分别通关两种关系结局，并检查刷新恢复，`scenes.spec.ts` 检查幕间取消与场景资源。
+Backend `test_relationships.py` covers branches, prerequisites, mutual exclusion, early departure, and legacy saves. `test_api.py` checks duplicate requests, private-event filtering, and relationship projections after refresh. Frontend `relationships.test.tsx` checks choice prerequisites, relationship cards, and fixed summaries without generated reflections. Browser `game.spec.ts` completes both relationship endings on desktop/mobile and checks refresh recovery; `scenes.spec.ts` checks interlude cancellation and assets.

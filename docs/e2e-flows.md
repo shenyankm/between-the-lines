@@ -1,54 +1,54 @@
-# 全流程 E2E 验收（2026-09-13）
+# Full-flow E2E acceptance (2026-09-13)
 
-## 最终结果
+## Final results
 
-- 浏览器：**60 passed**（桌面 30、手机 30），耗时约 137 秒，零失败、零跳过、零偶发失败。
-- 前端：**199 passed**；TypeScript、ESLint、Prettier 和生产构建通过。
-- 后端相关单元与数据库集成：**59 passed**，覆盖剧情、关系、API、私聊隔离、OAuth 协议模拟、并发、限额和错误契约。
-- 修复后的重复按钮截图已在禁用动画后重新采集并检查；对应桌面／手机 2 项复测通过。
-- 原始机器报告：`artifacts/e2e-full.json`；修复前完整套件记录：`artifacts/e2e-before-final-fixes.json`（57 通过、1 个手机存档入口失败）。
+- Browser: **60 passed** (30 desktop, 30 mobile), approximately 137 seconds, with zero failures, skips, or flaky results.
+- Frontend: **199 passed**; TypeScript, ESLint, Prettier, and production build passed.
+- Relevant backend unit/database integration: **59 passed**, covering story, relationships, APIs, private-chat isolation, mock OAuth protocol, concurrency, quotas, and error contracts.
+- Screenshots for the repeated-button fix were recaptured with animations disabled and inspected; the two desktop/mobile retests passed.
+- Machine reports: `artifacts/e2e-full.json`; the pre-final-fix suite is `artifacts/e2e-before-final-fixes.json` (57 passed and one mobile save-entry failure).
 
-## 环境与边界
+## Environment and boundaries
 
-桌面 Chrome 与 390×844 手机视口，各运行同一套 30 个场景。前端为当前工作区 Vite，后端为 FastAPI，PostgreSQL 使用独立 `btl_story_e2e` 数据库；每个场景通过开发登录创建独立身份，不修改用户已有存档。启动前检查 `/api/config` 确认为 `agent_mode=mock`。
+Desktop Chrome and a 390×844 mobile viewport each ran the same thirty scenarios. The frontend was the workspace Vite build, the backend FastAPI, and PostgreSQL used an independent `btl_story_e2e` database. Each scenario created a separate development identity without changing existing user saves. `/api/config` confirmed `agent_mode=mock` before startup testing.
 
-正常流程使用真实 HTTP、SSE、Agent 工具循环和数据库，模型响应为本地模拟。异常流程通过浏览器路由注入网络中断、HTTP 错误或损坏响应；不是对真实模型供应商可用性的证明。真实失败落库、权限、OAuth 协议与幂等另外由后端集成测试验证。
+Normal flows use real HTTP, SSE, Agent tool loops, and the database with local model responses. Error flows inject network failures, HTTP errors, or corrupt responses through browser routing. They do not prove real provider availability. Backend integration tests separately verify real failure persistence, permissions, OAuth protocol, and idempotency.
 
-当前服务返回 `zhihu_login=false`；真实知乎 OAuth、真实 DeepSeek 调用与生产部署不在这次通过声明内。
+The service returned `zhihu_login=false`. Real Zhihu OAuth, real DeepSeek calls, and production deployment are outside this acceptance claim.
 
-## 覆盖清单
+## Coverage
 
-| 流程 | 验证内容 | 浏览器场景数（每种视口） |
-|---|---|---:|
-| 开场与重复操作 | 三个选项分别推进；已完成按钮、刷新后状态、快速连点、空白输入 | 5 |
-| 采购与关系结局 | 前置条件、材料补齐、孙淼/张工不能代审批、李姐审批、项目支持、两种关系结局、反序澄清与交付 | 3 |
-| 手机与幕间 | 联系人切换、王叔私信与回顾、只读关系卡、锦囊、幕间取消不提交、素材解码 | 2 |
-| 提前离开 | 第一、二、三幕分别取消后确认离开；关系事实正确，刷新与存档重入 | 3 |
-| 存档与身份 | 多存档独立、首页继续、存档列表、退出后新身份隔离、多标签页版本冲突 | 2 |
-| 回合恢复 | 已受理刷新恢复、受理前原 ID 重放一次、损坏 SSE 查询恢复、成功恢复清理原草稿 | 4 |
-| 登录及读取异常 | 身份服务错误、配置/故事/存档/列表加载失败恢复、登录/创建存档失败后主动重试 | 7 |
-| 其他异常 | 限流等待、会话失效恢复、失败回合与退出失败、缺失回顾的主动生成 | 4 |
-| 合计 | 桌面与手机均执行 | 30 |
+| Flow                                 | Checks                                                                                                                                                  | Browser scenarios per viewport |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -----------------------------: |
+| Opening and repeated actions         | All three options progress; completed buttons, refreshed state, rapid clicks, blank input                                                               |                              5 |
+| Procurement and relationship endings | Prerequisites, complete materials, Sun Miao/Zhang cannot approve, Li Jie approval, project support, both endings, reversed clarification/delivery order |                              3 |
+| Phone and interludes                 | Contact switching, Uncle Wang's private reply and reflection, read-only relationship cards, advice, cancellation without submission, asset decoding     |                              2 |
+| Early departure                      | Cancel then confirm departure in each act; correct relationship facts, refresh, and save re-entry                                                       |                              3 |
+| Saves and identity                   | Independent saves, Home continuation, save list, new identity after logout, multi-tab version conflict                                                  |                              2 |
+| Turn recovery                        | Refresh after admission, one same-ID replay before admission, corrupt-SSE query recovery, clearing the original draft after successful recovery         |                              4 |
+| Login and read errors                | Identity errors, recovery from config/story/save/list loading failures, explicit retry after login/save-creation failure                                |                              7 |
+| Other errors                         | Rate-limit waiting, expired-session recovery, failed turns/logout, explicit generation of missing reflection                                            |                              4 |
+| Total                                | Run on both desktop and mobile                                                                                                                          |                             30 |
 
-回顾缺失场景在读取时隐藏已生成回顾以测试 UI 的重试入口，所有写操作仍经过真实 mock API；终态失败场景替换已提交回合的响应以验证界面恢复，不能视作真实模型故障注入。
+The missing-reflection scenario hides an existing reflection during reads to test the retry UI; all writes still use the real mock API. The terminal-failure scenario replaces the response of an already committed turn to test UI recovery and is not real model-fault injection.
 
-## 本轮发现并修复
+## Problems found and fixed
 
-1. **已完成选项可重复点击。** 先用真实浏览器复现 `boundary` 成功后按钮仍启用。现在根据后端 flags 禁用并标记“已完成”；其他未完成选项仍可选择。材料未确认、采购未批准、终幕前置事实不完整时，相关按钮受限，并显示下一步指引。后端仍独立校验所有请求。
-2. **手机存档入口没有可访问名称。** 手机 CSS 隐藏了文字，图标链接因此失去名称，浏览器按语义导航失败。补充固定 `aria-label="存档"`，桌面和手机保持同一入口。
-3. **断网恢复成功后原对白仍留在草稿。** 已提交请求查询成功后，现在通知输入框仅清理与原提交相同的内容；失败结果不清草稿，也不覆盖后来修改的文字。原回合仍只提交一次。
+1. **Completed options could be clicked again.** A real browser reproduced the boundary button remaining enabled after success. Buttons now use backend flags to disable and mark completed options, leaving unfinished ones available. Related actions are restricted until materials, procurement approval, or final-act facts are ready, with next-step guidance. The backend still validates every request independently.
+2. **The mobile save entry had no accessible name.** Mobile CSS hid its text, leaving an unnamed icon link and breaking semantic navigation. A fixed `aria-label="存档"` preserves the same entry on desktop/mobile.
+3. **Recovered dialogue remained in the draft.** After a successful original-request query, the input now clears only text matching the submitted draft. Failure retains it; later edits remain untouched. The original turn is still submitted once.
 
-修改前的失败记录、最终机器报告和截图存于忽略入库的 `artifacts/`。这些文件是验收证据，不是项目运行依赖。
+Pre-fix failures, final machine reports, and screenshots are in Git-ignored `artifacts/`. They are acceptance evidence, not runtime dependencies.
 
-## 复现
+## Reproduction
 
-先按 README 启动 mock 后端和 Vite，再执行：
+Start the mock backend and Vite as described in README, then run:
 
 ```sh
 cd frontend
 PLAYWRIGHT_JSON_OUTPUT_NAME=../artifacts/e2e-full.json pnpm exec playwright test --reporter=list,json
 ```
 
-`PLAYWRIGHT_BASE_URL` 可指定预览入口。套件的全局准备阶段会拒绝非 mock 服务。默认每个失败保留截图与 trace，可用 `pnpm exec playwright show-trace <trace.zip>` 检查。
+Use `PLAYWRIGHT_BASE_URL` for another preview entry. Global setup refuses non-mock services. Failed tests retain screenshots and traces by default; inspect traces with `pnpm exec playwright show-trace <trace.zip>`.
 
-源码入口：`e2e/flows.spec.ts`、`e2e/recovery.spec.ts`、`e2e/draft-recovery.spec.ts`，以及已有 `game.spec.ts`、`errors.spec.ts`、`scenes.spec.ts`。
+Sources under frontend: `e2e/flows.spec.ts`, `e2e/recovery.spec.ts`, `e2e/draft-recovery.spec.ts`, and existing `game.spec.ts`, `errors.spec.ts`, and `scenes.spec.ts`.
