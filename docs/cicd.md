@@ -13,3 +13,5 @@ CI 与 Audit 在 GitHub 托管机器执行。Audit 将通过扫描的 linux/amd6
 安装或更新部署入口由运维通过 SSH 将审阅过的脚本安装到 root 目录，不由 workflow 自行覆盖。Runner 注册使用 GitHub 一次性注册 token；无需在服务器保存个人 GitHub token。官方 Runner 包须核对发布校验和，随后以 btl-runner 身份配置并通过 `svc.sh` 安装服务。服务需要出站访问 GitHub、Actions 与 artifact 域名的 HTTPS 443；国内网络不稳定时只为 Runner 配置受控代理。
 
 不自动清理镜像或备份，以免破坏回退。当前备份仍在同一服务器，应另外配置加密异地备份及保留期限。停止自动发布不会停止网站或撤销正在执行的发布。artifact 默认保留三天，超期后需要新提交重新触发 CI/Audit 构建，不能用未经扫描的手工镜像替代。
+
+国内服务器对 artifact 单连接下载曾出现几十 KB/s 的瓶颈，因此生产使用 root 所有、以普通 Runner 身份运行的 `/usr/local/libexec/btl-fetch-release`（源码 `scripts/fetch-release.py`）：16 路、每段 2 MB、最多四次尝试，严格核对 Content-Range 和 GitHub artifact SHA-256，再解包三个白名单文件。GitHub token 仅用于 GitHub API，请求跳转后的临时存储 URL 不携带该 token。部署入口继续独立校验镜像归档哈希和来源。
