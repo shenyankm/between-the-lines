@@ -2,12 +2,19 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-from .config import get_settings
 
 
 def utcnow() -> datetime:
@@ -41,13 +48,24 @@ class Save(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     version: Mapped[int] = mapped_column(Integer, default=0)
+    state_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     state: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Turn(Base):
     __tablename__ = "turns"
-    __table_args__ = (UniqueConstraint("save_id", "request_id"),)
+    __table_args__ = (
+        UniqueConstraint("save_id", "request_id"),
+        CheckConstraint("status IN ('running', 'completed', 'failed')", name="ck_turns_status"),
+        Index(
+            "uq_turns_running_save",
+            "save_id",
+            unique=True,
+            postgresql_where=text("status = 'running'"),
+        ),
+        Index("ix_turns_user_created", "user_id", "created_at"),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
@@ -63,7 +81,10 @@ class Turn(Base):
 
 class Event(Base):
     __tablename__ = "events"
-    __table_args__ = (UniqueConstraint("turn_id", "operation"),)
+    __table_args__ = (
+        UniqueConstraint("turn_id", "operation"),
+        Index("ix_events_save_order", "save_id", "created_at", "id"),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
     turn_id: Mapped[str] = mapped_column(ForeignKey("turns.id", ondelete="CASCADE"))
@@ -87,8 +108,3 @@ class ZhihuContent(Base):
     comment_count: Mapped[int] = mapped_column(Integer)
     topics: Mapped[list[str]] = mapped_column(JSONB)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-
-settings = get_settings()
-engine = create_async_engine(settings.database_url, pool_size=10, max_overflow=20)
-Session = async_sessionmaker(engine, expire_on_commit=False)

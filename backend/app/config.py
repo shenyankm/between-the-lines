@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     database_url: str = "postgresql+asyncpg://btl:btl@localhost:54329/btl"
     checkpoint_url: str = "postgresql://btl:btl@localhost:54329/btl"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    # json for anything that ships to `docker compose logs` and a log pipeline;
+    # text for a human running `make api` in a terminal.
+    log_format: Literal["json", "text"] = "json"
     # Deliberate placeholder, not a credential: production_guards below refuses to
     # boot with ENVIRONMENT=production while this default is still in use.
     session_secret: str = "development-only-change-before-production"  # noqa: S105
@@ -26,9 +30,17 @@ class Settings(BaseSettings):
     dev_login_enabled: bool = True
     agent_mode: Literal["deepseek", "mock"] = "deepseek"
     deepseek_api_key: str = ""
+    deepseek_api_base: str = "https://api.deepseek.com"
+    # Retries are mode-gated in agents.py: mock keeps 0 so CI timing is exact and
+    # a fabricated 429 in the fixture cannot be silently absorbed, while real
+    # traffic gets bounded backoff. This value only applies outside mock mode.
+    deepseek_max_retries: int = 2
     daily_turn_limit: int = 100
     max_concurrent_turns: int = 30
     turn_timeout_seconds: int = 60
+    # Billing kill switch. 0 disables it, which is correct for mock mode where
+    # every turn costs nothing and wrong for production -- see production_guards.
+    monthly_cost_cap_usd: float = 0.0
     max_model_calls: int = 4
     max_tool_calls: int = 6
     deepseek_input_usd_per_million: float = 0.30
@@ -52,6 +64,14 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires a unique SESSION_SECRET (32+ characters)")
             if not self.public_origin.startswith("https://") or not self.deepseek_api_key:
                 raise ValueError("Production requires HTTPS and DEEPSEEK_API_KEY")
+            # The key is sent to this base URL on every turn, so a downgrade here
+            # is a credential leak rather than a misconfiguration.
+            if not self.deepseek_api_base.startswith("https://"):
+                raise ValueError("Production requires an HTTPS DEEPSEEK_API_BASE")
+            # 0 means "no cap", which is right for mock mode where turns are free
+            # and unacceptable where they are billed. Refuse to boot without one.
+            if self.monthly_cost_cap_usd <= 0:
+                raise ValueError("Production requires a positive MONTHLY_COST_CAP_USD")
         return self
 
     @property

@@ -3,7 +3,9 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import delete
 
-from app.db import Session, ZhihuContent, engine
+from app.config import get_settings
+from app.db import ZhihuContent
+from app.storage import Database
 from app.zhihu_import import normalize, persist
 
 
@@ -39,11 +41,13 @@ def test_reject_untrusted_links_and_incomplete_content():
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_reimport_deduplicates_content_and_keeps_topics():
+    database = Database(get_settings())
+    Session = database.sessions
     content_id = f"ci-{uuid4()}"
     first = normalize(sample(content_id), "边界")
     second = normalize({**sample(content_id), "VoteUpCount": 20}, "职场")
     try:
-        await persist([first, first, second, second])
+        await persist([first, first, second, second], Session)
         async with Session() as db:
             row = await db.get(ZhihuContent, ("answer", content_id))
             assert row.topics == ["边界", "职场"]
@@ -52,4 +56,4 @@ async def test_reimport_deduplicates_content_and_keeps_topics():
     finally:
         async with Session.begin() as db:
             await db.execute(delete(ZhihuContent).where(ZhihuContent.content_id == content_id))
-        await engine.dispose()
+        await database.close()

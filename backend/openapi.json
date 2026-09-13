@@ -33,12 +33,52 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "500": {
+            "description": "internal_error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -60,6 +100,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -88,6 +148,36 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       }
@@ -107,6 +197,26 @@
                 "schema": {}
               }
             }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "oauth_not_configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       }
@@ -124,6 +234,36 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "oauth_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "oauth_not_configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
               }
             }
           }
@@ -148,6 +288,83 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/live": {
+      "get": {
+        "summary": "Live",
+        "description": "No I/O of any kind. If this can answer, the event loop is not wedged.",
+        "operationId": "live_api_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "summary": "Ready",
+        "operationId": "ready_api_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "至少一项依赖不可用。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyOut"
+                }
+              }
+            }
           }
         }
       }
@@ -162,9 +379,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Config Api Config Get"
+                  "$ref": "#/components/schemas/ConfigOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -182,9 +407,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Story Api Story Get"
+                  "$ref": "#/components/schemas/StoryOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -210,6 +443,26 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       },
@@ -223,6 +476,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SaveOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -256,12 +549,52 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "500": {
+            "description": "internal_error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -292,20 +625,59 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/components/schemas/GameEventOut"
                   },
                   "title": "Response Events Api Saves  Save Id  Events Get"
                 }
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "500": {
+            "description": "internal_error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -348,12 +720,121 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "500": {
+            "description": "internal_error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found / turn_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/saves/{save_id}/play-state": {
+      "get": {
+        "summary": "Play State",
+        "operationId": "play_state_api_saves__save_id__play_state_get",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Save Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayStateOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -388,19 +869,109 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "SSE: status=StatusEvent, dialogue=DialogueEvent, done=TurnResult. Only committed dialogue is public.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
               }
             }
           },
           "422": {
-            "description": "Validation Error",
+            "description": "validation_failed / empty_message / rule_violation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "request_id_reused / turn_still_running / save_busy / version_conflict / unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "daily_limit_reached / concurrency_budget_exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "model_unconfigured / monthly_cost_cap_reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -411,6 +982,160 @@
   },
   "components": {
     "schemas": {
+      "Act": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "chapter_title": {
+            "type": "string",
+            "title": "Chapter Title"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "intro": {
+            "type": "string",
+            "title": "Intro"
+          },
+          "background": {
+            "type": "string",
+            "title": "Background"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "type": "array",
+            "title": "Choices"
+          },
+          "interlude": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Interlude"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "chapter_title",
+          "location",
+          "time",
+          "intro",
+          "background",
+          "choices"
+        ],
+        "title": "Act"
+      },
+      "ActiveTurn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "request_id"
+        ],
+        "title": "ActiveTurn"
+      },
+      "Choice": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "speak",
+              "begin",
+              "contact_wang",
+              "boundary",
+              "public_confront",
+              "next",
+              "supplement",
+              "report",
+              "clarify",
+              "deliver",
+              "leave",
+              "epilogue"
+            ],
+            "title": "Action"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sun",
+                  "li",
+                  "zhang"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "action"
+        ],
+        "title": "Choice"
+      },
+      "ConfigOut": {
+        "properties": {
+          "dev_login": {
+            "type": "boolean",
+            "title": "Dev Login"
+          },
+          "zhihu_login": {
+            "type": "boolean",
+            "title": "Zhihu Login"
+          },
+          "agent_mode": {
+            "type": "string",
+            "enum": [
+              "mock",
+              "deepseek"
+            ],
+            "title": "Agent Mode"
+          },
+          "model_ready": {
+            "type": "boolean",
+            "title": "Model Ready"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dev_login",
+          "zhihu_login",
+          "agent_mode",
+          "model_ready"
+        ],
+        "title": "ConfigOut"
+      },
       "DevLogin": {
         "properties": {
           "name": {
@@ -424,46 +1149,156 @@
         "type": "object",
         "title": "DevLogin"
       },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "title": "ErrorBody"
+      },
+      "ErrorEnvelope": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorEnvelope"
+      },
+      "GameEventOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "player",
+              "npc",
+              "work",
+              "epilogue"
+            ],
+            "title": "Kind"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "npc": {
+            "type": "string",
+            "enum": [
+              "sun",
+              "li",
+              "zhang"
+            ],
+            "title": "Npc"
+          },
+          "act": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Act"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "speak",
+                  "begin",
+                  "contact_wang",
+                  "boundary",
+                  "public_confront",
+                  "next",
+                  "supplement",
+                  "report",
+                  "clarify",
+                  "deliver",
+                  "leave",
+                  "epilogue"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "text",
+          "npc",
+          "id"
+        ],
+        "title": "GameEventOut"
+      },
       "GameState": {
         "properties": {
           "act": {
-            "type": "integer",
-            "maximum": 4.0,
-            "minimum": 0.0,
-            "title": "Act"
+            "maximum": 4,
+            "minimum": 0,
+            "title": "Act",
+            "type": "integer"
           },
           "credit": {
-            "type": "integer",
-            "maximum": 100.0,
-            "minimum": 0.0,
-            "title": "Credit"
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Credit",
+            "type": "integer"
           },
           "stress": {
-            "type": "integer",
-            "maximum": 100.0,
-            "minimum": 0.0,
-            "title": "Stress"
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Stress",
+            "type": "integer"
           },
           "heat": {
-            "type": "integer",
-            "maximum": 100.0,
-            "minimum": 0.0,
-            "title": "Heat"
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Heat",
+            "type": "integer"
           },
           "flags": {
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Flags"
+            "title": "Flags",
+            "type": "array"
           },
           "procurement": {
-            "type": "string",
             "enum": [
               "pending",
               "approved"
             ],
-            "title": "Procurement"
+            "title": "Procurement",
+            "type": "string"
           },
           "ending": {
             "anyOf": [
@@ -477,7 +1312,6 @@
             "title": "Ending"
           }
         },
-        "type": "object",
         "required": [
           "act",
           "credit",
@@ -487,42 +1321,246 @@
           "procurement",
           "ending"
         ],
-        "title": "GameState"
+        "title": "GameState",
+        "type": "object"
       },
-      "HTTPValidationError": {
+      "Interlude": {
         "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
+          "image": {
+            "type": "string",
+            "title": "Image"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
           }
         },
         "type": "object",
-        "title": "HTTPValidationError"
+        "required": [
+          "image",
+          "location",
+          "time",
+          "text"
+        ],
+        "title": "Interlude"
+      },
+      "LiveOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "alive",
+            "title": "Status",
+            "default": "alive"
+          }
+        },
+        "type": "object",
+        "title": "LiveOut"
+      },
+      "PlayStateOut": {
+        "properties": {
+          "save": {
+            "$ref": "#/components/schemas/SaveOut"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/GameEventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "active_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveTurn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "save",
+          "events",
+          "active_turn"
+        ],
+        "title": "PlayStateOut"
+      },
+      "PublicNpc": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "portrait": {
+            "type": "string",
+            "title": "Portrait"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          },
+          "greeting": {
+            "type": "string",
+            "title": "Greeting"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "role",
+          "portrait",
+          "color",
+          "greeting"
+        ],
+        "title": "PublicNpc"
+      },
+      "PublicNpcs": {
+        "properties": {
+          "sun": {
+            "$ref": "#/components/schemas/PublicNpc"
+          },
+          "li": {
+            "$ref": "#/components/schemas/PublicNpc"
+          },
+          "zhang": {
+            "$ref": "#/components/schemas/PublicNpc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sun",
+          "li",
+          "zhang"
+        ],
+        "title": "PublicNpcs"
+      },
+      "ReadyOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_ready"
+            ],
+            "title": "Status"
+          },
+          "checks": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "error"
+              ]
+            },
+            "type": "object",
+            "title": "Checks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "checks"
+        ],
+        "title": "ReadyOut"
       },
       "SaveOut": {
         "properties": {
           "id": {
-            "type": "string",
-            "title": "Id"
+            "title": "Id",
+            "type": "string"
           },
           "version": {
-            "type": "integer",
-            "title": "Version"
+            "title": "Version",
+            "type": "integer"
           },
           "state": {
             "$ref": "#/components/schemas/GameState"
           }
         },
-        "type": "object",
         "required": [
           "id",
           "version",
           "state"
         ],
-        "title": "SaveOut"
+        "title": "SaveOut",
+        "type": "object"
+      },
+      "StoryOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subtitle": {
+            "type": "string",
+            "title": "Subtitle"
+          },
+          "acts": {
+            "items": {
+              "$ref": "#/components/schemas/Act"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Acts"
+          },
+          "npcs": {
+            "$ref": "#/components/schemas/PublicNpcs"
+          },
+          "tips": {
+            "items": {
+              "$ref": "#/components/schemas/Tip"
+            },
+            "type": "array",
+            "title": "Tips"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "subtitle",
+          "acts",
+          "npcs",
+          "tips"
+        ],
+        "title": "StoryOut"
+      },
+      "Tip": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "text",
+          "source"
+        ],
+        "title": "Tip"
       },
       "TurnInput": {
         "properties": {
@@ -587,24 +1625,25 @@
           },
           "status": {
             "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "failed"
+            ],
             "title": "Status"
           },
           "result": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/TurnResult"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Result"
+            ]
           },
           "usage": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Usage"
+            "$ref": "#/components/schemas/TurnUsage"
           }
         },
         "type": "object",
@@ -615,6 +1654,116 @@
           "usage"
         ],
         "title": "TurnOut"
+      },
+      "TurnResult": {
+        "properties": {
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Text"
+          },
+          "save": {
+            "$ref": "#/components/schemas/SaveOut"
+          },
+          "retryable": {
+            "default": false,
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "turn_id",
+          "status",
+          "save"
+        ],
+        "title": "TurnResult",
+        "type": "object"
+      },
+      "TurnUsage": {
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "mock",
+                  "deepseek"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "model_calls": {
+            "type": "integer",
+            "title": "Model Calls",
+            "default": 0
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens",
+            "default": 0
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens",
+            "default": 0
+          },
+          "total_tokens": {
+            "type": "integer",
+            "title": "Total Tokens",
+            "default": 0
+          },
+          "elapsed_ms": {
+            "type": "integer",
+            "title": "Elapsed Ms",
+            "default": 0
+          },
+          "cost_estimate_usd": {
+            "type": "number",
+            "title": "Cost Estimate Usd",
+            "default": 0.0
+          },
+          "billing_complete": {
+            "type": "boolean",
+            "title": "Billing Complete",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "TurnUsage"
       },
       "UserOut": {
         "properties": {
@@ -634,45 +1783,46 @@
         ],
         "title": "UserOut"
       },
-      "ValidationError": {
+      "StatusEvent": {
         "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
           },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
+          "text": {
+            "title": "Text",
+            "type": "string"
           }
         },
-        "type": "object",
         "required": [
-          "loc",
-          "msg",
-          "type"
+          "turn_id",
+          "text"
         ],
-        "title": "ValidationError"
+        "title": "StatusEvent",
+        "type": "object"
+      },
+      "DialogueEvent": {
+        "properties": {
+          "npc": {
+            "enum": [
+              "sun",
+              "li",
+              "zhang"
+            ],
+            "title": "Npc",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "npc",
+          "text"
+        ],
+        "title": "DialogueEvent",
+        "type": "object"
       }
     }
   }

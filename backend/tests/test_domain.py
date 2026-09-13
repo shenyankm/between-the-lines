@@ -23,8 +23,8 @@ def test_complete_boundary_path():
     state, _ = apply_player(state, "clarify")
     state, _ = apply_player(state, "deliver")
     state, _ = apply_player(state, "next")
-    assert state["ending"] == "保持职业关系和边界"
-    assert state["credit"] == 90
+    assert state.ending == "保持职业关系和边界"
+    assert state.credit == 90
 
 
 def test_authority_and_preconditions():
@@ -53,10 +53,10 @@ def test_no_repeated_score_and_private_facts():
 
 def test_leaving_is_a_choice():
     state = purchase_state()
-    state["stress"] = 100
-    assert apply_player(state, "speak")[0]["ending"] is None
+    state.stress = 100
+    assert apply_player(state, "speak")[0].ending is None
     state, _ = apply_player(state, "leave")
-    assert state["ending"] == "主动离开"
+    assert state.ending == "主动离开"
 
 
 def test_production_forbids_mock_identity_and_agents():

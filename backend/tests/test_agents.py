@@ -7,6 +7,9 @@ from langchain_deepseek import ChatDeepSeek
 from langgraph.checkpoint.memory import InMemorySaver
 
 from app import agents
+from app.config import Settings
+from app.context import AgentContext
+from app.story import load_story
 
 pytestmark = pytest.mark.unit
 
@@ -57,19 +60,22 @@ async def test_deep_agent_tool_loop_isolation_and_fixed_model(monkeypatch, tool_
         )
 
     async def context(turn):
-        return {
-            "facts": {"act": 2, "procurement": "pending", "flags": []},
-            "history": [{"kind": "player", "text": "需要哪些材料？", "npc": "sun"}],
-        }
+        return AgentContext.model_validate(
+            {
+                "facts": {"act": 2, "procurement": "pending", "flags": []},
+                "history": [{"kind": "player", "text": "需要哪些材料？", "npc": "sun"}],
+            }
+        )
 
     async def operation(turn_id, npc, op):
         operations.append((turn_id, npc, op))
         return "材料要求已记录。"
 
-    settings = agents.get_settings()
+    settings = Settings(_env_file=None, agent_mode="mock")
     monkeypatch.setattr(settings, "agent_mode", "deepseek")
-    monkeypatch.setattr(agents, "context_for", context)
-    monkeypatch.setattr(agents, "npc_operation", operation)
+    gateway = agents.AgentGateway(
+        settings, SimpleNamespace(context_for=context, npc_operation=operation), load_story()
+    )
     async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as http:
         model = ChatDeepSeek(
             model="deepseek-flash",
@@ -78,10 +84,10 @@ async def test_deep_agent_tool_loop_isolation_and_fixed_model(monkeypatch, tool_
             max_retries=0,
             extra_body={"thinking": {"type": "disabled"}},
         )
-        monkeypatch.setattr(agents, "make_model", lambda: model)
-        turn = SimpleNamespace(id="t", user_id="u", save_id="s", payload={"npc": "sun"})
+        gateway.model_factory = lambda: model
+        turn = SimpleNamespace(id="t", user_id="u", save_id="s", input=SimpleNamespace(npc="sun"))
         usage = {}
-        replies = [reply async for reply in agents.run_agent(turn, InMemorySaver(), usage)]
+        replies = [reply async for reply in gateway.run_agent(turn, InMemorySaver(), usage)]
     assert replies == ["请补充报价单和用途说明。"]
     assert len(requests) == 2
     assert usage["input_tokens"] == 40
@@ -90,8 +96,9 @@ async def test_deep_agent_tool_loop_isolation_and_fixed_model(monkeypatch, tool_
 
 
 def test_model_factory_has_no_other_provider(monkeypatch):
-    monkeypatch.setattr(agents.get_settings(), "deepseek_api_key", "fixture-not-a-secret")
-    model = agents.make_model()
+    model = agents.make_model(
+        Settings(_env_file=None, agent_mode="mock", deepseek_api_key="fixture-not-a-secret")
+    )
     assert model.model_name == "deepseek-flash"
     assert model.extra_body["thinking"]["type"] == "disabled"
     assert model.max_retries == 0

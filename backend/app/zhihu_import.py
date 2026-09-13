@@ -11,9 +11,11 @@ from urllib.parse import urlsplit
 import httpx
 from sqlalchemy import case, func, select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .config import get_settings
-from .db import Session, ZhihuContent, engine, utcnow
+from .db import ZhihuContent, utcnow
+from .storage import Database
 
 DEFAULT_QUERIES = [
     "同事 开玩笑 贬低 如何建立边界",
@@ -62,8 +64,8 @@ def normalize(item: dict[str, Any], query: str) -> dict[str, Any] | None:
     }
 
 
-async def persist(rows: list[dict[str, Any]]) -> int:
-    async with Session.begin() as db:
+async def persist(rows: list[dict[str, Any]], sessions: async_sessionmaker[AsyncSession]) -> int:
+    async with sessions.begin() as db:
         for row in rows:
             # Preserve existing topic tags atomically without duplicates on re-import.
             statement = insert(ZhihuContent).values(**row)
@@ -85,7 +87,9 @@ async def persist(rows: list[dict[str, Any]]) -> int:
     return len(rows)
 
 
-async def run(queries: list[str], count: int) -> dict[str, Any]:
+async def run(
+    queries: list[str], count: int, sessions: async_sessionmaker[AsyncSession]
+) -> dict[str, Any]:
     settings = get_settings()
     if not settings.zhihu_access_secret:
         raise RuntimeError("ZHIHU_ACCESS_SECRET is not configured")
@@ -126,12 +130,12 @@ async def run(queries: list[str], count: int) -> dict[str, Any]:
             rows = [
                 row for item in items if isinstance(item, dict) and (row := normalize(item, query))
             ]
-            await persist(rows)
+            await persist(rows, sessions)
             seen.update((row["content_type"], row["content_id"]) for row in rows)
             report["queries"].append({"query": query, "received": len(items), "stored": len(rows)})
             print(json.dumps(report["queries"][-1], ensure_ascii=False))
     report["imported_unique"] = len(seen)
-    async with Session() as db:
+    async with sessions() as db:
         report["database_total"] = await db.scalar(select(func.count()).select_from(ZhihuContent))
     return report
 
@@ -152,10 +156,11 @@ async def main() -> dict[str, Any]:
     queries = args.query or DEFAULT_QUERIES
     if len(queries) > 10 or any(not q.strip() for q in queries):
         parser.error("Provide one to ten nonempty queries")
+    database = Database(get_settings())
     try:
-        return await run(queries, args.count)
+        return await run(queries, args.count, database.sessions)
     finally:
-        await engine.dispose()
+        await database.close()
 
 
 if __name__ == "__main__":

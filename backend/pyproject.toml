@@ -110,9 +110,16 @@ omit = ["app/mock_llm.py"]
 precision = 1
 show_missing = true
 skip_covered = false
-# Floor is what THIS configuration actually measures (77.0), not the true line
-# coverage (84.9). Ratchet it up 2-5% per PR; never lower it, and never set an
-# aspirational value that then has to be walked back.
+# Floor is what THIS configuration actually measures, less the ratchet headroom
+# explained below -- not the true line coverage (84.9). Ratchet it up 2-5% per PR;
+# never lower it, and never set an aspirational value that then has to be walked back.
+#
+# Measured 83.5 when the error contract, logging redaction, metrics, the health
+# routes and the config guards gained tests. The floor is set to 82.0 rather than to
+# the measurement: that is the top of the band above, and begin_turn's contribution
+# moves with any change to the turn path because of the defect below, so a floor
+# pinned to the exact figure would fail on an unrelated edit that shifted which of
+# its lines the instrument happened to record.
 #
 # The two numbers differ because of a proven instrument defect, recorded here so
 # nobody "fixes" tests that already pass. `branch = true` on Python 3.13 forces
@@ -127,7 +134,7 @@ skip_covered = false
 # under-measurement, so this floor is conservative rather than unsafe.
 #
 # Cross-check the true figure with branch coverage off and core=sysmon.
-fail_under = 77.0
+fail_under = 82.0
 exclude_lines = [
   "pragma: no cover",
   "if TYPE_CHECKING:",

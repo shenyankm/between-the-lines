@@ -9,13 +9,10 @@ import httpx2
 import pytest
 from fastapi.testclient import TestClient
 
-from app import auth
-from app.main import app
-
 pytestmark = pytest.mark.integration
 
 
-def test_oauth_state_validation_and_stable_identity(monkeypatch):
+def test_oauth_state_validation_and_stable_identity(app, monkeypatch):
     for name, value in {
         "zhihu_client_id": "fixture-client",
         "zhihu_client_secret": "fixture-secret",
@@ -23,7 +20,7 @@ def test_oauth_state_validation_and_stable_identity(monkeypatch):
         "zhihu_token_url": "https://partner.example/token",
         "zhihu_userinfo_url": "https://partner.example/userinfo",
     }.items():
-        monkeypatch.setattr(auth.settings, name, value)
+        monkeypatch.setattr(app.state.settings, name, value)
 
     async def handle(request):
         if request.url.path == "/token":
@@ -34,16 +31,19 @@ def test_oauth_state_validation_and_stable_identity(monkeypatch):
         return httpx2.Response(200, json={"id": "stable-fixture-id", "name": "知乎测试用户"})
 
     # Partner protocol fixture, not a claim about real Zhihu endpoints or fields.
-    auth.oauth.register(
-        "zhihu",
-        overwrite=True,
-        client_id="fixture-client",
-        client_secret="fixture-secret",
-        authorize_url="https://partner.example/authorize",
-        access_token_url="https://partner.example/token",
-        client_kwargs={"transport": httpx2.MockTransport(handle)},
-    )
     with TestClient(app) as client:
+        from authlib.integrations.starlette_client import OAuth
+
+        app.state.runtime.oauth = OAuth()
+        app.state.runtime.oauth.register(
+            "zhihu",
+            overwrite=True,
+            client_id="fixture-client",
+            client_secret="fixture-secret",
+            authorize_url="https://partner.example/authorize",
+            access_token_url="https://partner.example/token",
+            client_kwargs={"transport": httpx2.MockTransport(handle)},
+        )
         assert client.get("/api/auth/zhihu/callback?code=test&state=invalid").status_code == 400
         identities = []
         for _ in range(2):

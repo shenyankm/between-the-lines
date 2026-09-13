@@ -46,3 +46,19 @@ def isolated_database(request: pytest.FixtureRequest) -> None:
     """
     if request.node.get_closest_marker("unit") is None:
         _truncate()
+
+
+@pytest.fixture
+def app():
+    from app.config import Settings
+    from app.factory import create_app
+
+    return create_app(
+        Settings(
+            _env_file=None,
+            environment="test",
+            agent_mode="mock",
+            database_url=os.environ["DATABASE_URL"],
+            checkpoint_url=os.environ["CHECKPOINT_URL"],
+        )
+    )

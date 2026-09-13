@@ -4,11 +4,11 @@
   "acts": [
     {
       "title": "序幕 · 微妙的恶意",
+      "chapter_title": "微妙的恶意",
       "location": "研发工位",
       "time": "周一 · 09:10",
       "intro": "你是周凌，大家叫你菱菱，在一家传统化工国企从事催化剂研发。新外套被笑作玩笑，认真表达被说成敏感。今天，你决定重新审视这些关系。",
       "background": "/assets/office-morning.png",
-      "chapter_title": "微妙的恶意",
       "choices": [
         {
           "label": "进入故事",
@@ -18,11 +18,11 @@
     },
     {
       "title": "第一幕 · 缺席的欢送会",
+      "chapter_title": "缺席的欢送会",
       "location": "公司食堂",
       "time": "周五 · 12:15",
       "intro": "朋友圈里的合照让你停住了手。王会计的欢送会结束了，却没人通知你。孙淼和李姐正坐在不远处。",
       "background": "/assets/cafeteria-noon.png",
-      "chapter_title": "缺席的欢送会",
       "choices": [
         {
           "label": "私信祝福王会计",
@@ -46,11 +46,11 @@
     },
     {
       "title": "第二幕 · 被卡住的采购单",
+      "chapter_title": "被卡住的采购单",
       "location": "财务窗口",
       "time": "周二 · 10:30",
       "intro": "催化剂优化项目的加急采购两天没有进展。先确认缺少什么，再让每一步处理有据可查。",
       "background": "/assets/finance-rain.png",
-      "chapter_title": "被卡住的采购单",
       "choices": [
         {
           "label": "补齐采购材料",
@@ -71,11 +71,11 @@
     },
     {
       "title": "第三幕 · 流言的回声",
+      "chapter_title": "流言的回声",
       "location": "项目会议室",
       "time": "周四 · 09:00",
       "intro": "“听说你要跳槽？”传言已经到了例会上。你需要澄清事实，也需要把项目交付放回大家眼前。",
       "background": "/assets/meeting-morning.png",
-      "chapter_title": "流言的回声",
       "choices": [
         {
           "label": "在例会上澄清传言",
@@ -89,11 +89,11 @@
     },
     {
       "title": "终幕 · 你的选择",
+      "chapter_title": "你的选择",
       "location": "研发工位",
       "time": "故事之后",
       "intro": "每次回应，都在为你和他人之间画下一条线。",
       "background": "/assets/office.png",
-      "chapter_title": "你的选择",
       "choices": []
     }
   ],
@@ -101,7 +101,6 @@
     "sun": {
       "name": "孙淼",
       "role": "财务出纳 · 同期同事",
-      "persona": "你是孙淼，擅长用关心包装试探，重视别人眼中的好人形象。面对明确边界和书面流程会收敛。你没有会计的最终审批权。不要自述自己在操纵别人。",
       "portrait": "/assets/sun.png",
       "color": "#688999",
       "greeting": "“菱菱，你不会又生气了吧？我只是随口一说。”"
@@ -109,7 +108,6 @@
     "li": {
       "name": "李姐",
       "role": "财务会计",
-      "persona": "你是李姐，重视财务手续与部门声誉，有时附和同事，但材料齐全时愿意按制度处理。你有采购审核权，不知道其他人的私聊。",
       "portrait": "/assets/li.png",
       "color": "#998363",
       "greeting": "“有什么事情，我们一项一项说。”"
@@ -117,7 +115,6 @@
     "zhang": {
       "name": "张工",
       "role": "研发负责人",
-      "persona": "你是张工，女性研发负责人，专业、公正，简洁、务实，关注数据与交付。你赏识周凌的专业能力，愿意支持把事实和风险讲清楚的下属，不无条件站队。你能给出项目支持，不能代财务审批。",
       "portrait": "/assets/zhang.png",
       "color": "#768c89",
       "greeting": "“坐吧，项目最近怎么样？”"

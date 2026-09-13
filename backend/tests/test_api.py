@@ -7,13 +7,11 @@ os.environ["AGENT_MODE"] = "mock"
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
-
 pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
-def client():
+def client(app):
     with TestClient(app) as c:
         assert c.post("/api/auth/dev", json={"name": "测试玩家"}).status_code == 200
         yield c
@@ -98,11 +96,10 @@ def test_csrf_and_no_persona_leak(client):
     assert "persona" not in client.get("/api/story").text
 
 
-def test_failure_keeps_committed_action(client, monkeypatch):
-    import app.main as main
+def test_failure_keeps_committed_action(app, client, monkeypatch):
 
     async def failing(turn, checkpointer, usage):
-        from app.services import npc_operation
+        npc_operation = app.state.runtime.service.npc_operation
 
         await npc_operation(turn.id, "sun", "request_materials")
         raise RuntimeError("simulated provider failure")
@@ -111,7 +108,7 @@ def test_failure_keeps_committed_action(client, monkeypatch):
     save = create(client)
     for action in ("begin", "boundary", "next"):
         turn(client, save, action)
-    monkeypatch.setattr(main, "run_agent", failing)
+    monkeypatch.setattr(app.state.dependencies, "reply", failing)
     response, payload = turn(client, save, "speak", text="请说明缺少材料")
     assert '"status": "failed"' in response.text
     assert "requirements" in save["state"]["flags"]

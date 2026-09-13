@@ -106,6 +106,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live
+         * @description No I/O of any kind. If this can answer, the event loop is not wedged.
+         */
+        get: operations["live_api_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ready */
+        get: operations["ready_api_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/config": {
         parameters: {
             query?: never;
@@ -209,6 +246,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/saves/{save_id}/play-state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Play State */
+        get: operations["play_state_api_saves__save_id__play_state_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/saves/{save_id}/turns": {
         parameters: {
             query?: never;
@@ -230,6 +284,57 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Act */
+        Act: {
+            /** Title */
+            title: string;
+            /** Chapter Title */
+            chapter_title: string;
+            /** Location */
+            location: string;
+            /** Time */
+            time: string;
+            /** Intro */
+            intro: string;
+            /** Background */
+            background: string;
+            /** Choices */
+            choices: components["schemas"]["Choice"][];
+            interlude?: components["schemas"]["Interlude"] | null;
+        };
+        /** ActiveTurn */
+        ActiveTurn: {
+            /** Id */
+            id: string;
+            /** Request Id */
+            request_id: string;
+        };
+        /** Choice */
+        Choice: {
+            /** Label */
+            label: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue";
+            /** Target */
+            target?: ("sun" | "li" | "zhang") | null;
+        };
+        /** ConfigOut */
+        ConfigOut: {
+            /** Dev Login */
+            dev_login: boolean;
+            /** Zhihu Login */
+            zhihu_login: boolean;
+            /**
+             * Agent Mode
+             * @enum {string}
+             */
+            agent_mode: "mock" | "deepseek";
+            /** Model Ready */
+            model_ready: boolean;
+        };
         /** DevLogin */
         DevLogin: {
             /**
@@ -237,6 +342,40 @@ export interface components {
              * @default 试玩者
              */
             name: string;
+        };
+        /** ErrorBody */
+        ErrorBody: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Request Id */
+            request_id: string;
+        };
+        /** ErrorEnvelope */
+        ErrorEnvelope: {
+            error: components["schemas"]["ErrorBody"];
+        };
+        /** GameEventOut */
+        GameEventOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "player" | "npc" | "work" | "epilogue";
+            /** Text */
+            text: string;
+            /**
+             * Npc
+             * @enum {string}
+             */
+            npc: "sun" | "li" | "zhang";
+            /** Act */
+            act?: number | null;
+            /** Action */
+            action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue") | null;
+            /** Id */
+            id: string;
         };
         /** GameState */
         GameState: {
@@ -258,10 +397,63 @@ export interface components {
             /** Ending */
             ending: string | null;
         };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+        /** Interlude */
+        Interlude: {
+            /** Image */
+            image: string;
+            /** Location */
+            location: string;
+            /** Time */
+            time: string;
+            /** Text */
+            text: string;
+        };
+        /** LiveOut */
+        LiveOut: {
+            /**
+             * Status
+             * @default alive
+             * @constant
+             */
+            status: "alive";
+        };
+        /** PlayStateOut */
+        PlayStateOut: {
+            save: components["schemas"]["SaveOut"];
+            /** Events */
+            events: components["schemas"]["GameEventOut"][];
+            active_turn: components["schemas"]["ActiveTurn"] | null;
+        };
+        /** PublicNpc */
+        PublicNpc: {
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+            /** Portrait */
+            portrait: string;
+            /** Color */
+            color: string;
+            /** Greeting */
+            greeting: string;
+        };
+        /** PublicNpcs */
+        PublicNpcs: {
+            sun: components["schemas"]["PublicNpc"];
+            li: components["schemas"]["PublicNpc"];
+            zhang: components["schemas"]["PublicNpc"];
+        };
+        /** ReadyOut */
+        ReadyOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Checks */
+            checks: {
+                [key: string]: "ok" | "error";
+            };
         };
         /** SaveOut */
         SaveOut: {
@@ -270,6 +462,27 @@ export interface components {
             /** Version */
             version: number;
             state: components["schemas"]["GameState"];
+        };
+        /** StoryOut */
+        StoryOut: {
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string;
+            /** Acts */
+            acts: components["schemas"]["Act"][];
+            npcs: components["schemas"]["PublicNpcs"];
+            /** Tips */
+            tips: components["schemas"]["Tip"][];
+        };
+        /** Tip */
+        Tip: {
+            /** Title */
+            title: string;
+            /** Text */
+            text: string;
+            /** Source */
+            source: string;
         };
         /** TurnInput */
         TurnInput: {
@@ -302,16 +515,76 @@ export interface components {
         TurnOut: {
             /** Id */
             id: string;
-            /** Status */
-            status: string;
-            /** Result */
-            result: {
-                [key: string]: unknown;
-            } | null;
-            /** Usage */
-            usage: {
-                [key: string]: unknown;
-            };
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "failed";
+            result: components["schemas"]["TurnResult"] | null;
+            usage: components["schemas"]["TurnUsage"];
+        };
+        /** TurnResult */
+        TurnResult: {
+            /** Turn Id */
+            turn_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "completed" | "failed";
+            /**
+             * Text
+             * @default null
+             */
+            text: string | null;
+            save: components["schemas"]["SaveOut"];
+            /**
+             * Retryable
+             * @default false
+             */
+            retryable: boolean;
+        };
+        /** TurnUsage */
+        TurnUsage: {
+            /** Model */
+            model?: string | null;
+            /** Mode */
+            mode?: ("mock" | "deepseek") | null;
+            /**
+             * Model Calls
+             * @default 0
+             */
+            model_calls: number;
+            /**
+             * Input Tokens
+             * @default 0
+             */
+            input_tokens: number;
+            /**
+             * Output Tokens
+             * @default 0
+             */
+            output_tokens: number;
+            /**
+             * Total Tokens
+             * @default 0
+             */
+            total_tokens: number;
+            /**
+             * Elapsed Ms
+             * @default 0
+             */
+            elapsed_ms: number;
+            /**
+             * Cost Estimate Usd
+             * @default 0
+             */
+            cost_estimate_usd: number;
+            /**
+             * Billing Complete
+             * @default false
+             */
+            billing_complete: boolean;
         };
         /** UserOut */
         UserOut: {
@@ -320,18 +593,22 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
+        /** StatusEvent */
+        StatusEvent: {
+            /** Turn Id */
+            turn_id: string;
+            /** Text */
+            text: string;
+        };
+        /** DialogueEvent */
+        DialogueEvent: {
+            /**
+             * Npc
+             * @enum {string}
+             */
+            npc: "sun" | "li" | "zhang";
+            /** Text */
+            text: string;
         };
     };
     responses: never;
@@ -364,13 +641,49 @@ export interface operations {
                     "application/json": components["schemas"]["UserOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -391,6 +704,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -415,6 +746,33 @@ export interface operations {
                     };
                 };
             };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
     };
     zhihu_login_api_auth_zhihu_get: {
@@ -435,6 +793,24 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description oauth_not_configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
     };
     zhihu_callback_api_auth_zhihu_callback_get: {
@@ -453,6 +829,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description oauth_failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description oauth_not_configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -477,6 +880,82 @@ export interface operations {
                     };
                 };
             };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    live_api_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveOut"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    ready_api_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyOut"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 至少一项依赖不可用。 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyOut"];
+                };
+            };
         };
     };
     config_api_config_get: {
@@ -494,9 +973,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ConfigOut"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -516,9 +1002,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -541,6 +1034,24 @@ export interface operations {
                     "application/json": components["schemas"]["SaveOut"][];
                 };
             };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
     };
     create_save_api_saves_post: {
@@ -559,6 +1070,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SaveOut"];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -583,13 +1130,49 @@ export interface operations {
                     "application/json": components["schemas"]["SaveOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -611,18 +1194,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["GameEventOut"][];
                 };
             };
-            /** @description Validation Error */
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -648,13 +1265,107 @@ export interface operations {
                     "application/json": components["schemas"]["TurnOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found / turn_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    play_state_api_saves__save_id__play_state_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayStateOut"];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -674,22 +1385,96 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description SSE: status=StatusEvent, dialogue=DialogueEvent, done=TurnResult. Only committed dialogue is public. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "text/event-stream": string;
                 };
             };
-            /** @description Validation Error */
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description request_id_reused / turn_still_running / save_busy / version_conflict / unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed / empty_message / rule_violation */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description daily_limit_reached / concurrency_budget_exhausted */
+            429: {
+                headers: {
+                    /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description model_unconfigured / monthly_cost_cap_reached */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
