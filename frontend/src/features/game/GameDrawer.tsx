@@ -14,6 +14,7 @@ export function GameDrawer({
   disabled,
   act,
   events,
+  relationships,
 }: {
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   panel: Panel;
@@ -25,6 +26,7 @@ export function GameDrawer({
   disabled: boolean;
   act: (action: Action, text?: string, target?: Npc) => Promise<void>;
   events: GameEvent[];
+  relationships: Save["relationships"];
 }) {
   return (
     <>
@@ -89,7 +91,19 @@ export function GameDrawer({
                     ? "已发送私人祝福"
                     : "你还没有联系王会计"}
                 </small>
+                {state.flags.includes("wang_contacted") && (
+                  <p>{story.wang_reply}</p>
+                )}
               </article>
+              <h3>人物关系 · 当前进展</h3>
+              <p className={s.muted}>{story.adaptation_note}</p>
+              {relationships?.map((person) => (
+                <article className={s.note} key={person.id}>
+                  <h4>{person.name}</h4>
+                  <small>{person.role}</small>
+                  <p>{person.description}</p>
+                </article>
+              ))}
             </>
           )}
           {panel === "work" && (
@@ -156,11 +170,13 @@ export function GameDrawer({
                   <small>
                     {event.kind === "player"
                       ? "周凌"
-                      : event.kind === "work"
-                        ? "工作记录"
-                        : event.kind === "epilogue"
-                          ? "结局回顾"
-                          : story.npcs[event.npc]?.name}
+                      : event.kind === "personal"
+                        ? "王叔 · 私人回复"
+                        : event.kind === "work"
+                          ? "工作记录"
+                          : event.kind === "epilogue"
+                            ? "结局回顾"
+                            : story.npcs[event.npc]?.name}
                   </small>
                   <p>{event.text}</p>
                 </article>

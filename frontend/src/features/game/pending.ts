@@ -1,3 +1,4 @@
+import { isAction, isNpc, record } from "../../contracts";
 import type { TurnInput } from "../../types";
 export interface PendingTurn {
   format: 1;
@@ -11,6 +12,24 @@ export interface PendingTurn {
 const memory = new Map<string, PendingTurn | null>();
 const key = (userId: string, saveId: string) =>
   `pending:v1:${userId}:${saveId}`;
+const validId = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+export function validPayload(value: unknown, requestId: string): boolean {
+  if (!record(value)) return false;
+  return (
+    validId(requestId) &&
+    value.request_id === requestId &&
+    Number.isSafeInteger(value.version) &&
+    Number(value.version) >= 0 &&
+    (value.action === undefined || isAction(value.action)) &&
+    (value.npc === undefined || isNpc(value.npc)) &&
+    (value.text === undefined ||
+      (typeof value.text === "string" && [...value.text].length <= 1500)) &&
+    Object.keys(value).every((key) =>
+      ["request_id", "version", "action", "npc", "text"].includes(key),
+    )
+  );
+}
 export function readPending(
   userId: string,
   saveId: string,
@@ -32,6 +51,7 @@ export function readPending(
         value.saveId === saveId &&
         "requestId" in value &&
         typeof value.requestId === "string" &&
+        validId(value.requestId) &&
         "replayed" in value &&
         typeof value.replayed === "boolean"
       ) {
@@ -39,7 +59,7 @@ export function readPending(
         const record = value as PendingTurn;
         if (
           record.payload &&
-          (record.payload.request_id !== record.requestId ||
+          (!validPayload(record.payload, record.requestId) ||
             !Number.isInteger(record.payload.version) ||
             record.payload.version < 0)
         )
@@ -49,7 +69,7 @@ export function readPending(
       }
     }
     const legacy = sessionStorage.getItem(`pending:${saveId}`);
-    if (legacy)
+    if (legacy && validId(legacy))
       return { format: 1, userId, saveId, requestId: legacy, replayed: true };
   } catch {
     /* Browsers may deny storage; the server still owns the turn. */
@@ -57,7 +77,15 @@ export function readPending(
   return null;
 }
 export function writePending(record: PendingTurn): void {
+  if (!validId(record.requestId)) {
+    clearPending(record.userId, record.saveId);
+    return;
+  }
   const name = key(record.userId, record.saveId);
+  if (record.payload && !validPayload(record.payload, record.requestId)) {
+    record = { ...record };
+    delete record.payload;
+  }
   memory.set(name, record);
   try {
     sessionStorage.setItem(name, JSON.stringify(record));

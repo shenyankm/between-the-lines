@@ -240,11 +240,11 @@ describe("api() error branches", () => {
     expect(asApiError(error).requestId).toBeUndefined();
   });
 
-  it("leaves a network failure unwrapped for the caller to handle", async () => {
+  it("normalizes a network failure after bounded GET retries", async () => {
     server.use(http.get("/api/config", () => HttpResponse.error()));
 
     const error = await thrown(api<unknown>("/config"));
-    expect(error).not.toBeInstanceOf(ApiError);
-    expect(error).toBeInstanceOf(TypeError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(asApiError(error).kind).toBe("network");
   });
 });

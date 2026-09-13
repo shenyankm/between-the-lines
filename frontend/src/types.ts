@@ -13,3 +13,5 @@ export type Turn = Schema["TurnOut"];
 export type User = Schema["UserOut"];
 export type Config = Schema["ConfigOut"];
 export type Interlude = Schema["Interlude"];
+
+export type ErrorCode = Schema["ErrorCode"];

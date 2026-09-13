@@ -8,13 +8,14 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { gameApi } from "../api";
+import { ErrorNotice } from "../ErrorNotice";
+import { ApiError, gameApi } from "../api";
 import s from "../App.module.css";
 
 export function Home() {
   const navigate = useNavigate(),
     client = useQueryClient();
-  const [error, setError] = useState(""),
+  const [error, setError] = useState<unknown>(null),
     [busy, setBusy] = useState(false);
   const config = useQuery({
     queryKey: ["config"],
@@ -22,34 +23,36 @@ export function Home() {
   });
   const user = useQuery({
     queryKey: ["user"],
-    queryFn: () => gameApi.user(),
+    queryFn: ({ signal }) => gameApi.user(signal),
   });
   const saves = useQuery({
-    queryKey: ["saves"],
-    queryFn: () => gameApi.saves(),
-    enabled: !!user.data,
+    queryKey: ["saves", user.data?.id],
+    queryFn: ({ signal }) => gameApi.saves(signal),
+    enabled:
+      !!user.data &&
+      !(user.error instanceof ApiError && user.error.status === 401),
   });
   async function start() {
     setBusy(true);
-    setError("");
+    setError(null);
     try {
       const save = await gameApi.createSave();
       await client.invalidateQueries({ queryKey: ["saves"] });
       void navigate(`/play/${save.id}`);
     } catch (e) {
-      setError((e as Error).message);
+      setError(e);
     } finally {
       setBusy(false);
     }
   }
   async function login() {
     setBusy(true);
-    setError("");
+    setError(null);
     try {
       await gameApi.login();
       await client.invalidateQueries({ queryKey: ["user"] });
     } catch (e) {
-      setError((e as Error).message);
+      setError(e);
     } finally {
       setBusy(false);
     }
@@ -78,7 +81,8 @@ export function Home() {
           <br className={s.desktop} />
           找到属于自己的回应。
         </p>
-        {user.data ? (
+        {user.data &&
+        !(user.error instanceof ApiError && user.error.status === 401) ? (
           <div className={s.homeActions}>
             <button
               className={s.primary}
@@ -127,11 +131,15 @@ export function Home() {
         {config.data && !config.data.zhihu_login && (
           <p className={s.muted}>知乎登录待接入</p>
         )}
-        {(error || config.error) && (
-          <p role="alert" className={s.error}>
-            {error || "无法连接服务，请确认后端已启动。"}
-          </p>
+        <ErrorNotice error={error} />
+        <ErrorNotice
+          error={config.error}
+          onRetry={() => void config.refetch()}
+        />
+        {!(user.error instanceof ApiError && user.error.status === 401) && (
+          <ErrorNotice error={user.error} onRetry={() => void user.refetch()} />
         )}
+        <ErrorNotice error={saves.error} onRetry={() => void saves.refetch()} />
       </div>
       <footer className={s.homeFooter}>
         <span>每一个选择，都值得被认真对待。</span>
@@ -142,9 +150,16 @@ export function Home() {
 }
 
 export function Saves() {
+  const user = useQuery({
+    queryKey: ["user"],
+    queryFn: ({ signal }) => gameApi.user(signal),
+  });
   const saves = useQuery({
-    queryKey: ["saves"],
-    queryFn: () => gameApi.saves(),
+    queryKey: ["saves", user.data?.id],
+    queryFn: ({ signal }) => gameApi.saves(signal),
+    enabled:
+      !!user.data &&
+      !(user.error instanceof ApiError && user.error.status === 401),
   });
   return (
     <main className={s.page}>
@@ -155,20 +170,24 @@ export function Saves() {
       <h1>我的故事</h1>
       <p className={s.muted}>每个存档都是独立的一段经历。</p>
       {saves.isLoading && <p>正在读取…</p>}
-      {saves.error && <p role="alert">请先登录后查看存档。</p>}
+      <ErrorNotice
+        error={user.error || saves.error}
+        onRetry={() => void (user.error ? user.refetch() : saves.refetch())}
+      />
       {saves.data?.length === 0 && <p>还没有故事，从第一句话开始。</p>}
       <div className={s.saveGrid}>
-        {saves.data?.map((item, i) => (
-          <Link to={`/play/${item.id}`} key={item.id} className={s.saveCard}>
-            <Bookmark />
-            <h2>故事 {saves.data.length - i}</h2>
-            <p>{item.state.ending || `第 ${item.state.act} 幕`}</p>
-            <span>
-              专业信用 {item.state.credit} · 心绪消耗 {item.state.stress}
-            </span>
-            <ChevronRight />
-          </Link>
-        ))}
+        {!(user.error instanceof ApiError && user.error.status === 401) &&
+          saves.data?.map((item, i) => (
+            <Link to={`/play/${item.id}`} key={item.id} className={s.saveCard}>
+              <Bookmark />
+              <h2>故事 {saves.data.length - i}</h2>
+              <p>{item.state.ending || `第 ${item.state.act} 幕`}</p>
+              <span>
+                专业信用 {item.state.credit} · 心绪消耗 {item.state.stress}
+              </span>
+              <ChevronRight />
+            </Link>
+          ))}
       </div>
     </main>
   );

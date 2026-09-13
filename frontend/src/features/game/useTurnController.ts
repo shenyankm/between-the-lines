@@ -1,7 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, gameApi, sendTurn } from "../../api";
-import type { Action, Npc, PlayState, Result, Save } from "../../types";
+import { ApiError, gameApi, sendTurn, errorMessage } from "../../api";
+import type {
+  Action,
+  ErrorCode,
+  Npc,
+  PlayState,
+  Result,
+  Save,
+  TurnInput,
+} from "../../types";
 import {
   clearPending,
   readPending,
@@ -17,9 +25,11 @@ interface View {
   pending: string | null;
   error: string;
   status: string;
+  issue?: unknown;
+  blocked?: boolean;
 }
 const idle: View = { phase: "idle", pending: null, error: "", status: "" };
-const admissionErrors = new Set([
+const admissionErrors: ReadonlySet<string> = new Set<ErrorCode>([
   "not_authenticated",
   "forbidden_origin",
   "save_not_found",
@@ -29,6 +39,7 @@ const admissionErrors = new Set([
   "unsupported_save_version",
   "json_required",
   "validation_failed",
+  "request_body_invalid",
   "empty_message",
   "rule_violation",
   "daily_limit_reached",
@@ -45,6 +56,7 @@ export function useTurnController(
   userId: string,
   saveId: string,
   activeRequest?: string | null,
+  onCompleted?: (input: Partial<TurnInput>) => void,
 ) {
   const client = useQueryClient();
   const [view, setView] = useState<View>(idle);
@@ -54,20 +66,80 @@ export function useTurnController(
   const checking = useRef(false);
   const since = useRef(0),
     attempt = useRef(0);
+  const paused = useRef(false);
+  const notBefore = useRef(0);
+  const cooldownTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const remember = useCallback(
+    (error: unknown) => {
+      if (!(error instanceof ApiError)) return;
+      if (error.status === 401) {
+        paused.current = true;
+        void client.invalidateQueries({ queryKey: ["user"] });
+      }
+      if (error.retryAfterSeconds !== undefined) {
+        notBefore.current = Math.max(
+          notBefore.current,
+          Date.now() + error.retryAfterSeconds * 1000,
+        );
+        clearTimeout(cooldownTimer.current);
+        const expire = () => {
+          const remaining = notBefore.current - Date.now();
+          if (remaining > 0) {
+            cooldownTimer.current = setTimeout(
+              expire,
+              Math.min(remaining, 60_000),
+            );
+            return;
+          }
+          if (!lifetime.current.signal.aborted)
+            setView((v) => ({ ...v, blocked: paused.current }));
+        };
+        cooldownTimer.current = setTimeout(
+          expire,
+          Math.min(Math.max(0, notBefore.current - Date.now()), 60_000),
+        );
+      }
+    },
+    [client],
+  );
   const settled = useRef(new Set<string>());
-  const refresh = useCallback(async () => {
-    if (lifetime.current.signal.aborted) return;
-    await Promise.all([
-      client.invalidateQueries({ queryKey: playKey(userId, saveId) }),
-      client.invalidateQueries({ queryKey: ["saves"] }),
-    ]);
-  }, [client, userId, saveId]);
+  const refresh = useCallback(
+    async (signal = lifetime.current.signal) => {
+      if (signal.aborted || paused.current || Date.now() < notBefore.current)
+        return;
+      const results = await Promise.allSettled([
+        client.invalidateQueries(
+          { queryKey: playKey(userId, saveId) },
+          { throwOnError: true },
+        ),
+        client.invalidateQueries(
+          { queryKey: ["saves", userId] },
+          { throwOnError: true },
+        ),
+      ]);
+      const failure = results.find((result) => result.status === "rejected");
+      if (!signal.aborted && failure?.status === "rejected") {
+        remember(failure.reason);
+        setView((v) => ({
+          ...v,
+          issue: failure.reason,
+          error: "进度刷新未完成，请重新加载。",
+          blocked: paused.current || Date.now() < notBefore.current,
+        }));
+      }
+    },
+    [client, userId, saveId, remember],
+  );
 
   const resolve = useCallback(
-    async (result: Result, signal: AbortSignal) => {
+    (result: Result, signal: AbortSignal) => {
       if (signal.aborted) return;
       if (result.save.id !== saveId)
         throw new Error("回复与存档不匹配，请恢复回合结果。");
+      if (result.status === "completed" && record.current?.payload)
+        onCompleted?.(record.current.payload);
       if (record.current) settled.current.add(record.current.requestId);
       clearPending(userId, saveId);
       record.current = null;
@@ -86,25 +158,42 @@ export function useTurnController(
       );
       setView({
         ...idle,
+        issue: result.failure
+          ? new ApiError(
+              result.failure.message,
+              0,
+              result.failure.code,
+              result.failure.request_id ?? undefined,
+              undefined,
+              "http",
+              undefined,
+              "refresh",
+            )
+          : undefined,
         error:
           result.status === "failed"
-            ? result.text || "回合未完成，请刷新后继续。"
+            ? result.failure?.message ||
+              result.text ||
+              "回合未完成，请刷新后继续。"
             : "",
       });
-      await refresh();
     },
-    [client, refresh, userId, saveId],
+    [client, userId, saveId, onCompleted],
   );
 
   const recoverRef = useRef<() => Promise<void>>(async () => {});
   const schedule = useCallback(() => {
-    if (!record.current || lifetime.current.signal.aborted) return;
+    if (!record.current || lifetime.current.signal.aborted || paused.current)
+      return;
     if (Date.now() - since.current >= 90_000) {
       setView((v) => ({ ...v, phase: "waiting", status: "" }));
       return;
     }
-    const delay =
-      [1000, 2000, 4000, 5000][Math.min(attempt.current++, 3)] ?? 5000;
+    const delay = Math.max(
+      [1000, 2000, 4000, 5000][Math.min(attempt.current++, 3)] ?? 5000,
+      notBefore.current - Date.now(),
+    );
+    if (Date.now() - since.current + delay > 90_000) return;
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       void recoverRef.current();
@@ -114,11 +203,19 @@ export function useTurnController(
   const recover = useCallback(async () => {
     const current = record.current,
       signal = lifetime.current.signal;
-    if (!current || signal.aborted || checking.current) return;
+    if (
+      !current ||
+      signal.aborted ||
+      checking.current ||
+      paused.current ||
+      Date.now() < notBefore.current
+    )
+      return;
     checking.current = true;
     setView((v) => ({
       ...v,
       phase: "recovering",
+      issue: undefined,
       error: "",
       status: "正在恢复回合…",
     }));
@@ -126,7 +223,7 @@ export function useTurnController(
       const turn = await gameApi.turn(saveId, current.requestId, signal);
       if (signal.aborted) return;
       if (turn.result && turn.status !== "running")
-        await resolve(turn.result, signal);
+        resolve(turn.result, signal);
       else
         setView((v) => ({
           ...v,
@@ -136,6 +233,7 @@ export function useTurnController(
         }));
     } catch (error) {
       if (signal.aborted) return;
+      remember(error);
       if (
         error instanceof ApiError &&
         error.status === 404 &&
@@ -160,16 +258,20 @@ export function useTurnController(
             },
             signal,
           );
-          await resolve(result, signal);
+          resolve(result, signal);
         } catch (replayError) {
           if (!signal.aborted) {
+            remember(replayError);
             if (rejected(replayError)) {
               clearPending(userId, saveId);
               record.current = null;
             }
             setView((v) => ({
               ...v,
-              phase: "waiting",
+              phase: record.current ? "waiting" : "idle",
+              issue: replayError,
+              blocked: paused.current || Date.now() < notBefore.current,
+              status: "",
               pending: record.current?.requestId ?? null,
               error:
                 replayError instanceof Error
@@ -183,6 +285,7 @@ export function useTurnController(
         if (
           error instanceof ApiError &&
           error.status === 404 &&
+          error.code === "turn_not_found" &&
           !current.payload
         ) {
           clearPending(userId, saveId);
@@ -192,18 +295,20 @@ export function useTurnController(
           ...v,
           phase: record.current ? "waiting" : "idle",
           pending: record.current?.requestId ?? null,
-          error: error instanceof Error ? error.message : "请求未完成。",
+          error: errorMessage(error),
+          issue: error,
+          blocked: paused.current || Date.now() < notBefore.current,
           status: "",
         }));
       }
     } finally {
       if (!signal.aborted) {
         checking.current = false;
-        await refresh();
-        schedule();
+        await refresh(signal);
+        if (!signal.aborted) schedule();
       }
     }
-  }, [refresh, resolve, saveId, schedule, userId]);
+  }, [refresh, resolve, saveId, schedule, userId, remember]);
 
   useEffect(() => {
     recoverRef.current = recover;
@@ -211,6 +316,9 @@ export function useTurnController(
   useEffect(() => {
     lifetime.current = new AbortController();
     checking.current = false;
+    paused.current = false;
+    notBefore.current = 0;
+    settled.current.clear();
     record.current = readPending(userId, saveId);
     setView({ ...idle, pending: record.current?.requestId ?? null });
     since.current = Date.now();
@@ -222,6 +330,7 @@ export function useTurnController(
     return () => {
       lifetime.current.abort();
       clearTimeout(timer.current);
+      clearTimeout(cooldownTimer.current);
     };
   }, [userId, saveId]);
 
@@ -264,7 +373,13 @@ export function useTurnController(
       text: string,
       npc: Npc,
     ): Promise<boolean> => {
-      if (record.current || lifetime.current.signal.aborted) return false;
+      if (
+        record.current ||
+        lifetime.current.signal.aborted ||
+        paused.current ||
+        Date.now() < notBefore.current
+      )
+        return false;
       const signal = lifetime.current.signal;
       const requestId = crypto.randomUUID();
       const pending: PendingTurn = {
@@ -304,10 +419,12 @@ export function useTurnController(
           },
           signal,
         );
-        await resolve(result, signal);
+        resolve(result, signal);
+        await refresh(signal);
         return !signal.aborted && result.status === "completed";
       } catch (error) {
         if (signal.aborted) return false;
+        remember(error);
         if (rejected(error)) {
           clearPending(userId, saveId);
           record.current = null;
@@ -315,15 +432,21 @@ export function useTurnController(
         setView({
           phase: record.current ? "waiting" : "idle",
           pending: record.current?.requestId ?? null,
-          error: error instanceof Error ? error.message : "请求未完成。",
+          error: errorMessage(error),
+          issue: error,
+          blocked: paused.current || Date.now() < notBefore.current,
           status: "",
         });
-        await refresh();
-        schedule();
+        // The recovery window begins after the subscription ends, even if the
+        // original stream used its entire idle timeout.
+        since.current = Date.now();
+        attempt.current = 0;
+        await refresh(signal);
+        if (!signal.aborted) schedule();
         return false;
       }
     },
-    [refresh, resolve, saveId, schedule, userId],
+    [refresh, resolve, saveId, schedule, userId, remember],
   );
 
   const manualRecover = useCallback(async () => {
@@ -334,6 +457,7 @@ export function useTurnController(
   }, [recover]);
   return {
     ...view,
+    blocked: view.blocked || paused.current || Date.now() < notBefore.current,
     busy: view.phase === "submitting" || view.phase === "recovering",
     submit,
     recover: manualRecover,

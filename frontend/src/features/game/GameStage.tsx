@@ -44,7 +44,7 @@ export function GameStage({
             </span>
           ))}
         </div>
-        <Link to="/saves" className={s.iconText}>
+        <Link to="/saves" className={s.iconText} aria-label="存档">
           <Bookmark size={17} />
           <span>存档</span>
         </Link>

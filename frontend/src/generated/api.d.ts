@@ -317,7 +317,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue";
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue";
             /** Target */
             target?: ("sun" | "li" | "zhang") | null;
         };
@@ -345,16 +345,43 @@ export interface components {
         };
         /** ErrorBody */
         ErrorBody: {
-            /** Code */
-            code: string;
+            code: components["schemas"]["ErrorCode"];
             /** Message */
             message: string;
             /** Request Id */
             request_id: string;
+            /**
+             * Recovery
+             * @enum {string}
+             */
+            recovery: "retry" | "login" | "refresh" | "edit" | "wait" | "contact" | "recover";
+            /** Details */
+            details?: components["schemas"]["FieldIssue"][] | null;
+            /** Retry After Seconds */
+            retry_after_seconds?: number | null;
         };
+        /**
+         * ErrorCode
+         * @enum {string}
+         */
+        ErrorCode: "oauth_failed" | "request_body_invalid" | "not_authenticated" | "forbidden_origin" | "not_found" | "save_not_found" | "turn_not_found" | "request_id_reused" | "turn_still_running" | "save_busy" | "version_conflict" | "unsupported_save_version" | "json_required" | "validation_failed" | "empty_message" | "rule_violation" | "daily_limit_reached" | "concurrency_budget_exhausted" | "internal_error" | "oauth_not_configured" | "model_unconfigured" | "monthly_cost_cap_reached" | "http_404" | "http_405";
         /** ErrorEnvelope */
         ErrorEnvelope: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /**
+         * FailureCode
+         * @enum {string}
+         */
+        FailureCode: "turn_timeout" | "execution_budget_exhausted" | "model_unavailable" | "empty_reply" | "turn_interrupted" | "turn_failed";
+        /** FieldIssue */
+        FieldIssue: {
+            /** Field */
+            field: string;
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
         };
         /** GameEventOut */
         GameEventOut: {
@@ -362,7 +389,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "player" | "npc" | "work" | "epilogue";
+            kind: "player" | "npc" | "work" | "epilogue" | "personal";
             /** Text */
             text: string;
             /**
@@ -373,7 +400,7 @@ export interface components {
             /** Act */
             act?: number | null;
             /** Action */
-            action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue") | null;
+            action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue") | null;
             /** Id */
             id: string;
         };
@@ -417,6 +444,11 @@ export interface components {
              */
             status: "alive";
         };
+        /** LogoutOut */
+        LogoutOut: {
+            /** Ok */
+            ok: boolean;
+        };
         /** PlayStateOut */
         PlayStateOut: {
             save: components["schemas"]["SaveOut"];
@@ -455,6 +487,17 @@ export interface components {
                 [key: string]: "ok" | "error";
             };
         };
+        /** Relationship */
+        Relationship: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+            /** Description */
+            description: string;
+        };
         /** SaveOut */
         SaveOut: {
             /** Id */
@@ -462,6 +505,17 @@ export interface components {
             /** Version */
             version: number;
             state: components["schemas"]["GameState"];
+            /** Relationships */
+            relationships?: components["schemas"]["Relationship"][];
+            /**
+             * Ending Summary
+             * @default null
+             */
+            ending_summary: string | null;
+            /** Npc Greetings */
+            npc_greetings?: {
+                [key: string]: string;
+            };
         };
         /** StoryOut */
         StoryOut: {
@@ -474,6 +528,10 @@ export interface components {
             npcs: components["schemas"]["PublicNpcs"];
             /** Tips */
             tips: components["schemas"]["Tip"][];
+            /** Adaptation Note */
+            adaptation_note: string;
+            /** Wang Reply */
+            wang_reply: string;
         };
         /** Tip */
         Tip: {
@@ -483,6 +541,23 @@ export interface components {
             text: string;
             /** Source */
             source: string;
+        };
+        /** TurnFailure */
+        TurnFailure: {
+            code: components["schemas"]["FailureCode"];
+            /** Message */
+            message: string;
+            /**
+             * Request Id
+             * @default null
+             */
+            request_id: string | null;
+            /**
+             * Recovery
+             * @default refresh
+             * @constant
+             */
+            recovery: "refresh";
         };
         /** TurnInput */
         TurnInput: {
@@ -504,7 +579,7 @@ export interface components {
              * @default speak
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue";
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue";
             /**
              * Text
              * @default
@@ -543,6 +618,8 @@ export interface components {
              * @default false
              */
             retryable: boolean;
+            /** @default null */
+            failure: components["schemas"]["TurnFailure"] | null;
         };
         /** TurnUsage */
         TurnUsage: {
@@ -610,6 +687,30 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** StreamErrorEvent */
+        StreamErrorEvent: {
+            /**
+             * Code
+             * @default subscription_failed
+             * @constant
+             */
+            code: "subscription_failed";
+            /**
+             * Message
+             * @default 回复连接已中断，请恢复回合结果。
+             */
+            message: string;
+            /** Request Id */
+            request_id: string;
+            /** Turn Id */
+            turn_id: string;
+            /**
+             * Recovery
+             * @default recover
+             * @constant
+             */
+            recovery: "recover";
+        };
     };
     responses: never;
     parameters: never;
@@ -639,6 +740,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description request_body_invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description forbidden_origin */
@@ -741,9 +851,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
+                    "application/json": components["schemas"]["LogoutOut"];
                 };
             };
             /** @description forbidden_origin */
@@ -1043,6 +1151,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description internal_error */
             500: {
                 headers: {
@@ -1283,6 +1400,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description validation_failed */
             422: {
                 headers: {
@@ -1385,13 +1511,25 @@ export interface operations {
             };
         };
         responses: {
-            /** @description SSE: status=StatusEvent, dialogue=DialogueEvent, done=TurnResult. Only committed dialogue is public. */
+            /** @description SSE: status=StatusEvent, dialogue=DialogueEvent, done=TurnResult, error=StreamErrorEvent (subscription failed; query the original request). Only committed dialogue is public. */
             200: {
                 headers: {
+                    "X-Request-Id"?: string;
+                    /** @description no-store */
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description request_body_invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description not_authenticated */
@@ -1471,6 +1609,8 @@ export interface operations {
             /** @description model_unconfigured / monthly_cost_cap_reached */
             503: {
                 headers: {
+                    /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

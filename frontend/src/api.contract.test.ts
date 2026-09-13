@@ -11,6 +11,7 @@ const result: Result = {
   save: save(),
   text: "完成",
   retryable: false,
+  failure: null,
 };
 afterEach(() => vi.restoreAllMocks());
 it.each<unknown>([
@@ -52,6 +53,7 @@ it("accepts a failed terminal result with no prose and all legitimate state extr
       status: "failed",
       text: null,
       retryable: true,
+      failure: null,
       save: save({
         state: {
           act: 4,
@@ -108,13 +110,23 @@ it.each([
 it("reads a running and a completed lookup", async () => {
   server.use(
     http.get("/api/saves/s/turns/r", () =>
-      HttpResponse.json({ status: "running", result: null }),
+      HttpResponse.json({
+        id: "turn-1",
+        usage: {},
+        status: "running",
+        result: null,
+      }),
     ),
   );
   expect((await gameApi.turn("s", "r")).status).toBe("running");
   server.use(
     http.get("/api/saves/s/turns/r", () =>
-      HttpResponse.json({ status: "completed", result }),
+      HttpResponse.json({
+        id: "turn-1",
+        usage: {},
+        status: "completed",
+        result,
+      }),
     ),
   );
   expect((await gameApi.turn("s", "r")).result).toEqual(result);
@@ -147,6 +159,7 @@ it("handles CRLF and UTF-8 split at every byte and safely cancels the response r
           throw new Error("upstream closed");
         },
       }),
+      { headers: { "Content-Type": "text/event-stream" } },
     ),
   );
   const statuses: string[] = [];

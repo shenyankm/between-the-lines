@@ -1,12 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LogOut } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { gameApi } from "../../api";
+import { ErrorNotice } from "../../ErrorNotice";
+import { ApiError, gameApi } from "../../api";
 import s from "../../App.module.css";
 import { SceneInterlude } from "../../SceneInterlude";
 import { useUI } from "../../store";
-import type { Action, Npc } from "../../types";
+import type { Action, Npc, TurnInput } from "../../types";
 
 import { Conversation } from "./Conversation";
 import { GameDrawer } from "./GameDrawer";
@@ -28,11 +29,17 @@ function PlaySession({ userId }: { userId: string }) {
     queryFn: ({ signal }) => gameApi.story(signal),
   });
   const [input, setInput] = useState("");
-  const { busy, pending, error, status, submit, recover } = useTurnController(
-    userId,
-    id,
-    playQuery.data?.active_turn?.request_id,
-  );
+  const clearCompletedDraft = useCallback((submitted: Partial<TurnInput>) => {
+    if ((submitted.action ?? "speak") === "speak")
+      setInput((current) => (current === submitted.text ? "" : current));
+  }, []);
+  const { busy, pending, error, issue, blocked, status, submit, recover } =
+    useTurnController(
+      userId,
+      id,
+      playQuery.data?.active_turn?.request_id,
+      clearCompletedDraft,
+    );
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [interludeAct, setInterludeAct] = useState<number | null>(null);
   useEffect(() => {
@@ -40,35 +47,64 @@ function PlaySession({ userId }: { userId: string }) {
     if (panel) dialog?.showModal();
     else dialog?.close();
   }, [panel]);
+  const [logoutError, setLogoutError] = useState<unknown>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   async function logout() {
-    await gameApi.logout();
-    await client.cancelQueries();
-    client.clear();
-    void navigate("/");
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError(null);
+    try {
+      await gameApi.logout();
+      await client.cancelQueries();
+      client.clear();
+      void navigate("/");
+    } catch (error) {
+      setLogoutError(error);
+    } finally {
+      setLoggingOut(false);
+    }
   }
   async function act(action: Action, text = "", target: Npc = npc) {
     const submittedDraft = input;
-    if (saveQuery.data && (await submit(saveQuery.data, action, text, target)))
+    if (
+      saveQuery.data &&
+      (await submit(saveQuery.data, action, text, target))
+    ) {
       setInput((current) => (current === submittedDraft ? "" : current));
+      selectNpc(target);
+    }
   }
   if (saveQuery.error)
     return (
       <main className={s.page}>
         <Link to="/">返回首页</Link>
-        <p role="alert">{saveQuery.error.message}</p>
+        <ErrorNotice
+          error={saveQuery.error}
+          onRetry={() => void playQuery.refetch()}
+        />
       </main>
     );
   if (!saveQuery.data || !storyQuery.data)
     return (
       <main className={s.page}>
-        {storyQuery.error ? "故事资料读取失败，请刷新。" : "正在翻开你的故事…"}
+        {storyQuery.error ? (
+          <ErrorNotice
+            error={storyQuery.error}
+            onRetry={() => void storyQuery.refetch()}
+          />
+        ) : (
+          "正在翻开你的故事…"
+        )}
       </main>
     );
   const save = saveQuery.data,
     state = save.state,
     story = storyQuery.data,
     scene = story.acts[state.act],
-    character = story.npcs[npc],
+    character = {
+      ...story.npcs[npc],
+      greeting: save.npc_greetings?.[npc] ?? story.npcs[npc].greeting,
+    },
     events = eventsQuery.data || [];
   if (!scene)
     return (
@@ -77,10 +113,19 @@ function PlaySession({ userId }: { userId: string }) {
         <p role="alert">第 {state.act + 1} 幕的场景数据缺失，请刷新重试。</p>
       </main>
     );
-  const lastReply = [...events]
+  const latestInteraction = [...events]
     .reverse()
-    .find((e) => e.kind === "npc" && e.npc === npc && e.act === state.act);
-  const disabled = busy || !!pending;
+    .find(
+      (e) =>
+        e.act === state.act &&
+        ((e.kind === "npc" && e.npc === npc) ||
+          (npc === "sun" &&
+            e.action &&
+            ["boundary", "cut_ties", "keep_distance"].includes(e.action))),
+    );
+  const lastReply =
+    latestInteraction?.kind === "npc" ? latestInteraction : undefined;
+  const disabled = busy || !!pending || blocked;
   return (
     <main className={s.game}>
       <GameStage
@@ -107,6 +152,9 @@ function PlaySession({ userId }: { userId: string }) {
         busy={busy}
         status={status}
         error={error}
+        issue={issue}
+        recoveryDisabled={blocked}
+        refresh={() => void playQuery.refetch()}
         pending={pending}
         recover={recover}
         onNext={() =>
@@ -135,8 +183,16 @@ function PlaySession({ userId }: { userId: string }) {
         disabled={disabled}
         act={act}
         events={events}
+        relationships={save.relationships}
+      />
+      <ErrorNotice
+        error={logoutError}
+        onRetry={() => void logout()}
+        retryLabel="重试退出"
+        disabled={loggingOut}
       />
       <button
+        disabled={loggingOut}
         className={s.logout}
         aria-label="退出登录"
         onClick={() => void logout()}
@@ -153,13 +209,18 @@ export function Play() {
     queryKey: ["user"],
     queryFn: ({ signal }) => gameApi.user(signal),
   });
-  if (!user.data)
+  if (
+    !user.data ||
+    (user.error instanceof ApiError && user.error.status === 401)
+  )
     return (
       <main className={s.page}>
         <Link to="/">返回首页</Link>
-        <p role={user.error ? "alert" : undefined}>
-          {user.error ? user.error.message : "正在读取身份…"}
-        </p>
+        {user.error ? (
+          <ErrorNotice error={user.error} onRetry={() => void user.refetch()} />
+        ) : (
+          <p>正在读取身份…</p>
+        )}
       </main>
     );
   return <PlaySession key={`${user.data.id}:${id}`} userId={user.data.id} />;

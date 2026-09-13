@@ -10,6 +10,7 @@ import type { Result } from "./types";
 const done: Result = {
   status: "completed",
   retryable: false,
+  failure: null,
   text: "孙淼顿了一下，把话收了回去。",
   save: save({ version: 3, state: { act: 2 } }),
   turn_id: "turn-1",
@@ -157,7 +158,7 @@ describe("sendTurn() stream", () => {
 
     await expect(
       sendTurn("save-1", 1, "sun", "speak", "", "req-12", () => {}),
-    ).rejects.toThrow("浏览器无法读取回复。");
+    ).rejects.toThrow("回复格式无效，请恢复回合结果。");
   });
 });
 
@@ -199,17 +200,17 @@ describe("sendTurn() error branches", () => {
       sendTurn("save-1", 1, "sun", "speak", "", "req-14", () => {}),
     );
     // Deliberately shorter than api()'s fallback: sendTurn has its own copy.
-    expect(asApiError(error).message).toBe("请求未完成。");
+    expect(asApiError(error).message).toBe("请求未完成，请重试。");
     expect(asApiError(error).status).toBe(504);
   });
 
-  it("leaves a network failure unwrapped", async () => {
+  it("normalizes a network failure without retrying the mutation", async () => {
     onTurn(() => HttpResponse.error());
 
     const error = await thrown(
       sendTurn("save-1", 1, "sun", "speak", "", "req-15", () => {}),
     );
-    expect(error).not.toBeInstanceOf(ApiError);
-    expect(error).toBeInstanceOf(TypeError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(asApiError(error).kind).toBe("network");
   });
 });

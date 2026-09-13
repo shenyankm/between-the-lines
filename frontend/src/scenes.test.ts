@@ -46,7 +46,7 @@ describe("interludes", () => {
     expect(interludes[2]).toMatchObject({
       image: "/assets/corridor-evening.png",
       location: "走廊 · 从流程回到事实",
-      time: "周二 · 下班前",
+      time: "周二 · 下班后至夜间",
     });
   });
 

@@ -34,6 +34,7 @@ export function save(
     id: over.id ?? "save-1",
     version: over.version ?? 2,
     state: gameState(over.state),
+    ending_summary: null,
   };
 }
 

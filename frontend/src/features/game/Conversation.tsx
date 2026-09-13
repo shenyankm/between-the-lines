@@ -7,12 +7,15 @@ import {
   Send,
 } from "lucide-react";
 import { Link } from "react-router";
+import { ErrorNotice } from "../../ErrorNotice";
 import s from "../../App.module.css";
 import type { Action, GameEvent, Npc, Save, Story } from "../../types";
+import { choiceProgress, nextStep } from "./progress";
 
 export function Conversation({
   state,
   scene,
+  story,
   character,
   save,
   lastReply,
@@ -24,6 +27,9 @@ export function Conversation({
   busy,
   status,
   error,
+  issue,
+  recoveryDisabled,
+  refresh,
   pending,
   recover,
   onNext,
@@ -43,11 +49,25 @@ export function Conversation({
   busy: boolean;
   status: string;
   error: string;
+  issue?: unknown;
+  recoveryDisabled?: boolean;
+  refresh: () => void;
   pending: string | null;
   recover: () => Promise<void>;
   onNext: () => void;
 }) {
-  const options = scene.choices;
+  const relationshipChosen = state.flags.some((f) =>
+    ["sun_cut", "sun_observe"].includes(f),
+  );
+  const workComplete = ["clarified", "delivered"].every((f) =>
+    state.flags.includes(f),
+  );
+  const options = scene.choices.filter(
+    ({ action }) =>
+      !["cut_ties", "keep_distance"].includes(action) ||
+      (workComplete && !relationshipChosen),
+  );
+  const next = nextStep(state);
   return (
     <section className={s.conversation}>
       <div className={s.speakerRow}>
@@ -64,6 +84,7 @@ export function Conversation({
       {state.ending ? (
         <div className={s.ending}>
           <h1>{state.ending}</h1>
+          {save.ending_summary && <p>{save.ending_summary}</p>}
           <p>
             {[...events].reverse().find((e) => e.kind === "epilogue")?.text ||
               "故事结局已保存，回顾文字还未生成。"}
@@ -96,17 +117,36 @@ export function Conversation({
               ? scene.intro
               : lastReply?.text || character.greeting}
           </p>
+          {state.act === 0 && (
+            <p className={s.muted}>{story.adaptation_note}</p>
+          )}
+          {state.act > 0 && (
+            <p role="status" className={s.muted}>
+              {next.message}
+            </p>
+          )}
           <div className={s.choices}>
-            {options.map(({ label, action, target }) => (
-              <button
-                key={action}
-                disabled={disabled}
-                onClick={() => void act(action, "", target ?? undefined)}
-              >
-                <span>{label}</span>
-                <ChevronRight size={16} />
-              </button>
-            ))}
+            {options.map(({ label, action, target }) => {
+              const progress = choiceProgress(state, action);
+              return (
+                <button
+                  key={action}
+                  disabled={disabled || progress.disabled}
+                  title={progress.reason || undefined}
+                  onClick={() => void act(action, "", target ?? undefined)}
+                >
+                  <span>
+                    {label}
+                    {progress.completed ? " · 已完成" : ""}
+                  </span>
+                  {progress.completed ? (
+                    <Check size={16} />
+                  ) : (
+                    <ChevronRight size={16} />
+                  )}
+                </button>
+              );
+            })}
           </div>
           {state.act > 0 && (
             <form
@@ -137,20 +177,27 @@ export function Conversation({
           <div className={s.conversationFooter}>
             <span>{busy ? status : "你的表达，会成为故事的一部分。"}</span>
             {state.act > 0 && (
-              <button disabled={disabled} onClick={() => onNext()}>
+              <button
+                disabled={disabled || !next.ready}
+                onClick={() => onNext()}
+              >
                 继续故事 <ArrowRight size={16} />
               </button>
             )}
           </div>
         </>
       )}
-      {error && (
-        <div role="alert" className={s.error}>
-          {error}
-        </div>
-      )}
+      <ErrorNotice
+        error={issue}
+        message={error}
+        onRetry={pending ? undefined : refresh}
+      />
       {pending && !busy && (
-        <button className={s.textButton} onClick={() => void recover()}>
+        <button
+          disabled={recoveryDisabled}
+          className={s.textButton}
+          onClick={() => void recover()}
+        >
           <RefreshCw size={16} />
           恢复回合结果
         </button>
