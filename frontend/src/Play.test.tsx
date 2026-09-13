@@ -537,7 +537,9 @@ describe("Play: scene rendering", () => {
     expect(
       await screen.findByRole("heading", { name: "选择离开" }),
     ).toBeTruthy();
-    expect(screen.getByText("故事结局已保存，回顾文字还未生成。")).toBeTruthy();
+    expect(
+      screen.getByText("故事结局已保存。你可以选择生成回顾，尝试另一种回应。"),
+    ).toBeTruthy();
     expect(button("生成故事回顾").disabled).toBe(false);
   });
 });

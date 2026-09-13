@@ -272,6 +272,7 @@ export async function sendTurn(
   requestId: string,
   onStatus: (message: string) => void,
   signal?: AbortSignal,
+  extra: Partial<import("./types").TurnInput> = {},
 ): Promise<Result> {
   const scope = subscription(signal, 90_000);
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
@@ -284,6 +285,7 @@ export async function sendTurn(
         signal: scope.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...extra,
           request_id: requestId,
           version,
           npc,
@@ -379,6 +381,9 @@ async function checked<T>(
   return api<T>(path, body, signal, retry, guard);
 }
 export const gameApi = {
+  guest: () => checked("/auth/guest", isUser, {}),
+  visit: (id: string) =>
+    checked(`/saves/${encodeURIComponent(id)}/visit`, isSave, {}),
   config: (signal?: AbortSignal) =>
     checked("/config", isConfig, undefined, signal),
   user: (signal?: AbortSignal) =>
@@ -398,8 +403,13 @@ export const gameApi = {
       signal,
     ),
   createSave: () => checked("/saves", isSave, {}),
-  story: (signal?: AbortSignal) =>
-    checked("/story", isStory, undefined, signal),
+  story: (signal?: AbortSignal, version = 1) =>
+    checked(
+      version === 1 ? "/story" : `/story?version=${version}`,
+      isStory,
+      undefined,
+      signal,
+    ),
   playState: (id: string, signal?: AbortSignal) =>
     checked(
       `/saves/${encodeURIComponent(id)}/play-state`,

@@ -1,3 +1,4 @@
+import { installDiagnostics } from "./reporting";
 import {
   MutationCache,
   QueryCache,
@@ -27,6 +28,7 @@ const client = new QueryClient({
 // Outside React's tree, so a failure in an event handler or a timer is caught too --
 // nothing React renders would ever see those.
 installGlobalErrorHandlers();
+installDiagnostics();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

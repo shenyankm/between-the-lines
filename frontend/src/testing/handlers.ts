@@ -17,6 +17,7 @@ export function playHandlers(options: {
   const current = (): Save =>
     typeof options.save === "function" ? options.save() : options.save;
   return [
+    http.post("/api/saves/:id/visit", () => HttpResponse.json(current())),
     http.get("/api/auth/me", () =>
       HttpResponse.json({ id: "test-user", name: "试玩者" }),
     ),

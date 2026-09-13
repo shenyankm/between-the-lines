@@ -19,6 +19,15 @@ const strings = (v: Record<string, unknown>, fields: string[]) =>
 const integer = (v: unknown, max = Number.MAX_SAFE_INTEGER) =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= 0 && v <= max;
 const actions: Record<Action, true> = {
+  request_materials: true,
+  approve_purchase: true,
+  support_project: true,
+  verify_notice: true,
+  joint_review: true,
+  partner_breakup: true,
+  partner_distance: true,
+  propose: true,
+  cancel_proposal: true,
   speak: true,
   begin: true,
   contact_wang: true,
@@ -100,12 +109,12 @@ export function isConfig(v: unknown): v is Config {
     (v.agent_mode === "mock" || v.agent_mode === "deepseek")
   );
 }
-function isEvent(v: unknown): v is GameEvent {
+export function isEvent(v: unknown): v is GameEvent {
   return (
     record(v) &&
     strings(v, ["id", "text"]) &&
     isNpc(v.npc) &&
-    ["player", "npc", "work", "epilogue", "personal"].includes(
+    ["player", "npc", "work", "epilogue", "personal", "narrative"].includes(
       String(v.kind),
     ) &&
     (v.act == null || integer(v.act, 4)) &&
@@ -116,6 +125,30 @@ export function isPlayState(v: unknown): v is PlayState {
   return (
     record(v) &&
     isSave(v.save) &&
+    (v.available_actions === undefined ||
+      (Array.isArray(v.available_actions) &&
+        v.available_actions.every(
+          (a) =>
+            record(a) &&
+            isAction(a.action) &&
+            typeof a.label === "string" &&
+            typeof a.enabled === "boolean" &&
+            typeof a.completed === "boolean" &&
+            typeof a.requires_confirmation === "boolean" &&
+            (a.target == null || isNpc(a.target)) &&
+            typeof a.effect === "string" &&
+            typeof a.reason === "string",
+        ))) &&
+    (v.proposal == null ||
+      (record(v.proposal) &&
+        typeof v.proposal.id === "string" &&
+        isAction(v.proposal.action) &&
+        integer(v.proposal.version) &&
+        strings(v.proposal, ["label", "effect"]))) &&
+    (v.ai === undefined ||
+      (record(v.ai) &&
+        typeof v.ai.available === "boolean" &&
+        (v.ai.remaining == null || integer(v.ai.remaining)))) &&
     Array.isArray(v.events) &&
     v.events.every(isEvent) &&
     (v.active_turn === null ||

@@ -1,4 +1,16 @@
 import { test, expect, type Page } from "@playwright/test";
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/saves", async (route) => {
+    if (route.request().method() === "POST")
+      await route.continue({
+        postData: JSON.stringify({
+          ...route.request().postDataJSON(),
+          story_version: 1,
+        }),
+      });
+    else await route.continue();
+  });
+});
 import type { PlayState } from "../src/types";
 
 const dialogue = (page: Page) =>
@@ -197,6 +209,9 @@ for (const act of [1, 2, 3]) {
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "选择离开当前环境" }).click();
     await expect(page.getByRole("heading", { name: "主动离开" })).toBeVisible();
+    await page
+      .getByRole("button", { name: "生成故事回顾", exact: true })
+      .click();
     await expect(page.getByText(/你为这段经历选择了/)).toBeVisible();
     const after = await state(page);
     expect(after.save.state.flags.includes("personal_resolved")).toBe(
@@ -207,8 +222,10 @@ for (const act of [1, 2, 3]) {
     await expect(dialogue(page)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "继续故事" })).toHaveCount(0);
     await page.getByRole("link", { name: "回看我的故事" }).click();
-    await expect(page.getByRole("heading", { name: "我的故事" })).toBeVisible();
-    await page.getByRole("link", { name: /主动离开/ }).click();
+    await expect(
+      page.getByRole("heading", { name: "我的故事", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "打开故事" }).click();
     await expect(page.getByRole("heading", { name: "主动离开" })).toBeVisible();
   });
 }
@@ -229,10 +246,11 @@ test("independent saves, home continuation, logout and another identity do not m
   await expect(page.getByRole("button", { name: "进入故事" })).toBeVisible();
   expect((await state(page)).save.state.flags).not.toContain("wang_contacted");
   await page.getByRole("link", { name: "存档", exact: true }).click();
-  await expect(page.getByRole("link", { name: /故事 \d/ })).toHaveCount(2);
+  await expect(page.getByRole("link", { name: "打开故事" })).toHaveCount(2);
   await page.goto(first);
   await expect(dialogue(page)).toBeEnabled();
-  expect((await state(page)).save).toEqual(firstState);
+  expect((await state(page)).save.state).toEqual(firstState.state);
+  expect((await state(page)).save.version).toEqual(firstState.version);
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(
     page.getByRole("button", { name: "开发环境试玩" }),

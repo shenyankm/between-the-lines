@@ -59,6 +59,7 @@ export function useTurnController(
   onCompleted?: (input: Partial<TurnInput>) => void,
 ) {
   const client = useQueryClient();
+  const [aiBlocked, setAiBlocked] = useState(false);
   const [view, setView] = useState<View>(idle);
   const record = useRef<PendingTurn | null>(null);
   const lifetime = useRef(new AbortController());
@@ -77,6 +78,16 @@ export function useTurnController(
       if (error.status === 401) {
         paused.current = true;
         void client.invalidateQueries({ queryKey: ["user"] });
+      }
+      if (
+        [
+          "daily_limit_reached",
+          "monthly_cost_cap_reached",
+          "model_unconfigured",
+        ].includes(error.code ?? "")
+      ) {
+        setAiBlocked(true);
+        return;
       }
       if (error.retryAfterSeconds !== undefined) {
         notBefore.current = Math.max(
@@ -257,6 +268,7 @@ export function useTurnController(
               if (!signal.aborted) setView((v) => ({ ...v, status: message }));
             },
             signal,
+            p,
           );
           resolve(result, signal);
         } catch (replayError) {
@@ -372,6 +384,7 @@ export function useTurnController(
       action: Action,
       text: string,
       npc: Npc,
+      extra: Partial<TurnInput> = {},
     ): Promise<boolean> => {
       if (
         record.current ||
@@ -389,6 +402,7 @@ export function useTurnController(
         requestId,
         replayed: false,
         payload: {
+          ...extra,
           request_id: requestId,
           version: save.version,
           npc,
@@ -418,6 +432,7 @@ export function useTurnController(
             if (!signal.aborted) setView((v) => ({ ...v, status: message }));
           },
           signal,
+          extra,
         );
         resolve(result, signal);
         await refresh(signal);
@@ -457,6 +472,7 @@ export function useTurnController(
   }, [recover]);
   return {
     ...view,
+    aiBlocked,
     blocked: view.blocked || paused.current || Date.now() < notBefore.current,
     busy: view.phase === "submitting" || view.phase === "recovering",
     submit,

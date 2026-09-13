@@ -1,4 +1,16 @@
 import { test, expect } from "@playwright/test";
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/saves", async (route) => {
+    if (route.request().method() === "POST")
+      await route.continue({
+        postData: JSON.stringify({
+          ...route.request().postDataJSON(),
+          story_version: 1,
+        }),
+      });
+    else await route.continue();
+  });
+});
 
 test("successful background recovery clears only the submitted draft", async ({
   page,

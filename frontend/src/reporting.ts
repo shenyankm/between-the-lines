@@ -125,3 +125,29 @@ export function installGlobalErrorHandlers(): () => void {
     window.removeEventListener("unhandledrejection", onRejection);
   };
 }
+
+/** Same-origin, allowlisted diagnostics. Failures here never report recursively. */
+export function installDiagnostics(): void {
+  let last = 0;
+  setReporter((payload) => {
+    if (Date.now() - last < 3000) return;
+    last = Date.now();
+    const stack = (
+      payload.stack?.match(/\/assets\/[A-Za-z0-9_-]+\.js:\d+:\d+/g) ?? []
+    )
+      .slice(0, 10)
+      .join("\n");
+    void fetch("/api/diagnostics", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: payload.kind,
+        code: payload.code?.match(/^[a-z_]{1,80}$/)?.[0],
+        request_id: payload.requestId?.match(/^[A-Za-z0-9._-]{1,64}$/)?.[0],
+        build: "product-v2",
+        stack,
+      }),
+    }).catch(() => {});
+  });
+}

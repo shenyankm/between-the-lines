@@ -1,5 +1,6 @@
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
+import { clearIdentityDrafts } from "./features/game/drafts";
 import { resetPendingMemory } from "./features/game/pending";
 import { server } from "./testing/server";
 
@@ -44,6 +45,7 @@ beforeAll(() => {
 afterEach(() => {
   cleanup();
   resetPendingMemory();
+  clearIdentityDrafts("test-user");
   server.resetHandlers();
   sessionStorage.clear();
   localStorage.clear();

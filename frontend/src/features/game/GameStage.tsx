@@ -2,13 +2,13 @@ import {
   Bookmark,
   BriefcaseBusiness,
   Clock3,
-  Feather,
   History,
   Smartphone,
   Sparkles,
 } from "lucide-react";
 import { Link } from "react-router";
 import s from "../../App.module.css";
+import { backgroundImage, imageSet, imageSource } from "../../images";
 import type { Npc, Save, Story } from "../../types";
 
 import type { Panel } from "../../store";
@@ -30,7 +30,13 @@ export function GameStage({
     <>
       <header className={s.gameHeader}>
         <Link to="/" className={s.brand}>
-          <Feather size={21} />
+          <img
+            className={s.brandLogo}
+            src="/assets/brand-logo.png"
+            width={40}
+            height={40}
+            alt=""
+          />
           <span>言外之意</span>
         </Link>
         <div className={s.chapterNav}>
@@ -54,7 +60,7 @@ export function GameStage({
         style={
           {
             "--character-color": character.color,
-            "--scene-background": `url("${scene.background}")`,
+            "--scene-background": backgroundImage(scene.background),
           } as React.CSSProperties
         }
       >
@@ -89,7 +95,9 @@ export function GameStage({
         <aside className={s.characterCard}>
           <img
             className={s.characterPortrait}
-            src={character.portrait}
+            src={imageSource(character.portrait, 512)}
+            srcSet={imageSet(character.portrait)}
+            sizes="(max-width: 600px) 160px, 320px"
             alt={`${character.name}立绘`}
           />
           <div>

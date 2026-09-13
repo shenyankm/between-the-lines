@@ -21,6 +21,8 @@ export function Conversation({
   lastReply,
   events,
   disabled,
+  aiDisabled = false,
+  availableActions,
   act,
   input,
   setInput,
@@ -43,6 +45,8 @@ export function Conversation({
   lastReply: GameEvent | undefined;
   events: GameEvent[];
   disabled: boolean;
+  aiDisabled?: boolean;
+  availableActions?: import("../../types").PlayState["available_actions"];
   act: (action: Action, text?: string, target?: Npc) => Promise<void>;
   input: string;
   setInput: (input: string) => void;
@@ -62,12 +66,26 @@ export function Conversation({
   const workComplete = ["clarified", "delivered"].every((f) =>
     state.flags.includes(f),
   );
-  const options = scene.choices.filter(
-    ({ action }) =>
-      !["cut_ties", "keep_distance"].includes(action) ||
-      (workComplete && !relationshipChosen),
-  );
-  const next = nextStep(state);
+  const options =
+    save.story_version === 2
+      ? (availableActions ?? []).filter(
+          (a) => a.action !== "next" && !a.action.startsWith("partner_"),
+        )
+      : scene.choices.filter(
+          ({ action }) =>
+            !["cut_ties", "keep_distance"].includes(action) ||
+            (workComplete && !relationshipChosen),
+        );
+  const nextAction = availableActions?.find((a) => a.action === "next");
+  const next =
+    save.story_version === 2
+      ? {
+          ready: nextAction?.enabled ?? false,
+          message:
+            nextAction?.reason ||
+            "行动结果会记录在故事里；普通聊天不重复计分。",
+        }
+      : nextStep(state);
   return (
     <section className={s.conversation}>
       <div className={s.speakerRow}>
@@ -87,17 +105,18 @@ export function Conversation({
           {save.ending_summary && <p>{save.ending_summary}</p>}
           <p>
             {[...events].reverse().find((e) => e.kind === "epilogue")?.text ||
-              "故事结局已保存，回顾文字还未生成。"}
+              "故事结局已保存。你可以选择生成回顾，尝试另一种回应。"}
           </p>
-          {!events.some((e) => e.kind === "epilogue") && (
-            <button
-              className={s.secondary}
-              disabled={disabled}
-              onClick={() => void act("epilogue")}
-            >
-              生成故事回顾
-            </button>
-          )}
+          {save.story_version !== 2 &&
+            !events.some((e) => e.kind === "epilogue") && (
+              <button
+                className={s.secondary}
+                disabled={disabled || aiDisabled}
+                onClick={() => void act("epilogue")}
+              >
+                生成故事回顾
+              </button>
+            )}
           <Link className={s.primary} to="/saves">
             回看我的故事 <ArrowRight size={18} />
           </Link>
@@ -125,9 +144,53 @@ export function Conversation({
               {next.message}
             </p>
           )}
+          {aiDisabled && (
+            <p className={s.notice}>AI 暂不可用，仍可使用行动按钮推进故事。</p>
+          )}
+          {events
+            .filter(
+              (e) =>
+                e.act === state.act &&
+                ((e.kind === "player" && e.action === "speak") ||
+                  e.kind === "npc"),
+            )
+            .slice(-6)
+            .map((e) => (
+              <p key={e.id} className={s.muted}>
+                {e.kind === "player" ? "你" : story.npcs[e.npc].name}：{e.text}
+              </p>
+            ))}
+          {events
+            .filter((e) => (e.effects?.length ?? 0) > 0 && e.action !== "begin")
+            .slice(-3)
+            .map((e) => (
+              <p key={e.id} className={s.notice}>
+                {e.text}{" "}
+                {e.effects
+                  ?.map((effect) =>
+                    effect.changes && typeof effect.changes === "object"
+                      ? Object.entries(effect.changes)
+                          .map(
+                            ([key, value]) =>
+                              `${({ credit: "专业信用", stress: "心绪消耗", heat: "关注度" } as Record<string, string>)[key] ?? key} ${Number(value) > 0 ? "+" : ""}${String(value)}`,
+                          )
+                          .join(" · ")
+                      : "",
+                  )
+                  .join(" ")}
+              </p>
+            ))}
           <div className={s.choices}>
             {options.map(({ label, action, target }) => {
-              const progress = choiceProgress(state, action);
+              const entry = availableActions?.find((a) => a.action === action);
+              const progress =
+                save.story_version === 2 && entry
+                  ? {
+                      disabled: !entry.enabled,
+                      completed: entry.completed,
+                      reason: entry.reason,
+                    }
+                  : choiceProgress(state, action);
               return (
                 <button
                   key={action}
@@ -168,7 +231,7 @@ export function Conversation({
               <button
                 type="submit"
                 aria-label="发送"
-                disabled={disabled || !input.trim()}
+                disabled={disabled || aiDisabled || !input.trim()}
               >
                 <Send size={18} />
               </button>
@@ -178,7 +241,15 @@ export function Conversation({
             <span>{busy ? status : "你的表达，会成为故事的一部分。"}</span>
             {state.act > 0 && (
               <button
-                disabled={disabled || !next.ready}
+                disabled={
+                  disabled ||
+                  !(
+                    next.ready ||
+                    (save.story_version === 2 &&
+                      state.act === 2 &&
+                      state.procurement === "approved")
+                  )
+                }
                 onClick={() => onNext()}
               >
                 继续故事 <ArrowRight size={16} />

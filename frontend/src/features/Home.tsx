@@ -1,15 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Bookmark,
-  ChevronRight,
-  Feather,
-} from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, ArrowRight, Bookmark, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ErrorNotice } from "../ErrorNotice";
-import { ApiError, gameApi } from "../api";
+import { ApiError, api, gameApi } from "../api";
+import { isSave } from "../contracts";
+import { clearIdentityDrafts } from "./game/drafts";
 import s from "../App.module.css";
 
 export function Home() {
@@ -24,6 +20,8 @@ export function Home() {
   const user = useQuery({
     queryKey: ["user"],
     queryFn: ({ signal }) => gameApi.user(signal),
+    refetchInterval: (query) =>
+      query.state.data?.binding_pending ? 1500 : false,
   });
   const saves = useQuery({
     queryKey: ["saves", user.data?.id],
@@ -32,6 +30,53 @@ export function Home() {
       !!user.data &&
       !(user.error instanceof ApiError && user.error.status === 401),
   });
+  useEffect(() => {
+    if (
+      !user.data ||
+      user.data.identity_type === "guest" ||
+      user.data.binding_pending
+    )
+      return;
+    try {
+      const previous = sessionStorage.getItem("trial_identity");
+      if (previous) {
+        clearIdentityDrafts(previous);
+        for (const key of Object.keys(sessionStorage)) {
+          if (key.startsWith(`pending:v1:${previous}:`))
+            sessionStorage.removeItem(key);
+        }
+        sessionStorage.removeItem("trial_identity");
+        void client.invalidateQueries({ queryKey: ["saves"] });
+      }
+    } catch {
+      /* Server identity remains authoritative. */
+    }
+  }, [user.data, client]);
+  const activeSaves =
+    saves.data?.filter((s) => !s.deleted_at && !s.archived_at) ?? [];
+  const latest = activeSaves.find((s) => !s.state.ending) ?? activeSaves[0];
+  async function trial() {
+    setBusy(true);
+    setError(null);
+    try {
+      const identity = await gameApi.guest();
+      try {
+        sessionStorage.setItem("trial_identity", identity.id);
+      } catch {
+        /* Memory-free guest resumption remains available from the server. */
+      }
+      await client.invalidateQueries({ queryKey: ["user"] });
+      const existing = await gameApi.saves();
+      const save =
+        existing.find((s) => !s.deleted_at && !s.archived_at) ??
+        (await gameApi.createSave());
+      void navigate(`/play/${save.id}`);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function start() {
     setBusy(true);
     setError(null);
@@ -61,7 +106,14 @@ export function Home() {
     <main className={s.home}>
       <nav className={s.topbar}>
         <span className={s.brand}>
-          <Feather size={22} /> BETWEEN THE LINES
+          <img
+            className={s.brandLogo}
+            src="/assets/brand-logo.png"
+            width={40}
+            height={40}
+            alt=""
+          />
+          BETWEEN THE LINES
         </span>
         <span className={s.muted}>互动职场小说 · 第一季</span>
       </nav>
@@ -91,9 +143,10 @@ export function Home() {
             >
               开始新的故事 <ArrowRight size={18} />
             </button>
-            {saves.data?.[0] && (
-              <Link className={s.secondary} to={`/play/${saves.data[0].id}`}>
-                继续上次的故事 <Bookmark size={17} />
+            {latest && (
+              <Link className={s.secondary} to={`/play/${latest.id}`}>
+                {latest.state.ending ? "回看最近的故事" : "继续上次的故事"}{" "}
+                <Bookmark size={17} />
               </Link>
             )}
             <Link className={s.textButton} to="/saves">
@@ -102,6 +155,15 @@ export function Home() {
           </div>
         ) : (
           <div className={s.homeActions}>
+            {config.data?.guest_login && (
+              <button
+                className={s.primary}
+                disabled={busy}
+                onClick={() => void trial()}
+              >
+                立即试玩 · 第一幕
+              </button>
+            )}
             <a
               className={`${s.primary} ${!config.data?.zhihu_login ? s.disabled : ""}`}
               href={config.data?.zhihu_login ? "/api/auth/zhihu" : undefined}
@@ -119,6 +181,19 @@ export function Home() {
               </button>
             )}
           </div>
+        )}
+        {user.data?.identity_type === "guest" && (
+          <p className={s.notice}>
+            访客进度保留七天。
+            <a href={config.data?.zhihu_login ? "/api/auth/zhihu" : undefined}>
+              绑定知乎，继承进度继续第二幕
+            </a>
+          </p>
+        )}
+        {user.data?.binding_pending && (
+          <p role="status">
+            登录成功，当前回合结束后将继承试玩存档。请稍后刷新存档列表。
+          </p>
         )}
         {config.data?.agent_mode === "mock" && (
           <p className={s.notice}>当前为开发演示，角色使用预设回复。</p>
@@ -150,9 +225,22 @@ export function Home() {
 }
 
 export function Saves() {
+  const client = useQueryClient();
+  const [category, setCategory] = useState("active"),
+    [manageError, setManageError] = useState<unknown>(null);
+  async function manage(id: string, operation: string) {
+    try {
+      await api(`/saves/${id}/manage`, { operation }, undefined, false, isSave);
+      await client.invalidateQueries({ queryKey: ["saves"] });
+    } catch (e) {
+      setManageError(e);
+    }
+  }
   const user = useQuery({
     queryKey: ["user"],
     queryFn: ({ signal }) => gameApi.user(signal),
+    refetchInterval: (query) =>
+      query.state.data?.binding_pending ? 1500 : false,
   });
   const saves = useQuery({
     queryKey: ["saves", user.data?.id],
@@ -175,19 +263,80 @@ export function Saves() {
         onRetry={() => void (user.error ? user.refetch() : saves.refetch())}
       />
       {saves.data?.length === 0 && <p>还没有故事，从第一句话开始。</p>}
+      <ErrorNotice error={manageError} />
+      <nav>
+        {[
+          ["active", "进行中与已完成"],
+          ["archived", "归档"],
+          ["trash", "回收站"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setCategory(key!)}
+            aria-pressed={category === key}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
       <div className={s.saveGrid}>
         {!(user.error instanceof ApiError && user.error.status === 401) &&
-          saves.data?.map((item, i) => (
-            <Link to={`/play/${item.id}`} key={item.id} className={s.saveCard}>
-              <Bookmark />
-              <h2>故事 {saves.data.length - i}</h2>
-              <p>{item.state.ending || `第 ${item.state.act} 幕`}</p>
-              <span>
-                专业信用 {item.state.credit} · 心绪消耗 {item.state.stress}
-              </span>
-              <ChevronRight />
-            </Link>
-          ))}
+          saves.data
+            ?.filter((item) =>
+              category === "trash"
+                ? !!item.deleted_at
+                : category === "archived"
+                  ? !!item.archived_at && !item.deleted_at
+                  : !item.archived_at && !item.deleted_at,
+            )
+            .map((item) => (
+              <div key={item.id} className={s.saveCard}>
+                {!item.deleted_at && (
+                  <Link to={`/play/${item.id}`}>打开故事</Link>
+                )}
+                <Bookmark />
+                <h2>
+                  {item.parent_save_id ? "重玩分支" : "我的故事"} ·{" "}
+                  {item.id.slice(0, 8)}
+                </h2>
+                <p>
+                  {item.last_played_at
+                    ? new Date(item.last_played_at).toLocaleString("zh-CN")
+                    : "旧版本存档"}{" "}
+                  · 故事 v{item.story_version ?? 1}
+                </p>
+                {item.parent_save_id && (
+                  <p>分支来自存档 {item.parent_save_id.slice(0, 8)}</p>
+                )}
+                <p>{item.state.ending || `第 ${item.state.act} 幕`}</p>
+                <span>
+                  专业信用 {item.state.credit} · 心绪消耗 {item.state.stress}
+                </span>
+                <button
+                  onClick={() =>
+                    void manage(
+                      item.id,
+                      item.deleted_at
+                        ? "restore"
+                        : item.archived_at
+                          ? "unarchive"
+                          : "archive",
+                    )
+                  }
+                >
+                  {item.deleted_at
+                    ? "从回收站恢复"
+                    : item.archived_at
+                      ? "恢复归档"
+                      : "归档"}
+                </button>
+                {!item.deleted_at && (
+                  <button onClick={() => void manage(item.id, "delete")}>
+                    移入回收站（30 天）
+                  </button>
+                )}
+              </div>
+            ))}
       </div>
     </main>
   );

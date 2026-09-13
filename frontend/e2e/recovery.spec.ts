@@ -1,6 +1,19 @@
 import { test, expect, type Page } from "@playwright/test";
 import type { PlayState, TurnInput } from "../src/types";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/saves", async (route) => {
+    if (route.request().method() === "POST")
+      await route.continue({
+        postData: JSON.stringify({
+          ...route.request().postDataJSON(),
+          story_version: 1,
+        }),
+      });
+    else await route.continue();
+  });
+});
+
 const input = (page: Page) =>
   page.getByRole("textbox", { name: "对角色说的话" });
 async function start(page: Page) {
@@ -29,14 +42,15 @@ for (const endpoint of [
     page,
   }) => {
     await start(page);
-    await page.route(`**${endpoint}`, (route) =>
-      route.fulfill({ status: 500, json: failure }),
+    await page.route(
+      `**${endpoint}${endpoint === "/api/story" ? "*" : ""}`,
+      (route) => route.fulfill({ status: 500, json: failure }),
     );
     if (endpoint === "/api/config") await page.goto("/");
     else if (endpoint === "/api/saves") await page.goto("/saves");
     else await page.reload();
     await expect(page.getByRole("alert")).toContainText(failure.error.message);
-    await page.unroute(`**${endpoint}`);
+    await page.unroute(`**${endpoint}${endpoint === "/api/story" ? "*" : ""}`);
     await page.getByRole("button", { name: "重新加载" }).click();
     await expect(page.getByRole("alert")).toHaveCount(0);
     if (endpoint === "/api/config")
@@ -44,7 +58,9 @@ for (const endpoint of [
         page.getByRole("button", { name: "开始新的故事" }),
       ).toBeVisible();
     else if (endpoint === "/api/saves")
-      await expect(page.getByRole("link", { name: /故事 1/ })).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "打开故事", exact: true }),
+      ).toBeVisible();
     else await expect(input(page)).toBeEnabled();
   });
 }

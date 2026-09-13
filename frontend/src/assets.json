@@ -1,0 +1,172 @@
+{
+  "/assets/bedroom-night.png": [
+    {
+      "width": 768,
+      "src": "/assets/bedroom-night-768-a1df10d6ec21.webp",
+      "bytes": 26388
+    },
+    {
+      "width": 1280,
+      "src": "/assets/bedroom-night-1280-82bdb3f437c1.webp",
+      "bytes": 57616
+    },
+    {
+      "width": 1672,
+      "src": "/assets/bedroom-night-1672-2e14d3680a3b.webp",
+      "bytes": 82812
+    }
+  ],
+  "/assets/cafeteria-noon.png": [
+    {
+      "width": 768,
+      "src": "/assets/cafeteria-noon-768-3a9ee9aea544.webp",
+      "bytes": 46810
+    },
+    {
+      "width": 1280,
+      "src": "/assets/cafeteria-noon-1280-31f70c8942d7.webp",
+      "bytes": 106662
+    },
+    {
+      "width": 1672,
+      "src": "/assets/cafeteria-noon-1672-93107bcbdde0.webp",
+      "bytes": 156076
+    }
+  ],
+  "/assets/corridor-evening.png": [
+    {
+      "width": 768,
+      "src": "/assets/corridor-evening-768-78576c15a785.webp",
+      "bytes": 41320
+    },
+    {
+      "width": 1280,
+      "src": "/assets/corridor-evening-1280-cbe49a119229.webp",
+      "bytes": 92822
+    },
+    {
+      "width": 1672,
+      "src": "/assets/corridor-evening-1672-45efaf34c496.webp",
+      "bytes": 132318
+    }
+  ],
+  "/assets/finance-rain.png": [
+    {
+      "width": 768,
+      "src": "/assets/finance-rain-768-c8d121a518e2.webp",
+      "bytes": 27142
+    },
+    {
+      "width": 1280,
+      "src": "/assets/finance-rain-1280-d6cda4584b6f.webp",
+      "bytes": 60514
+    },
+    {
+      "width": 1672,
+      "src": "/assets/finance-rain-1672-986a2466410c.webp",
+      "bytes": 87746
+    }
+  ],
+  "/assets/li.png": [
+    {
+      "width": 256,
+      "src": "/assets/li-256-a1543c0514bc.webp",
+      "bytes": 18712
+    },
+    {
+      "width": 512,
+      "src": "/assets/li-512-41653880347b.webp",
+      "bytes": 53766
+    },
+    {
+      "width": 1024,
+      "src": "/assets/li-1024-8844faf7a45e.webp",
+      "bytes": 154214
+    }
+  ],
+  "/assets/meeting-morning.png": [
+    {
+      "width": 768,
+      "src": "/assets/meeting-morning-768-45e46f2a6405.webp",
+      "bytes": 39358
+    },
+    {
+      "width": 1280,
+      "src": "/assets/meeting-morning-1280-eeaea4d90543.webp",
+      "bytes": 88772
+    },
+    {
+      "width": 1672,
+      "src": "/assets/meeting-morning-1672-a8eba8111359.webp",
+      "bytes": 129966
+    }
+  ],
+  "/assets/office-morning.png": [
+    {
+      "width": 768,
+      "src": "/assets/office-morning-768-bfe27f4ca40e.webp",
+      "bytes": 45116
+    },
+    {
+      "width": 1280,
+      "src": "/assets/office-morning-1280-68703c289c85.webp",
+      "bytes": 97130
+    },
+    {
+      "width": 1672,
+      "src": "/assets/office-morning-1672-55310bb04abe.webp",
+      "bytes": 138962
+    }
+  ],
+  "/assets/office.png": [
+    {
+      "width": 768,
+      "src": "/assets/office-768-346f2e2ccd95.webp",
+      "bytes": 36580
+    },
+    {
+      "width": 1280,
+      "src": "/assets/office-1280-ae05720ea87f.webp",
+      "bytes": 80996
+    },
+    {
+      "width": 1672,
+      "src": "/assets/office-1672-5e65dc59d184.webp",
+      "bytes": 117680
+    }
+  ],
+  "/assets/sun.png": [
+    {
+      "width": 256,
+      "src": "/assets/sun-256-f8abd54ccf78.webp",
+      "bytes": 20528
+    },
+    {
+      "width": 512,
+      "src": "/assets/sun-512-50e7e715eed3.webp",
+      "bytes": 54616
+    },
+    {
+      "width": 1024,
+      "src": "/assets/sun-1024-85246df71d77.webp",
+      "bytes": 151932
+    }
+  ],
+  "/assets/zhang.png": [
+    {
+      "width": 256,
+      "src": "/assets/zhang-256-bff35b1ea50c.webp",
+      "bytes": 17534
+    },
+    {
+      "width": 512,
+      "src": "/assets/zhang-512-67135af09bdb.webp",
+      "bytes": 44030
+    },
+    {
+      "width": 1024,
+      "src": "/assets/zhang-1024-efcbc89ac8ae.webp",
+      "bytes": 112630
+    }
+  ]
+}

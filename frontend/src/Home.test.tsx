@@ -48,7 +48,7 @@ it("keeps service errors distinct from missing authentication on the saves page"
   expect(screen.queryByRole("link", { name: "返回首页登录" })).toBeNull();
   server.use(http.get("/api/saves", () => HttpResponse.json([save()])));
   fireEvent.click(screen.getByRole("button", { name: "重新加载" }));
-  expect(await screen.findByText("故事 1")).toBeTruthy();
+  expect(await screen.findByText(/我的故事 · save-1/)).toBeTruthy();
 });
 it("handles login and new-save failures in place, then permits an explicit retry", async () => {
   setup();
@@ -114,4 +114,131 @@ it("retries configuration and identity failures from their own controls", async 
   setup();
   fireEvent.click(screen.getByRole("button", { name: "重新加载" }));
   await waitFor(() => expect(screen.queryByText("配置读取失败")).toBeNull());
+});
+it.each([true, false])(
+  "guest trial resumes an existing save or creates only one: %s",
+  async (existing) => {
+    setup();
+    let guest = false,
+      creates = 0;
+    server.use(
+      http.get("/api/config", () =>
+        HttpResponse.json({
+          dev_login: false,
+          zhihu_login: false,
+          guest_login: true,
+          agent_mode: "mock",
+          model_ready: true,
+        }),
+      ),
+      http.get("/api/auth/me", () =>
+        guest
+          ? HttpResponse.json({
+              id: "guest",
+              name: "试玩者",
+              identity_type: "guest",
+            })
+          : HttpResponse.json(apiError("登录", { code: "not_authenticated" }), {
+              status: 401,
+            }),
+      ),
+      http.post("/api/auth/guest", () => {
+        guest = true;
+        return HttpResponse.json({
+          id: "guest",
+          name: "试玩者",
+          identity_type: "guest",
+        });
+      }),
+      http.get("/api/saves", () => HttpResponse.json(existing ? [save()] : [])),
+      http.post("/api/saves", () => {
+        creates++;
+        return HttpResponse.json(save());
+      }),
+    );
+    mount();
+    fireEvent.click(await screen.findByText("立即试玩 · 第一幕"));
+    await waitFor(() =>
+      expect(sessionStorage.getItem("trial_identity")).toBe("guest"),
+    );
+    await screen.findByText("查看全部存档");
+    await waitFor(() => expect(creates).toBe(existing ? 0 : 1));
+  },
+);
+it("completed story continuation skips archived and deleted saves", async () => {
+  setup();
+  server.use(
+    http.get("/api/saves", () =>
+      HttpResponse.json([
+        { ...save(), id: "deleted", deleted_at: "2026-09-13" },
+        { ...save(), id: "archive", archived_at: "2026-09-13" },
+        { ...save({ state: { ending: "完结" } }), id: "completed" },
+      ]),
+    ),
+  );
+  mount();
+  const link = await screen.findByText("回看最近的故事");
+  expect(link.getAttribute("href")).toBe("/play/completed");
+});
+it("archive and recycle operations are explicit and recoverable", async () => {
+  setup();
+  let current = {
+    ...save(),
+    story_version: 2,
+    parent_save_id: "origin",
+    last_played_at: "2026-09-13T00:00:00Z",
+  };
+  server.use(
+    http.get("/api/saves", () => HttpResponse.json([current])),
+    http.post("/api/saves/:id/manage", async ({ request }) => {
+      const { operation } = (await request.json()) as { operation: string };
+      current = {
+        ...current,
+        archived_at: operation === "archive" ? "2026-09-13" : null,
+        deleted_at: operation === "delete" ? "2026-09-13" : null,
+      };
+      return HttpResponse.json(current);
+    }),
+  );
+  mount(true);
+  await screen.findByText("重玩分支 · save-1");
+  fireEvent.click(screen.getAllByRole("button", { name: "归档" })[1]!);
+  await waitFor(() =>
+    expect(screen.queryByText("重玩分支 · save-1")).toBeNull(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "归档" }));
+  fireEvent.click(await screen.findByText("恢复归档"));
+  fireEvent.click(screen.getByText("进行中与已完成"));
+  fireEvent.click(await screen.findByText("移入回收站（30 天）"));
+  fireEvent.click(screen.getByText("回收站"));
+  fireEvent.click(await screen.findByText("从回收站恢复"));
+  await waitFor(() => expect(screen.queryByText("从回收站恢复")).toBeNull());
+});
+it("binding completion clears only the guest cache and refreshes inherited saves", async () => {
+  setup();
+  sessionStorage.setItem("trial_identity", "guest");
+  sessionStorage.setItem(
+    "draft:v2:guest:s:sun",
+    JSON.stringify({ text: "我的草稿", act: 1 }),
+  );
+  sessionStorage.setItem("pending:v1:guest:s", "old");
+  sessionStorage.setItem("draft:v2:other:s:sun", "other");
+  server.use(
+    http.get("/api/auth/me", () =>
+      HttpResponse.json({
+        id: "u",
+        name: "玩家",
+        identity_type: "member",
+        binding_pending: false,
+      }),
+    ),
+  );
+  mount();
+  await screen.findByText("查看全部存档");
+  await waitFor(() =>
+    expect(sessionStorage.getItem("trial_identity")).toBeNull(),
+  );
+  expect(sessionStorage.getItem("pending:v1:guest:s")).toBeNull();
+  expect(sessionStorage.getItem("draft:v2:guest:s:sun")).toBeNull();
+  expect(sessionStorage.getItem("draft:v2:other:s:sun")).toBe("other");
 });

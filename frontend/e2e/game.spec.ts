@@ -1,4 +1,16 @@
 import { test, expect } from "@playwright/test";
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/saves", async (route) => {
+    if (route.request().method() === "POST")
+      await route.continue({
+        postData: JSON.stringify({
+          ...route.request().postDataJSON(),
+          story_version: 1,
+        }),
+      });
+    else await route.continue();
+  });
+});
 
 for (const branch of [
   {
@@ -96,6 +108,7 @@ for (const branch of [
     await expect(
       page.getByRole("heading", { name: branch.ending }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "生成故事回顾" }).click();
     await expect(page.getByText(/你为这段经历选择了/)).toBeVisible();
     expect(
       await page.evaluate(

@@ -113,3 +113,32 @@ it("discards a damaged identity that could never have been accepted as a UUID", 
   });
   expect(readPending("u", "s")).toBeNull();
 });
+it("preserves proposal/card references but refuses malformed replay extensions", () => {
+  const id = record.requestId;
+  const payload = {
+    ...record.payload,
+    proposal_id: id,
+    proposed_action: "leave",
+    discussion_id: id,
+    perspective_id: "0",
+  };
+  for (const overrides of [
+    {},
+    { proposal_id: 42 },
+    { proposal_id: "bad" },
+    { discussion_id: 42 },
+    { discussion_id: "bad" },
+    { perspective_id: 42 },
+    { perspective_id: "x".repeat(41) },
+    { proposed_action: "unknown" },
+  ]) {
+    resetPendingMemory();
+    sessionStorage.setItem(
+      "pending:v1:u:s",
+      JSON.stringify({ ...record, payload: { ...payload, ...overrides } }),
+    );
+    expect(!!readPending("u", "s")?.payload).toBe(
+      Object.keys(overrides).length === 0,
+    );
+  }
+});

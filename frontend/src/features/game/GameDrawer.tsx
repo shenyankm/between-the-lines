@@ -1,3 +1,4 @@
+import { imageSource } from "../../images";
 import { Check, ChevronRight, Sparkles, X } from "lucide-react";
 import s from "../../App.module.css";
 import type { Action, GameEvent, Npc, Save, Story } from "../../types";
@@ -15,6 +16,7 @@ export function GameDrawer({
   act,
   events,
   relationships,
+  availableActions,
 }: {
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   panel: Panel;
@@ -27,6 +29,7 @@ export function GameDrawer({
   act: (action: Action, text?: string, target?: Npc) => Promise<void>;
   events: GameEvent[];
   relationships: Save["relationships"];
+  availableActions?: import("../../types").PlayState["available_actions"];
 }) {
   return (
     <>
@@ -73,7 +76,7 @@ export function GameDrawer({
                 >
                   <img
                     className={s.avatar}
-                    src={story.npcs[key].portrait}
+                    src={imageSource(story.npcs[key].portrait, 256)}
                     alt=""
                   />
                   <span>
@@ -135,14 +138,42 @@ export function GameDrawer({
                 </div>
               ))}
               <div className={s.note}>
-                先与孙淼或李姐对话确认材料要求；补齐后，请李姐审核。张工可以提供项目支持，但不能代替财务审批。
+                确认要求、补齐材料、请李姐审核。可直接使用行动按钮，张工只提供项目支持和协调。
               </div>
+              {availableActions
+                ?.filter((a) =>
+                  [
+                    "request_materials",
+                    "supplement",
+                    "report",
+                    "support_project",
+                    "approve_purchase",
+                    "joint_review",
+                  ].includes(a.action),
+                )
+                .map((a) => (
+                  <button
+                    key={a.action}
+                    disabled={disabled || !a.enabled}
+                    title={a.reason}
+                    onClick={() => {
+                      void act(a.action, "", a.target ?? undefined);
+                      setPanel(null);
+                    }}
+                  >
+                    {a.label}
+                    {a.completed ? " · 已完成" : ""}
+                  </button>
+                ))}
               {state.act > 0 && !state.ending && (
                 <button
                   className={s.textButton}
                   disabled={disabled}
                   onClick={() => {
-                    if (window.confirm("确定让这段故事以主动离开结束吗？")) {
+                    if (
+                      availableActions?.length ||
+                      window.confirm("确定让这段故事以主动离开结束吗？")
+                    ) {
                       void act("leave");
                       setPanel(null);
                     }

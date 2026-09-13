@@ -5,7 +5,7 @@
   background:
     linear-gradient(90deg, #0b1421 8%, #0b1421ed 36%, #0b14214d 78%),
     linear-gradient(0deg, #0b1421, transparent 50%),
-    url("/assets/office.png") center/cover;
+    url("/assets/office-1280-ae05720ea87f.webp") center/cover;
 }
 .topbar,
 .gameHeader {
@@ -23,6 +23,14 @@
   font-size: 13px;
   letter-spacing: 3px;
   color: #d7bd94;
+}
+.brandLogo {
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 9px;
 }
 .muted {
   color: #8d9cab;
@@ -239,7 +247,8 @@
   background:
     linear-gradient(90deg, #0a1628cc, transparent 55%),
     linear-gradient(0deg, #0c1624 1%, #0c162411 60%),
-    var(--scene-background, url("/assets/office.png")) center 45% / cover;
+    var(--scene-background, url("/assets/office-1280-ae05720ea87f.webp")) center
+      45% / cover;
   overflow: hidden;
 }
 .sceneInfo {
@@ -992,4 +1001,41 @@
       transform: translateY(0);
     }
   }
+}
+
+.confirmation,
+.productPanel {
+  margin: 1rem auto;
+  padding: 1.2rem;
+  width: min(960px, calc(100% - 2rem));
+  box-sizing: border-box;
+  border: 1px solid #53645f;
+  border-radius: 12px;
+  background: #17231f;
+  overflow-wrap: anywhere;
+}
+.confirmation button,
+.productPanel button {
+  margin: 0.35rem;
+  padding: 0.65rem 1rem;
+}
+.productPanel article {
+  padding: 1rem 0;
+  border-bottom: 1px solid #53645f;
+}
+.productPanel details {
+  margin: 1rem 0;
+}
+.productPanel label {
+  display: block;
+  padding: 0.5rem 0;
+}
+.productPanel textarea {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+.sharePreview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

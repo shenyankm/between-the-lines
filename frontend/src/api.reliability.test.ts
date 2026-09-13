@@ -385,3 +385,17 @@ it("does not retry invalid JSON syntax", async () => {
   await expect(api("/config")).rejects.toMatchObject({ kind: "protocol" });
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+it("classifies an interrupted body without a correlation header", async () => {
+  const response = new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.error(new TypeError("network"));
+      },
+    }),
+  );
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+  await expect(api("/saves", {})).rejects.toMatchObject({
+    kind: "network",
+    requestId: undefined,
+  });
+});

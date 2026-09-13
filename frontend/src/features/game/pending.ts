@@ -25,8 +25,27 @@ export function validPayload(value: unknown, requestId: string): boolean {
     (value.npc === undefined || isNpc(value.npc)) &&
     (value.text === undefined ||
       (typeof value.text === "string" && [...value.text].length <= 1500)) &&
+    (value.proposed_action == null || isAction(value.proposed_action)) &&
+    (value.proposal_id == null ||
+      (typeof value.proposal_id === "string" && validId(value.proposal_id))) &&
+    (value.discussion_id == null ||
+      (typeof value.discussion_id === "string" &&
+        validId(value.discussion_id))) &&
+    (value.perspective_id == null ||
+      (typeof value.perspective_id === "string" &&
+        value.perspective_id.length <= 40)) &&
     Object.keys(value).every((key) =>
-      ["request_id", "version", "action", "npc", "text"].includes(key),
+      [
+        "request_id",
+        "version",
+        "action",
+        "npc",
+        "text",
+        "proposed_action",
+        "proposal_id",
+        "discussion_id",
+        "perspective_id",
+      ].includes(key),
     )
   );
 }
