@@ -1,0 +1,176 @@
+import { test, expect, type Page } from "@playwright/test";
+import type { PlayState, TurnInput } from "../src/types";
+
+const input = (page: Page) =>
+  page.getByRole("textbox", { name: "对角色说的话" });
+async function start(page: Page) {
+  await page.goto("/");
+  await page.getByRole("button", { name: "开发环境试玩" }).click();
+  await page.getByRole("button", { name: "开始新的故事" }).click();
+  await page.getByRole("button", { name: "进入故事" }).click();
+  await expect(input(page)).toBeEnabled();
+}
+const failure = {
+  error: {
+    code: "internal_error",
+    message: "流程验收：暂时无法加载。",
+    recovery: "retry",
+    request_id: "e2e-recovery",
+  },
+};
+
+for (const endpoint of [
+  "/api/config",
+  "/api/story",
+  "/api/saves/*/play-state",
+  "/api/saves",
+]) {
+  test(`read failure and explicit reload recover ${endpoint}`, async ({
+    page,
+  }) => {
+    await start(page);
+    await page.route(`**${endpoint}`, (route) =>
+      route.fulfill({ status: 500, json: failure }),
+    );
+    if (endpoint === "/api/config") await page.goto("/");
+    else if (endpoint === "/api/saves") await page.goto("/saves");
+    else await page.reload();
+    await expect(page.getByRole("alert")).toContainText(failure.error.message);
+    await page.unroute(`**${endpoint}`);
+    await page.getByRole("button", { name: "重新加载" }).click();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    if (endpoint === "/api/config")
+      await expect(
+        page.getByRole("button", { name: "开始新的故事" }),
+      ).toBeVisible();
+    else if (endpoint === "/api/saves")
+      await expect(page.getByRole("link", { name: /故事 1/ })).toBeVisible();
+    else await expect(input(page)).toBeEnabled();
+  });
+}
+
+for (const operation of ["login", "create"]) {
+  test(`failed ${operation} does not retry a write automatically and manual retry works`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    if (operation === "create")
+      await page.getByRole("button", { name: "开发环境试玩" }).click();
+    const path = operation === "login" ? "**/api/auth/dev" : "**/api/saves";
+    let writes = 0;
+    await page.route(path, (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      writes++;
+      return route.fulfill({ status: 500, json: failure });
+    });
+    const button = page.getByRole("button", {
+      name: operation === "login" ? "开发环境试玩" : "开始新的故事",
+    });
+    await button.click();
+    await expect(page.getByRole("alert")).toContainText(failure.error.message);
+    await expect(button).toBeEnabled();
+    expect(writes).toBe(1);
+    await page.unroute(path);
+    await button.click();
+    await expect(
+      page.getByRole("button", {
+        name: operation === "login" ? "开始新的故事" : "进入故事",
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  });
+}
+
+test("network loss before acceptance replays the same request once", async ({
+  page,
+}) => {
+  await start(page);
+  const bodies: TurnInput[] = [];
+  await page.route("**/api/saves/*/turns", (route) => {
+    bodies.push(route.request().postDataJSON() as TurnInput);
+    return bodies.length === 1 ? route.abort() : route.continue();
+  });
+  await input(page).fill("受理前断网恢复");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await expect(input(page)).toBeEnabled();
+  await expect.poll(() => bodies.length).toBe(2);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          Object.keys(sessionStorage).filter((k) => k.startsWith("pending:"))
+            .length,
+      ),
+    )
+    .toBe(0);
+  expect(bodies[0]).toEqual(bodies[1]);
+  await page.getByRole("button", { name: "回顾", exact: true }).click();
+  await expect(page.getByText("受理前断网恢复", { exact: true })).toHaveCount(
+    1,
+  );
+});
+
+test("malformed stream after acceptance recovers the original result without a second POST", async ({
+  page,
+}) => {
+  await start(page);
+  let posts = 0;
+  await page.route("**/api/saves/*/turns", async (route) => {
+    posts++;
+    await route.fetch();
+    await route.fulfill({
+      contentType: "text/event-stream",
+      body: 'event: done\ndata: {"invalid":true}\n\n',
+    });
+  });
+  await input(page).fill("损坏流恢复验证");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          Object.keys(sessionStorage).filter((k) => k.startsWith("pending:"))
+            .length,
+      ),
+    )
+    .toBe(0);
+  await expect(input(page)).toBeEnabled();
+  expect(posts).toBe(1);
+  await page.getByRole("button", { name: "回顾", exact: true }).click();
+  await expect(page.getByText("损坏流恢复验证", { exact: true })).toHaveCount(
+    1,
+  );
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("an unavailable recap can be generated explicitly without changing the ending", async ({
+  page,
+}) => {
+  await start(page);
+  // Simulate a read with no generated recap; all writes still go through the real mock API.
+  let hideRecap = true;
+  await page.route("**/api/saves/*/play-state", async (route) => {
+    const response = await route.fetch();
+    const data = (await response.json()) as PlayState;
+    if (hideRecap)
+      data.events = data.events.filter((e) => e.kind !== "epilogue");
+    await route.fulfill({ response, json: data });
+  });
+  await page.getByRole("button", { name: "工作系统", exact: true }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "选择离开当前环境" }).click();
+  await expect(page.getByRole("heading", { name: "主动离开" })).toBeVisible();
+  await expect(page.getByText(/游戏分支 · 主动离开/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "生成故事回顾" }),
+  ).toBeEnabled();
+  hideRecap = false;
+  await page.getByRole("button", { name: "生成故事回顾" }).click();
+  await expect(page.getByRole("button", { name: "生成故事回顾" })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText(/你为这段经历选择了/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "主动离开" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/你为这段经历选择了/)).toBeVisible();
+});

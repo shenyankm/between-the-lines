@@ -43,3 +43,7 @@ SSE 解码支持 UTF-8 跨块、LF/CRLF、多行 data，并在进入状态机前
 `make contract-generate` 显式生成 OpenAPI、TypeScript 和公开故事测试数据；`make contract` 在临时目录生成后比较，不修改工作区。`make deps-update` 更新锁；`make lock-check` 只检查。`make migrate` 应用迁移，`make migrate-check` 只读检查模型漂移。
 
 保留已有 Miniconda 和固定 pnpm，不创建虚拟环境。覆盖率阈值继续保留，不能通过排除迁移后的模块降低门槛。验收结果见 [验证记录](verification.md)，运行与恢复见 [运维](operations.md)。
+
+## 错误契约与恢复补强
+
+HTTP 错误目录、结构化回合失败、订阅错误事件和客户端等待预算见 [接口错误与回合恢复契约](error-handling.md)。字段校验与响应校验均在边界执行；未知结果不能触发新的业务行动。存档列表缓存按用户隔离，会话失效暂停恢复；终态后的缓存刷新失败不会重新提交。
