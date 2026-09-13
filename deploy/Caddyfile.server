@@ -1,0 +1,41 @@
+# Merge these entries with the host's existing sites; do not remove other apps.
+{
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "[?].*$" ""
+				request>headers delete
+				resp_headers delete
+			}
+		}
+	}
+}
+
+www.openwook.cloud {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:18080
+	log {
+		output file /var/log/caddy/btl-access.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "[?].*$" ""
+				request>headers delete
+				resp_headers delete
+			}
+		}
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+openwook.cloud {
+	redir https://www.openwook.cloud{uri} permanent
+}
