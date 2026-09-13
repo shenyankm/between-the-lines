@@ -29,6 +29,8 @@ test("successful background recovery clears only the submitted draft", async ({
   expect(posts).toBe(1);
   await page.getByRole("button", { name: "完整记录", exact: true }).click();
   await expect(
-    page.getByText("已经受理并恢复的对白", { exact: true }),
+    page
+      .getByRole("region", { name: "完整历史记录" })
+      .getByText("已经受理并恢复的对白", { exact: true }),
   ).toHaveCount(1);
 });

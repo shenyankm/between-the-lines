@@ -106,9 +106,11 @@ test("network loss before acceptance replays the same request once", async ({
     .toBe(0);
   expect(bodies[0]).toEqual(bodies[1]);
   await page.getByRole("button", { name: "完整记录", exact: true }).click();
-  await expect(page.getByText("受理前断网恢复", { exact: true })).toHaveCount(
-    1,
-  );
+  await expect(
+    page
+      .getByRole("region", { name: "完整历史记录" })
+      .getByText("受理前断网恢复", { exact: true }),
+  ).toHaveCount(1);
 });
 
 test("malformed stream after acceptance recovers the original result without a second POST", async ({
@@ -138,9 +140,11 @@ test("malformed stream after acceptance recovers the original result without a s
   await expect(input(page)).toBeEnabled();
   expect(posts).toBe(1);
   await page.getByRole("button", { name: "完整记录", exact: true }).click();
-  await expect(page.getByText("损坏流恢复验证", { exact: true })).toHaveCount(
-    1,
-  );
+  await expect(
+    page
+      .getByRole("region", { name: "完整历史记录" })
+      .getByText("损坏流恢复验证", { exact: true }),
+  ).toHaveCount(1);
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
