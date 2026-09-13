@@ -1,18 +1,8 @@
 name: Audit
 
-# Supply-chain and vulnerability auditing, kept separate from ci.yml so the fast
-# feedback loop stays fast. Secrets and dependency checks run on every push to
-# main; image scanning is schedule/dispatch only because it rebuilds both images.
-#
-# Tools are installed as checksum-verified binaries rather than third-party
-# actions. Two reasons: it matches the project's existing --require-hashes and
-# SHA-pinned-actions discipline, and gitleaks-action v2 needs a licence key for
-# organisation repos while the binary does not.
-#
-# CodeQL is deliberately NOT here. It is free only on public repositories and
-# needs GitHub Advanced Security on private ones. This repo has no remote yet,
-# so the condition cannot be evaluated. Enablement step and the resolved pin are
-# recorded in docs/ci.md.
+# Keep security gates separate from functional CI. Full-history secrets and
+# filesystem scans run on every event; image scans also run on main and schedules.
+# Tool archives are checksum-verified. Findings never disable sibling scans.
 
 on:
   push:
@@ -56,7 +46,17 @@ jobs:
           install -m 0755 gitleaks /usr/local/bin/gitleaks
           gitleaks version
       - name: Scan full history
-        run: gitleaks detect --source . --redact --no-banner --exit-code 1
+        run: |
+          mkdir -p artifacts/audit
+          gitleaks detect --source . --redact --no-banner --exit-code 1 \
+            --report-format json --report-path artifacts/audit/gitleaks.json
+      - name: Upload redacted secret report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: audit-secrets
+          path: artifacts/audit/
+          retention-days: 7
       - name: Assert the gitignored private cache is absent from history
         run: |
           set -eu
@@ -132,23 +132,41 @@ jobs:
       - name: Scan images
         run: |
           set -eu
+          mkdir -p artifacts/audit
+          failed=0
           for image in btl-api-audit btl-web-audit; do
-            trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 "$image"
+            trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 \
+              --format json --output "artifacts/audit/${image}.json" "$image" || failed=1
           done
+          exit "$failed"
+      - name: Upload both image reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: audit-images
+          path: artifacts/audit/
+          retention-days: 7
       - name: Report image size
-        run: docker image ls --format 'table {{.Repository}}\t{{.Size}}' btl-api-audit btl-web-audit
+        run: docker image inspect --format '{{.RepoTags}} {{.Size}}' btl-api-audit btl-web-audit
 
   audit:
     name: Audit required
     if: always()
-    needs: [secrets, dependencies]
+    needs: [secrets, dependencies, images]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
-      - name: Require secret and dependency scanning to pass
+      - name: Require every applicable audit to pass
         env:
           SECRETS_RESULT: ${{ needs.secrets.result }}
           DEPENDENCIES_RESULT: ${{ needs.dependencies.result }}
+          IMAGES_RESULT: ${{ needs.images.result }}
+          IMAGES_REQUIRED: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
         run: |
           test "$SECRETS_RESULT" = success
           test "$DEPENDENCIES_RESULT" = success
+          if [ "$IMAGES_REQUIRED" = true ]; then
+            test "$IMAGES_RESULT" = success
+          else
+            test "$IMAGES_RESULT" = skipped
+          fi

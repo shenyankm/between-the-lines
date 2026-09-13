@@ -101,7 +101,17 @@ docker compose up -d --build
 
 知乎 OAuth 的授权、Token、用户信息端点和身份字段必须按合作方官方文档填写；当前没有猜测任何知乎端点，也尚未进行真实登录联调。OAuth 凭据不存入浏览器，本站使用可撤销的 HttpOnly Cookie 会话。
 
-TLS 文件目录包含 `fullchain.pem` 和 `privkey.pem` 后，设置 `TLS_DIRECTORY`，运行：
+Web 容器以 UID/GID `101:101` 运行，容器内 HTTP/HTTPS 使用 8080/8443；Compose 对外地址保持不变。
+
+TLS 文件目录包含 `fullchain.pem` 和 `privkey.pem`。在 Linux 部署机将私钥设为 `root:101`、权限 `0640`，目录允许 GID 101 遍历（例如 `root:101`、`0750`），证书可设 `0644`。不要把私钥设为全员可读；证书续期后也须保留这些权限。配置示例：
+
+```sh
+sudo chown root:101 "$TLS_DIRECTORY" "$TLS_DIRECTORY/privkey.pem"
+sudo chmod 0750 "$TLS_DIRECTORY"
+sudo chmod 0640 "$TLS_DIRECTORY/privkey.pem"
+```
+
+设置 `TLS_DIRECTORY` 后，运行：
 
 ```sh
 docker compose -f compose.yaml -f compose.production.yaml up -d --build

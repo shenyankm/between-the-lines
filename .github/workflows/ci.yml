@@ -93,6 +93,8 @@ jobs:
           python -m pytest -q --cov=app --cov-report=term-missing
           --cov-report=xml:../artifacts/coverage.xml
           --junitxml=../artifacts/pytest.xml
+      - name: Verify audit failure propagation
+        run: python scripts/test-audit.py
       - name: Verify TCP disconnect recovery
         run: python scripts/test-disconnect.py
       - name: Verify crash recovery
@@ -185,6 +187,8 @@ jobs:
           docker compose up --build -d --wait --wait-timeout 180
           docker compose exec -T web nginx -t
           node -e 'fetch(process.env.PLAYWRIGHT_BASE_URL + "/api/config").then(r => { if (!r.ok) throw Error("Config unavailable"); return r.json(); }).then(c => { if (c.agent_mode !== "mock") throw Error("CI requires mock LLM"); })'
+      - name: Non-root production TLS smoke test
+        run: sh scripts/test-web-runtime.sh
       - name: Desktop and mobile end-to-end tests
         run: pnpm --dir frontend test:e2e
       # Run inside the api container: this job installs no Python toolchain, and
