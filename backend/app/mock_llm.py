@@ -24,8 +24,8 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
         text += state.get("关系总结") or "下一次面对言外之意，你已经拥有更多回应的方式。"
         return {"role": "assistant", "content": text}
     facts = context["最新可见事实"]
-    system = str(messages[0]["content"])
-    npc: Npc = "sun" if "你是孙淼" in system else "li" if "你是李姐" in system else "zhang"
+    # Authored names and personas can change without changing role permissions.
+    npc: Npc = context["当前角色ID"]
     flags = facts["flags"]
     tool_result = messages[-1]["content"] if messages[-1]["role"] == "tool" else None
     operation = None

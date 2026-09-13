@@ -55,6 +55,8 @@ export function Home() {
   const activeSaves =
     saves.data?.filter((s) => !s.deleted_at && !s.archived_at) ?? [];
   const latest = activeSaves.find((s) => !s.state.ending) ?? activeSaves[0];
+  const storyVersion = latest?.story_version ?? config.data?.story_version ?? 1;
+  const protagonist = storyVersion >= 2 ? "周菱菱" : "周凌";
   async function trial() {
     setBusy(true);
     setError(null);
@@ -129,7 +131,7 @@ export function Home() {
           却悄悄改变了你的位置。
         </p>
         <p className={s.description}>
-          成为研发专员周菱菱，在对话、流言与工作之间，
+          成为研发专员{protagonist}，在对话、流言与工作之间，
           <br className={s.desktop} />
           找到属于自己的回应。
         </p>

@@ -109,3 +109,40 @@ def test_model_factory_has_no_other_provider(monkeypatch):
     assert model.model_name == "deepseek-flash"
     assert model.extra_body["thinking"]["type"] == "disabled"
     assert model.max_retries == 0
+
+
+@pytest.mark.parametrize("story_version", [1, 2])
+@pytest.mark.parametrize("rename", [False, True])
+@pytest.mark.parametrize("npc", ["sun", "li", "zhang"])
+async def test_mock_role_operations_survive_persona_edits(monkeypatch, story_version, rename, npc):
+    story = load_story(story_version).model_copy(deep=True)
+    if rename:
+        story.npcs[npc].persona = "你是新命名的同事，按自己的岗位权限处理工作。"
+    monkeypatch.setattr(agents, "load_story", lambda version: story)
+    operations = []
+
+    async def context(turn):
+        return AgentContext(
+            facts={"act": 2, "procurement": "pending", "flags": ["reported"]},
+            history=[],
+            story_version=story_version,
+        )
+
+    async def operation(turn_id, target, op):
+        operations.append((target, op))
+        return "工作操作已登记。"
+
+    gateway = agents.AgentGateway(
+        Settings(_env_file=None, agent_mode="mock"),
+        SimpleNamespace(context_for=context, npc_operation=operation),
+        story,
+    )
+    turn = SimpleNamespace(
+        id="t",
+        user_id="u",
+        save_id="s",
+        input=SimpleNamespace(npc=npc, text="请支持项目。" if npc == "zhang" else "还缺哪些材料？"),
+    )
+    replies = [reply async for reply in gateway.run_agent(turn, InMemorySaver(), {})]
+    assert replies == ["工作操作已登记。"]
+    assert operations == [(npc, "support_project" if npc == "zhang" else "request_materials")]

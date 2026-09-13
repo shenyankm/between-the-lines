@@ -36,6 +36,45 @@ function setup() {
     http.get("/api/saves", () => HttpResponse.json([save()])),
   );
 }
+it.each([
+  [1, null, "周凌"],
+  [2, null, "周菱菱"],
+  [2, 1, "周凌"],
+  [1, 2, "周菱菱"],
+])(
+  "aligns the homepage name with config %s and resumable save %s",
+  async (configuredVersion, savedVersion, name) => {
+    setup();
+    server.use(
+      http.get("/api/config", () =>
+        HttpResponse.json({
+          dev_login: true,
+          zhihu_login: false,
+          agent_mode: "mock",
+          model_ready: true,
+          story_version: configuredVersion,
+        }),
+      ),
+      http.get("/api/saves", () =>
+        HttpResponse.json(
+          savedVersion === null
+            ? []
+            : [{ ...save(), story_version: savedVersion }],
+        ),
+      ),
+    );
+    const client = mount();
+    await waitFor(() =>
+      expect(client.getQueryState(["saves", "u"])?.status).toBe("success"),
+    );
+    await waitFor(() =>
+      expect(client.getQueryState(["config"])?.status).toBe("success"),
+    );
+    expect(
+      await screen.findByText(`成为研发专员${name}`, { exact: false }),
+    ).toBeTruthy();
+  },
+);
 it("keeps service errors distinct from missing authentication on the saves page", async () => {
   setup();
   server.use(

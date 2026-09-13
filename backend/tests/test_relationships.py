@@ -166,7 +166,11 @@ def test_mock_does_not_claim_private_wang_reply_and_respects_cut():
                 {
                     "role": "user",
                     "content": json.dumps(
-                        {"最新可见事实": visible_state(state, npc), "可见对话": []}
+                        {
+                            "最新可见事实": visible_state(state, npc),
+                            "当前角色ID": npc,
+                            "可见对话": [],
+                        }
                     ),
                 },
             ]

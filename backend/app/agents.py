@@ -215,6 +215,7 @@ class AgentGateway:
                     {
                         "最新可见事实": context.facts,
                         "故事版本": context.story_version,
+                        "当前角色ID": npc,
                         "当前角色语气参考": load_story(context.story_version).greeting_for(
                             npc, context.facts["act"], context.facts["flags"]
                         ),
