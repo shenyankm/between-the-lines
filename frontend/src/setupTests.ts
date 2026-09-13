@@ -1,5 +1,6 @@
-import { afterAll, afterEach, beforeAll } from "vitest";
 import { cleanup } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll } from "vitest";
+import { resetPendingMemory } from "./features/game/pending";
 import { server } from "./testing/server";
 
 /*
@@ -42,6 +43,7 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
+  resetPendingMemory();
   server.resetHandlers();
   sessionStorage.clear();
   localStorage.clear();

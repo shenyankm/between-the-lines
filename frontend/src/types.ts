@@ -1,31 +1,15 @@
 import type { components } from "./generated/api";
-export type Npc = "sun" | "li" | "zhang";
-export type Action = components["schemas"]["TurnInput"]["action"];
-export type GameState = components["schemas"]["GameState"];
-export interface Save {
-  id: string;
-  version: number;
-  state: GameState;
-}
-export interface Story {
-  title: string;
-  subtitle: string;
-  acts: { title: string; location: string; time: string; intro: string }[];
-  npcs: Record<Npc, { name: string; role: string }>;
-  tips: { title: string; text: string; source: string }[];
-}
-export interface GameEvent {
-  act?: number;
-  id: string;
-  kind: string;
-  text: string;
-  npc: Npc;
-  action?: string;
-}
-export interface Result {
-  status: string;
-  text?: string;
-  save?: Save;
-  turn_id: string;
-  retryable?: boolean;
-}
+type Schema = components["schemas"];
+export type TurnInput = Schema["TurnInput"];
+export type Npc = NonNullable<TurnInput["npc"]>;
+export type Action = NonNullable<TurnInput["action"]>;
+export type GameState = Schema["GameState"];
+export type Save = Schema["SaveOut"];
+export type Story = Schema["StoryOut"];
+export type GameEvent = Schema["GameEventOut"];
+export type Result = Schema["TurnResult"];
+export type PlayState = Schema["PlayStateOut"];
+export type Turn = Schema["TurnOut"];
+export type User = Schema["UserOut"];
+export type Config = Schema["ConfigOut"];
+export type Interlude = Schema["Interlude"];

@@ -1,18 +1,17 @@
 import { useEffect, useRef } from "react";
-import { interludes } from "./scenes";
 import s from "./App.module.css";
+import type { Interlude } from "./types";
 
 export function SceneInterlude({
-  act,
+  scene,
   onClose,
   onContinue,
 }: {
-  act: number;
+  scene: Interlude | null;
   onClose: () => void;
   onContinue: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const scene = interludes[act];
   useEffect(() => {
     ref.current?.showModal();
   }, []);

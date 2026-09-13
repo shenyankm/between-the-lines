@@ -59,3 +59,49 @@ test("complete story, work tools, persistence and responsive layout", async ({
   ).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("refresh recovers an accepted reply without repeating the request", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "开发环境试玩" }).click();
+  await page.getByRole("button", { name: "开始新的故事" }).click();
+  await page.getByRole("button", { name: "进入故事" }).click();
+  await expect(
+    page.getByRole("button", { name: "明确表达我的边界" }),
+  ).toBeEnabled();
+  let submissions = 0;
+  let accepted!: () => void;
+  const committed = new Promise<void>((resolve) => {
+    accepted = resolve;
+  });
+  await page.route("**/api/saves/*/turns", async (route) => {
+    submissions += 1;
+    await route.fetch();
+    accepted();
+    await route.abort();
+  });
+  await page
+    .getByRole("textbox", { name: "对角色说的话" })
+    .fill("刷新恢复验证");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await committed;
+  await page.reload();
+  await expect(
+    page.getByRole("textbox", { name: "对角色说的话" }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "回顾", exact: true }).click();
+  await expect(page.getByText("刷新恢复验证", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          Object.keys(sessionStorage).filter((key) =>
+            key.startsWith("pending:"),
+          ).length,
+      ),
+    )
+    .toBe(0);
+  expect(submissions).toBe(1);
+});

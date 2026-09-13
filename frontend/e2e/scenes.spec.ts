@@ -5,10 +5,7 @@ import { readFileSync } from "node:fs";
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
 const story = JSON.parse(
-  readFileSync(
-    new URL("../../backend/app/story.json", import.meta.url),
-    "utf8",
-  ),
+  readFileSync(new URL("../src/testing/story.json", import.meta.url), "utf8"),
 ) as Json;
 
 test("all six locations render, interludes cancel safely and advance once", async ({
@@ -36,15 +33,19 @@ test("all six locations render, interludes cancel safely and advance once", asyn
       act++;
       await route.fulfill({
         contentType: "text/event-stream",
-        body: `event: done\ndata: ${JSON.stringify({ status: "succeeded", save: save() })}\n\n`,
+        body: `event: done\ndata: ${JSON.stringify({ turn_id: `turn-${turns}`, status: "completed", save: save(), text: "", retryable: false })}\n\n`,
       });
     } else {
       await route.fulfill({
-        json: path.endsWith("/story")
-          ? story
-          : path.endsWith("/events") || path === "/api/saves"
-            ? []
-            : save(),
+        json: path.endsWith("/auth/me")
+          ? { id: "scene-user", name: "preview" }
+          : path.endsWith("/play-state")
+            ? { save: save(), events: [], active_turn: null }
+            : path.endsWith("/story")
+              ? story
+              : path.endsWith("/events") || path === "/api/saves"
+                ? []
+                : save(),
       });
     }
   });

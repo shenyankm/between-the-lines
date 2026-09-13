@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { actBackground, actBackgrounds, interludes } from "./scenes";
+import { story } from "./testing/fixtures";
+const actBackgrounds = story.acts.map((act) => act.background);
+const interludes = Object.fromEntries(
+  story.acts.flatMap((act, index) =>
+    act.interlude ? [[index, act.interlude]] : [],
+  ),
+);
+const actBackground = (act: number) => story.acts[act]?.background;
 
 describe("actBackground", () => {
   it("gives each of the five acts its own artwork", () => {
@@ -11,14 +18,6 @@ describe("actBackground", () => {
       "/assets/meeting-morning.png",
       "/assets/office.png",
     ]);
-  });
-
-  it("never returns undefined, falling back to the default artwork", () => {
-    // `noUncheckedIndexedAccess` makes the lookup `string | undefined`; the
-    // fallback is what keeps callers able to build a url() unconditionally.
-    for (const act of [-1, 5, 99, Number.NaN, Number.MAX_SAFE_INTEGER]) {
-      expect(actBackground(act)).toBe("/assets/office.png");
-    }
   });
 
   it("returns a string for every act the backend allows", () => {

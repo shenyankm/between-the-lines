@@ -1,7 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { useUI } from "./store";
+import { useStore } from "zustand";
+import { createUIStore } from "./store";
 import type { Npc } from "./types";
+const useUI = createUIStore();
 
 beforeEach(() => {
   // The store is module-level state; reset it so tests cannot leak into each other.
@@ -48,7 +50,7 @@ describe("useUI", () => {
   });
 
   it("re-renders a component that selects the current interlocutor", () => {
-    const { result } = renderHook(() => useUI((state) => state.npc));
+    const { result } = renderHook(() => useStore(useUI, (state) => state.npc));
     expect(result.current).toBe("sun");
 
     act(() => {

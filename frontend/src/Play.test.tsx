@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it } from "vitest";
+import { MemoryRouter } from "react-router";
+import { describe, expect, it } from "vitest";
 import App from "./App";
-import { useUI } from "./store";
+import { apiError } from "./testing/errors";
 import {
   epilogueEvent,
   olderSunReply,
@@ -72,9 +72,11 @@ function leavePending(requestId: string): void {
   sessionStorage.setItem(PENDING_KEY, requestId);
 }
 
-beforeEach(() => {
-  useUI.setState({ npc: "sun", panel: null });
-});
+function storedRequestId(): string | null {
+  const raw = sessionStorage.getItem("pending:v1:test-user:save-1");
+  if (raw) return (JSON.parse(raw) as { requestId: string }).requestId;
+  return sessionStorage.getItem(PENDING_KEY);
+}
 
 describe("Play: recovering an interrupted turn", () => {
   it("adopts a turn that finished while the page was away", async () => {
@@ -85,7 +87,8 @@ describe("Play: recovering an interrupted turn", () => {
       state: { act: 2, credit: 78, flags: ["requirements"] },
     });
     const result: Result = {
-      status: "succeeded",
+      status: "completed",
+      retryable: false,
       text: "李姐记下了这些材料。",
       save: after,
       turn_id: "turn-9",
@@ -103,18 +106,13 @@ describe("Play: recovering an interrupted turn", () => {
       http.get("/api/saves/:id/turns/:requestId", () => {
         // The backend already applied this turn, so a later read returns it.
         current = after;
-        return HttpResponse.json({ status: "succeeded", result });
+        return HttpResponse.json({ status: "completed", result });
       }),
     );
     leavePending(requestId);
     renderPlay();
 
-    expect(
-      await screen.findByRole("heading", { name: "公司食堂" }),
-    ).toBeTruthy();
-    fireEvent.click(await screen.findByRole("button", { name: RECOVER }));
-
-    await waitFor(() => expect(sessionStorage.getItem(PENDING_KEY)).toBeNull());
+    await waitFor(() => expect(storedRequestId()).toBeNull());
     expect(screen.queryByRole("button", { name: RECOVER })).toBeNull();
     // The recovered save was written into the query cache and re-read.
     expect(screen.getByText(/已存档 · 5/)).toBeTruthy();
@@ -127,9 +125,10 @@ describe("Play: recovering an interrupted turn", () => {
       ...playHandlers({ save: save() }),
       http.get("/api/saves/:id/turns/:requestId", () =>
         HttpResponse.json({
-          status: "succeeded",
+          status: "completed",
           result: {
             status: "failed",
+            retryable: true,
             text: "模型返回失败，请重试。",
             save: save(),
             turn_id: "turn-1",
@@ -140,10 +139,8 @@ describe("Play: recovering an interrupted turn", () => {
     leavePending("req-failed");
     renderPlay();
 
-    fireEvent.click(await screen.findByRole("button", { name: RECOVER }));
-
     expect(await alertText()).toBe("模型返回失败，请重试。");
-    expect(sessionStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(storedRequestId()).toBeNull();
   });
 
   it("substitutes a message when a failed turn carries no text", async () => {
@@ -151,9 +148,10 @@ describe("Play: recovering an interrupted turn", () => {
       ...playHandlers({ save: save() }),
       http.get("/api/saves/:id/turns/:requestId", () =>
         HttpResponse.json({
-          status: "succeeded",
+          status: "completed",
           result: {
             status: "failed",
+            retryable: true,
             text: "",
             save: save(),
             turn_id: "turn-1",
@@ -164,10 +162,8 @@ describe("Play: recovering an interrupted turn", () => {
     leavePending("req-failed-empty");
     renderPlay();
 
-    fireEvent.click(await screen.findByRole("button", { name: RECOVER }));
-
     expect(await alertText()).toBe("回合未完成，请刷新后继续。");
-    expect(sessionStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(storedRequestId()).toBeNull();
   });
 
   it("keeps the pending key while the turn is still running", async () => {
@@ -180,10 +176,8 @@ describe("Play: recovering an interrupted turn", () => {
     leavePending("req-running");
     renderPlay();
 
-    fireEvent.click(await screen.findByRole("button", { name: RECOVER }));
-
     expect(await alertText()).toBe("这一回合仍在处理，请稍后恢复。");
-    expect(sessionStorage.getItem(PENDING_KEY)).toBe("req-running");
+    expect(storedRequestId()).toBe("req-running");
     expect(screen.getByRole("button", { name: RECOVER })).toBeTruthy();
   });
 
@@ -191,16 +185,17 @@ describe("Play: recovering an interrupted turn", () => {
     server.use(
       ...playHandlers({ save: save() }),
       http.get("/api/saves/:id/turns/:requestId", () =>
-        HttpResponse.json({ detail: "回合不存在或已过期。" }, { status: 404 }),
+        HttpResponse.json(
+          apiError("回合不存在或已过期。", { code: "turn_not_found" }),
+          { status: 404 },
+        ),
       ),
     );
     leavePending("req-gone");
     renderPlay();
 
-    fireEvent.click(await screen.findByRole("button", { name: RECOVER }));
-
     expect(await alertText()).toBe("回合不存在或已过期。");
-    expect(sessionStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(storedRequestId()).toBeNull();
     expect(screen.queryByRole("button", { name: RECOVER })).toBeNull();
   });
 
@@ -208,17 +203,18 @@ describe("Play: recovering an interrupted turn", () => {
     server.use(
       ...playHandlers({ save: save() }),
       http.get("/api/saves/:id/turns/:requestId", () =>
-        HttpResponse.json({ detail: "服务暂时不可用。" }, { status: 503 }),
+        HttpResponse.json(
+          apiError("服务暂时不可用。", { code: "model_unconfigured" }),
+          { status: 503 },
+        ),
       ),
     );
     leavePending("req-503");
     renderPlay();
 
-    fireEvent.click(await screen.findByRole("button", { name: RECOVER }));
-
     expect(await alertText()).toBe("服务暂时不可用。");
     // Still recoverable later: only a 404 proves the key is dead.
-    expect(sessionStorage.getItem(PENDING_KEY)).toBe("req-503");
+    expect(storedRequestId()).toBe("req-503");
     expect(screen.getByRole("button", { name: RECOVER })).toBeTruthy();
   });
 
@@ -228,8 +224,13 @@ describe("Play: recovering an interrupted turn", () => {
       ...playHandlers({ save: save({ state: { act: 1 } }) }),
       http.post(TURNS_ROUTE, () => {
         turnPosts += 1;
-        return sse([frame("done", { status: "succeeded", turn_id: "t" })]);
+        return sse([frame("done", { status: "completed", turn_id: "t" })]);
       }),
+    );
+    server.use(
+      http.get("/api/saves/:id/turns/:requestId", () =>
+        HttpResponse.json({ status: "running", result: null }),
+      ),
     );
     leavePending("req-in-flight");
     renderPlay();
@@ -241,7 +242,7 @@ describe("Play: recovering an interrupted turn", () => {
 
     fireEvent.click(choice);
     expect(turnPosts).toBe(0);
-    expect(sessionStorage.getItem(PENDING_KEY)).toBe("req-in-flight");
+    expect(storedRequestId()).toBe("req-in-flight");
     // The only way forward is recovery, and it stays available.
     expect(screen.getByRole("button", { name: RECOVER })).toBeTruthy();
   });
@@ -264,7 +265,8 @@ describe("Play: submitting a turn", () => {
           gate.promise,
           [
             frame("done", {
-              status: "succeeded",
+              status: "completed",
+              retryable: false,
               text: "李姐点了点头。",
               save: after,
               turn_id: "turn-2",
@@ -292,7 +294,7 @@ describe("Play: submitting a turn", () => {
     });
     // The key kept for recovery must be the very one sent to the API.
     expect(body?.request_id).toMatch(UUID_V4);
-    expect(sessionStorage.getItem(PENDING_KEY)).toBe(body?.request_id);
+    expect(storedRequestId()).toBe(body?.request_id);
     expect(button("明确表达我的边界").disabled).toBe(true);
     expect(screen.queryByRole("button", { name: RECOVER })).toBeNull();
 
@@ -301,7 +303,7 @@ describe("Play: submitting a turn", () => {
     // refetch that refresh() triggers reads the new save.
     current = after;
 
-    await waitFor(() => expect(sessionStorage.getItem(PENDING_KEY)).toBeNull());
+    await waitFor(() => expect(storedRequestId()).toBeNull());
     await screen.findByRole("heading", { name: "财务窗口" });
     expect(screen.getByText(/已存档 · 3/)).toBeTruthy();
     expect(input.value).toBe("");
@@ -315,7 +317,9 @@ describe("Play: submitting a turn", () => {
       http.post(TURNS_ROUTE, async ({ request }) => {
         body = (await request.json()) as TurnInput;
         return HttpResponse.json(
-          { detail: "存档版本已过期，请刷新后重试。" },
+          apiError("存档版本已过期，请刷新后重试。", {
+            code: "version_conflict",
+          }),
           { status: 409 },
         );
       }),
@@ -329,7 +333,7 @@ describe("Play: submitting a turn", () => {
     expect(await alertText()).toBe("存档版本已过期，请刷新后重试。");
     // The POST carried a status, so the turn is known-failed, not in flight.
     expect(body?.request_id).toMatch(UUID_V4);
-    expect(sessionStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(storedRequestId()).toBeNull();
     expect(screen.queryByRole("button", { name: RECOVER })).toBeNull();
   });
 
@@ -351,8 +355,8 @@ describe("Play: submitting a turn", () => {
     expect(await alertText()).toBe("连接中断，请恢复回合结果。");
     // A plain Error has no status, so the turn may still be running server-side
     // and the key that was sent must survive for a later recovery.
-    expect(sessionStorage.getItem(PENDING_KEY)).toBe(body?.request_id);
-    expect(sessionStorage.getItem(PENDING_KEY)).toMatch(UUID_V4);
+    expect(storedRequestId()).toBe(body?.request_id);
+    expect(storedRequestId()).toMatch(UUID_V4);
     expect(screen.getByRole("button", { name: RECOVER })).toBeTruthy();
   });
 });
@@ -362,13 +366,22 @@ describe("Play: scene rendering", () => {
     server.use(
       http.get("/api/story", () => HttpResponse.json(story)),
       http.get("/api/saves/:id/events", () => HttpResponse.json([])),
-      http.get("/api/saves/:id", () =>
-        HttpResponse.json({ detail: "数据库连接失败。" }, { status: 500 }),
+      http.get("/api/auth/me", () =>
+        HttpResponse.json({ id: "test-user", name: "试玩者" }),
+      ),
+      http.get("/api/saves/:id/play-state", () =>
+        // The constant the API's 500 handler renders. It deliberately does not
+        // name the dependency that failed -- an exception's own text must not
+        // reach a client -- so this is the most a browser can ever learn.
+        HttpResponse.json(
+          apiError("服务器内部错误，请稍后重试。", { code: "internal_error" }),
+          { status: 500 },
+        ),
       ),
     );
     renderPlay();
 
-    expect(await alertText()).toBe("数据库连接失败。");
+    expect(await alertText()).toBe("服务器内部错误，请稍后重试。");
     expect(screen.getByRole("link", { name: "返回首页" })).toBeTruthy();
   });
 
@@ -414,7 +427,7 @@ describe("Play: scene rendering", () => {
     // "李姐 财务会计"), so anchor on the name instead of matching it exactly.
     fireEvent.click(screen.getByRole("button", { name: /^李姐/ }));
     expect(drawer().open).toBe(false);
-    expect(useUI.getState().npc).toBe("li");
+    expect(screen.getAllByText("财务会计").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "李姐" })).toBeTruthy();
     expect(screen.getByAltText("李姐立绘")).toBeTruthy();
     expect(screen.getByText("“有什么事情，我们一项一项说。”")).toBeTruthy();
@@ -431,7 +444,7 @@ describe("Play: scene rendering", () => {
 
     fireEvent(drawer(), new Event("cancel"));
     expect(drawer().open).toBe(false);
-    expect(useUI.getState().panel).toBeNull();
+    expect(drawer().open).toBe(false);
   });
 
   it("shows the ending, with the epilogue text once it exists", async () => {

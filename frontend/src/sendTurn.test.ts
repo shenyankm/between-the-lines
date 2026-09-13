@@ -1,14 +1,15 @@
-import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
+import { describe, expect, it } from "vitest";
 import { ApiError, sendTurn } from "./api";
-import { save, type TurnInput } from "./testing/fixtures";
 import { asApiError, thrown } from "./testing/errors";
+import { save, type TurnInput } from "./testing/fixtures";
 import { deferred, frame, sse } from "./testing/handlers";
 import { server } from "./testing/server";
 import type { Result } from "./types";
 
 const done: Result = {
-  status: "succeeded",
+  status: "completed",
+  retryable: false,
   text: "孙淼顿了一下，把话收了回去。",
   save: save({ version: 3, state: { act: 2 } }),
   turn_id: "turn-1",
@@ -110,13 +111,10 @@ describe("sendTurn() stream", () => {
 
   it("reassembles a frame that arrives split across chunk boundaries", async () => {
     const statuses: string[] = [];
-    onTurn(() =>
-      sse([
-        'event: status\ndata: {"te',
-        'xt":"正在生成回复…"}\n\nevent: done\ndata: {"status":"succ',
-        'eeded","turn_id":"turn-2"}\n\n',
-      ]),
-    );
+    const wire =
+      frame("status", { text: "正在生成回复…" }) +
+      frame("done", { ...done, turn_id: "turn-2" });
+    onTurn(() => sse([wire.slice(0, 23), wire.slice(23, 78), wire.slice(78)]));
 
     const result = await sendTurn(
       "save-1",
@@ -131,7 +129,7 @@ describe("sendTurn() stream", () => {
     );
 
     expect(statuses).toEqual(["正在生成回复…"]);
-    expect(result).toEqual({ status: "succeeded", turn_id: "turn-2" });
+    expect(result).toEqual({ ...done, turn_id: "turn-2" });
   });
 
   it("refuses to invent a result when the stream closes without a done frame", async () => {
@@ -146,7 +144,7 @@ describe("sendTurn() stream", () => {
     // SSE frames end with an empty line; an unterminated final frame is a
     // truncated response and must be reported as such rather than trusted.
     onTurn(() =>
-      sse(['event: done\ndata: {"status":"succeeded","turn_id":"turn-3"}']),
+      sse(['event: done\ndata: {"status":"completed","turn_id":"turn-3"}']),
     );
 
     await expect(
@@ -164,10 +162,16 @@ describe("sendTurn() stream", () => {
 });
 
 describe("sendTurn() error branches", () => {
-  it("surfaces the API's detail string and status on a rejected turn", async () => {
+  it("surfaces the envelope's message, status, code and id on a rejected turn", async () => {
     onTurn(() =>
       HttpResponse.json(
-        { detail: "存档版本已过期，请刷新后重试。" },
+        {
+          error: {
+            code: "version_conflict",
+            message: "存档版本已过期，请刷新后重试。",
+            request_id: "req-conflict",
+          },
+        },
         { status: 409 },
       ),
     );
@@ -176,8 +180,11 @@ describe("sendTurn() error branches", () => {
       sendTurn("save-1", 1, "sun", "speak", "", "req-13", () => {}),
     );
     expect(error).toBeInstanceOf(ApiError);
-    expect(asApiError(error).message).toBe("存档版本已过期，请刷新后重试。");
-    expect(asApiError(error).status).toBe(409);
+    const described = asApiError(error);
+    expect(described.message).toBe("存档版本已过期，请刷新后重试。");
+    expect(described.status).toBe(409);
+    expect(described.code).toBe("version_conflict");
+    expect(described.requestId).toBe("req-conflict");
   });
 
   it("falls back to its own message when the error body is not JSON", async () => {

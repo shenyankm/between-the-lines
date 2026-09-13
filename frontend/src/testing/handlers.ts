@@ -17,6 +17,16 @@ export function playHandlers(options: {
   const current = (): Save =>
     typeof options.save === "function" ? options.save() : options.save;
   return [
+    http.get("/api/auth/me", () =>
+      HttpResponse.json({ id: "test-user", name: "试玩者" }),
+    ),
+    http.get("/api/saves/:id/play-state", () =>
+      HttpResponse.json({
+        save: current(),
+        events: options.events ?? [],
+        active_turn: null,
+      }),
+    ),
     http.get("/api/story", () =>
       HttpResponse.json(options.story ?? storyFixture),
     ),

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SceneInterlude } from "./SceneInterlude";
-import { interludes } from "./scenes";
+import { story } from "./testing/fixtures";
 
 function drawer(): HTMLDialogElement {
   const dialog = document.querySelector("dialog");
@@ -11,7 +11,13 @@ function drawer(): HTMLDialogElement {
 
 describe("SceneInterlude", () => {
   it("opens modally and shows the monologue authored for act 1", () => {
-    render(<SceneInterlude act={1} onClose={vi.fn()} onContinue={vi.fn()} />);
+    render(
+      <SceneInterlude
+        scene={story.acts[1]?.interlude ?? null}
+        onClose={vi.fn()}
+        onContinue={vi.fn()}
+      />,
+    );
 
     expect(drawer().open).toBe(true);
     expect(
@@ -21,14 +27,18 @@ describe("SceneInterlude", () => {
     expect(
       screen.getByRole("img", { name: "卧室 · 把注意力还给自己" }),
     ).toBeTruthy();
-    expect(screen.getByText(interludes[1]?.text ?? "")).toBeTruthy();
+    expect(screen.getByText(story.acts[1]?.interlude?.text ?? "")).toBeTruthy();
   });
 
   it("renders nothing at all for an act that has no interlude", () => {
     const onClose = vi.fn();
     const onContinue = vi.fn();
     const { container } = render(
-      <SceneInterlude act={3} onClose={onClose} onContinue={onContinue} />,
+      <SceneInterlude
+        scene={story.acts[3]?.interlude ?? null}
+        onClose={onClose}
+        onContinue={onContinue}
+      />,
     );
 
     expect(container.firstChild).toBeNull();
@@ -41,7 +51,11 @@ describe("SceneInterlude", () => {
     const onClose = vi.fn();
     const onContinue = vi.fn();
     render(
-      <SceneInterlude act={2} onClose={onClose} onContinue={onContinue} />,
+      <SceneInterlude
+        scene={story.acts[2]?.interlude ?? null}
+        onClose={onClose}
+        onContinue={onContinue}
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "进入下一幕" }));
@@ -55,7 +69,13 @@ describe("SceneInterlude", () => {
 
   it("treats the native cancel event (Escape) as a dismissal", () => {
     const onClose = vi.fn();
-    render(<SceneInterlude act={1} onClose={onClose} onContinue={vi.fn()} />);
+    render(
+      <SceneInterlude
+        scene={story.acts[1]?.interlude ?? null}
+        onClose={onClose}
+        onContinue={vi.fn()}
+      />,
+    );
 
     fireEvent(drawer(), new Event("cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);
