@@ -1,14 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { start, readScene } from "./v3-helpers";
+import { test, expect } from "@playwright/test";
 
-async function start(page: Page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "开发环境试玩" }).click();
-  await page.getByRole("button", { name: "开始新的故事" }).click();
-  await page.getByRole("button", { name: "进入故事" }).click();
-  await expect(
-    page.getByRole("textbox", { name: "对角色说的话" }),
-  ).toBeEnabled();
-}
 const envelope = (
   code: string,
   message: string,
@@ -58,7 +50,7 @@ test("quota wait preserves input and prevents another submission until expiry", 
       json: envelope("concurrency_budget_exhausted", "当前较忙。", "wait", 2),
     });
   });
-  const input = page.getByRole("textbox", { name: "对角色说的话" });
+  const input = page.getByRole("textbox", { name: "自由表达" });
   await input.fill("限流后保留的输入");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByText("当前较忙。")).toBeVisible();
@@ -107,7 +99,7 @@ test("session expiry pauses an accepted turn and only resumes for the same user"
     }),
   );
   await page
-    .getByRole("textbox", { name: "对角色说的话" })
+    .getByRole("textbox", { name: "自由表达" })
     .fill("身份失效前已提交");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByRole("link", { name: "返回首页登录" })).toBeVisible();
@@ -119,15 +111,18 @@ test("session expiry pauses an accepted turn and only resumes for the same user"
   await page.unroute("**/api/auth/me");
   await page.unroute("**/api/saves/*/turns/*");
   await page.reload();
-  await expect(
-    page.getByRole("textbox", { name: "对角色说的话" }),
-  ).toBeEnabled();
+  await readScene(page);
+  await expect(page.getByRole("textbox", { name: "自由表达" })).toBeEnabled();
   expect(posts).toBe(1);
-  expect(
-    await page.evaluate(() =>
-      Object.keys(sessionStorage).some((key) => key.startsWith("pending:v1:")),
-    ),
-  ).toBe(false);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(sessionStorage).some((key) =>
+          key.startsWith("pending:v1:"),
+        ),
+      ),
+    )
+    .toBe(false);
 });
 
 test("failed terminal replies require explicit continuation and logout errors stay local", async ({
@@ -162,7 +157,7 @@ test("failed terminal replies require explicit continuation and logout errors st
       body: `event: done\ndata: ${JSON.stringify(result)}\n\n`,
     });
   });
-  const input = page.getByRole("textbox", { name: "对角色说的话" });
+  const input = page.getByRole("textbox", { name: "自由表达" });
   await input.fill("失败后的保留输入");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(

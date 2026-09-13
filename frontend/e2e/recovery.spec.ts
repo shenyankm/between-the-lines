@@ -1,28 +1,9 @@
+import { start, readScene, exitStory, commitClick } from "./v3-helpers";
 import { test, expect, type Page } from "@playwright/test";
-import type { PlayState, TurnInput } from "../src/types";
+import type { TurnInput } from "../src/types";
 
-test.beforeEach(async ({ page }) => {
-  await page.route("**/api/saves", async (route) => {
-    if (route.request().method() === "POST")
-      await route.continue({
-        postData: JSON.stringify({
-          ...route.request().postDataJSON(),
-          story_version: 1,
-        }),
-      });
-    else await route.continue();
-  });
-});
+const input = (page: Page) => page.getByRole("textbox", { name: "自由表达" });
 
-const input = (page: Page) =>
-  page.getByRole("textbox", { name: "对角色说的话" });
-async function start(page: Page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "开发环境试玩" }).click();
-  await page.getByRole("button", { name: "开始新的故事" }).click();
-  await page.getByRole("button", { name: "进入故事" }).click();
-  await expect(input(page)).toBeEnabled();
-}
 const failure = {
   error: {
     code: "internal_error",
@@ -61,7 +42,10 @@ for (const endpoint of [
       await expect(
         page.getByRole("link", { name: "打开故事", exact: true }),
       ).toBeVisible();
-    else await expect(input(page)).toBeEnabled();
+    else {
+      await readScene(page);
+      await expect(input(page)).toBeEnabled();
+    }
   });
 }
 
@@ -88,6 +72,7 @@ for (const operation of ["login", "create"]) {
     expect(writes).toBe(1);
     await page.unroute(path);
     await button.click();
+    if (operation === "create") await readScene(page);
     await expect(
       page.getByRole("button", {
         name: operation === "login" ? "开始新的故事" : "进入故事",
@@ -120,7 +105,7 @@ test("network loss before acceptance replays the same request once", async ({
     )
     .toBe(0);
   expect(bodies[0]).toEqual(bodies[1]);
-  await page.getByRole("button", { name: "回顾", exact: true }).click();
+  await page.getByRole("button", { name: "完整记录", exact: true }).click();
   await expect(page.getByText("受理前断网恢复", { exact: true })).toHaveCount(
     1,
   );
@@ -152,41 +137,39 @@ test("malformed stream after acceptance recovers the original result without a s
     .toBe(0);
   await expect(input(page)).toBeEnabled();
   expect(posts).toBe(1);
-  await page.getByRole("button", { name: "回顾", exact: true }).click();
+  await page.getByRole("button", { name: "完整记录", exact: true }).click();
   await expect(page.getByText("损坏流恢复验证", { exact: true })).toHaveCount(
     1,
   );
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-test("an unavailable recap can be generated explicitly without changing the ending", async ({
+test("an unavailable ending narrative retries without changing the ending", async ({
   page,
 }) => {
   await start(page);
-  // Simulate a read with no generated recap; all writes still go through the real mock API.
-  let hideRecap = true;
-  await page.route("**/api/saves/*/play-state", async (route) => {
-    const response = await route.fetch();
-    const data = (await response.json()) as PlayState;
-    if (hideRecap)
-      data.events = data.events.filter((e) => e.kind !== "epilogue");
-    await route.fulfill({ response, json: data });
-  });
-  await page.getByRole("button", { name: "工作系统", exact: true }).click();
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "选择离开当前环境" }).click();
-  await expect(page.getByRole("heading", { name: "主动离开" })).toBeVisible();
-  await expect(page.getByText(/游戏分支 · 主动离开/)).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "生成故事回顾" }),
-  ).toBeEnabled();
-  hideRecap = false;
-  await page.getByRole("button", { name: "生成故事回顾" }).click();
-  await expect(page.getByRole("button", { name: "生成故事回顾" })).toHaveCount(
-    0,
+  await exitStory(page);
+  await page.route("**/api/saves/*/jobs", (route) =>
+    route.request().method() === "POST"
+      ? route.fulfill({ status: 500, json: failure })
+      : route.continue(),
   );
-  await expect(page.getByText(/你为这段经历选择了/)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "主动离开" })).toBeVisible();
+  await commitClick(page, () =>
+    page.getByRole("button", { name: "确认并提交" }).click(),
+  );
+  await expect(
+    page.getByRole("heading", { name: "主动转身", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("结局正文暂时无法生成，以下事实总结仍然有效。"),
+  ).toBeVisible();
+  await page.unroute("**/api/saves/*/jobs");
+  await page.getByRole("button", { name: "重试读取" }).click();
+  await expect(page.getByRole("region", { name: "结局正文" })).toContainText(
+    "AI",
+  );
   await page.reload();
-  await expect(page.getByText(/你为这段经历选择了/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "主动转身", exact: true }),
+  ).toBeVisible();
 });
