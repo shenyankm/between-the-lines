@@ -42,7 +42,7 @@ Pre-fix failures, final machine reports, and screenshots are in Git-ignored `art
 
 ## Reproduction
 
-Start the mock backend and Vite as described in README, then run:
+Start the mock backend and Vite as described in [development setup](development.md), then run:
 
 ```sh
 cd frontend

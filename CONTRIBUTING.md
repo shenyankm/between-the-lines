@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions to Between the Lines are welcome: report problems, improve the story and interactions, add tests and documentation, or fix engineering issues. The project uses React, FastAPI, PostgreSQL, and Deep Agents. Start with the [README](README.md) to understand how it runs and its product boundaries.
+Contributions to Between the Lines are welcome: report problems, improve the story and interactions, add tests and documentation, or fix engineering issues. The project uses React, FastAPI, PostgreSQL, and Deep Agents. Start with the [README](README.md) for the player experience and product boundaries.
 
 This guide follows the organization of the [Qwen Code contribution guide](https://github.com/QwenLM/qwen-code/blob/main/CONTRIBUTING.md), with commands and conventions adapted to this repository.
 
@@ -91,7 +91,7 @@ make web
 
 Open <http://localhost:5173>. `make api` uses mock mode and host database addresses. Development PostgreSQL listens on `localhost:54329`; do not use the container-only `db:5432` address with host Python.
 
-See the [README](README.md) for local configuration, real DeepSeek integration, and Zhihu OAuth. Daily development uses mock and needs no real model key. The model is fixed to official `deepseek-flash`; provider, model, or invocation-boundary changes require a separate design discussion.
+See [development and deployment](docs/development.md) for local configuration, real DeepSeek integration, and Zhihu OAuth. Daily development uses mock and needs no real model key. The model is fixed to official `deepseek-flash`; provider, model, or invocation-boundary changes require a separate design discussion.
 
 ## Verification and workflow
 
