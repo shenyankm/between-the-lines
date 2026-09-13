@@ -127,8 +127,8 @@ jobs:
       - name: Build both images
         run: |
           set -eu
-          docker build -t btl-api-audit ./backend
-          docker build -t btl-web-audit -f deploy/web.Dockerfile .
+          docker build --label "org.opencontainers.image.revision=$GITHUB_SHA" -t btl-api-audit ./backend
+          docker build --label "org.opencontainers.image.revision=$GITHUB_SHA" -t btl-web-audit -f deploy/web.Dockerfile .
       - name: Scan images
         run: |
           set -eu
@@ -146,6 +146,18 @@ jobs:
           name: audit-images
           path: artifacts/audit/
           retention-days: 7
+      - name: Package the exact scanned images
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: python3 scripts/package-release.py --sha "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --out artifacts/release
+      - name: Upload verified release bundle
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-${{ github.sha }}
+          path: artifacts/release/
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
       - name: Report image size
         run: docker image inspect --format '{{.RepoTags}} {{.Size}}' btl-api-audit btl-web-audit
 

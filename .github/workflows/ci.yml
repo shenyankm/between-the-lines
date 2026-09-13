@@ -95,6 +95,8 @@ jobs:
           --junitxml=../artifacts/pytest.xml
       - name: Evaluate 90 fixed semantic samples without external model calls
         run: python scripts/evaluate-semantics.py
+      - name: Verify deployment integrity and rollback boundaries
+        run: python -m unittest discover -s scripts/tests -v
       - name: Verify audit failure propagation
         run: python scripts/test-audit.py
       - name: Verify TCP disconnect recovery
