@@ -86,13 +86,20 @@ export function Conversation({
             "行动结果会记录在故事里；普通聊天不重复计分。",
         }
       : nextStep(state);
+  const opening = save.story_version >= 2 && state.act === 0;
   return (
     <section className={s.conversation}>
       <div className={s.speakerRow}>
         <div className={s.speaker}>
           <span className={s.speakerDot} />
-          {state.ending ? "故事结局" : character.name}
-          <small>{state.ending ? "你留下的边界" : character.role}</small>
+          {state.ending ? "故事结局" : opening ? "周菱菱" : character.name}
+          <small>
+            {state.ending
+              ? "你留下的边界"
+              : opening
+                ? "研发专员 · 序幕独白"
+                : character.role}
+          </small>
         </div>
         <span className={s.saved}>
           <Check size={13} />
@@ -132,9 +139,11 @@ export function Conversation({
       ) : (
         <>
           <p className={s.dialogue}>
-            {state.act === 0
-              ? scene.intro
-              : lastReply?.text || character.greeting}
+            {opening
+              ? "你可以在上方回看三个序幕片段。准备好后，进入第一幕，选择自己的回应。"
+              : state.act === 0
+                ? scene.intro
+                : lastReply?.text || character.greeting}
           </p>
           {state.act === 0 && (
             <p className={s.muted}>{story.adaptation_note}</p>

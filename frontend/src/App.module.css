@@ -1039,3 +1039,125 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Editorial sprites stand in the scene; names stay legible over the artwork. */
+.visualStage {
+  min-height: 560px;
+  height: 62vh;
+  isolation: isolate;
+}
+.visualStage .sceneInfo,
+.visualStage .stats,
+.visualStage .toolbar {
+  z-index: 2;
+}
+.visualStage .sceneCaption {
+  z-index: 2;
+  max-width: 42%;
+  bottom: 52px;
+}
+.visualCharacter {
+  right: 13%;
+  bottom: 0;
+  width: min(36vw, 370px);
+  height: 440px;
+  padding: 0;
+  display: block;
+  border: 0;
+  background: none;
+  backdrop-filter: none;
+}
+.visualCharacter .characterPortrait {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  border-radius: 0;
+  mask-image: linear-gradient(#000 88%, transparent);
+}
+.visualCharacter > div {
+  position: absolute;
+  bottom: 26px;
+  left: 12%;
+  right: 4%;
+  border-left: 2px solid #c4af8b;
+  padding: 12px 18px;
+  background: linear-gradient(90deg, #14202aee, #14202a99);
+}
+.visualCharacter h3 {
+  margin: 6px 0;
+}
+.prologuePages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 18px;
+}
+.prologuePages button {
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #bdc6ce;
+  background: #15212bc9;
+  border: 1px solid #78849166;
+  border-radius: 3px;
+}
+.prologuePages button[aria-pressed="true"] {
+  color: #f4e3c5;
+  border-color: #baa482;
+  background: #54473699;
+}
+@media (max-width: 850px) {
+  .visualStage {
+    min-height: 560px;
+    height: auto;
+  }
+  .visualCharacter {
+    right: 8%;
+    width: 40%;
+    height: 380px;
+  }
+}
+@media (max-width: 540px) {
+  .visualStage {
+    min-height: 680px;
+  }
+  .visualCharacter {
+    top: 140px;
+    bottom: auto;
+    right: 2%;
+    width: 64%;
+    height: 255px;
+    text-align: left;
+  }
+  .visualCharacter > div {
+    left: 0;
+    bottom: 0;
+    padding: 8px 12px;
+  }
+  .visualCharacter small,
+  .visualCharacter p {
+    display: block;
+    max-width: none;
+  }
+  .visualCharacter h3 {
+    font-size: 22px;
+    margin: 4px 0;
+  }
+  .visualStage .sceneCaption {
+    top: 414px;
+    bottom: 74px;
+    right: 22px;
+    max-width: none;
+    overflow-y: auto;
+  }
+  .visualStage .sceneCaption p {
+    font-size: 14px;
+    line-height: 1.85;
+  }
+  .visualStage .toolbar {
+    bottom: 16px;
+  }
+  .prologuePages {
+    margin-top: 10px;
+  }
+}

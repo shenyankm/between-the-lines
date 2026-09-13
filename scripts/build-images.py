@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 assets = ROOT / "frontend/public/assets"
 manifest = {}
 for source in sorted(assets.glob("*.png")):
-    character = source.stem in {"sun", "li", "zhang"}
+    if source.stem == "brand-logo":
+        continue  # The logo has a separate fixed-size rendering path.
+    character = source.stem.split("-")[0] in {"sun", "li", "zhang", "zhou"}
     variants = []
     with Image.open(source) as image:
         for width in [256, 512, 1024] if character else [768, 1280, 1672]:

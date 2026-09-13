@@ -6,6 +6,8 @@ import {
   Smartphone,
   Sparkles,
 } from "lucide-react";
+import { useState } from "react";
+import { prologue } from "./prologue";
 import { Link } from "react-router";
 import s from "../../App.module.css";
 import { backgroundImage, imageSet, imageSource } from "../../images";
@@ -26,6 +28,18 @@ export function GameStage({
   npc: Npc;
   setPanel: (panel: Panel) => void;
 }) {
+  const [page, setPage] = useState(0);
+  const visual = story.story_version >= 2;
+  const opening = visual && state.act === 0;
+  const reading = prologue[page] ?? prologue[0];
+  const displayed = opening
+    ? {
+        ...character,
+        name: reading.speaker,
+        role: reading.role,
+        portrait: reading.portrait,
+      }
+    : character;
   return (
     <>
       <header className={s.gameHeader}>
@@ -56,7 +70,7 @@ export function GameStage({
         </Link>
       </header>
       <section
-        className={s.stage}
+        className={`${s.stage} ${visual ? s.visualStage : ""}`}
         style={
           {
             "--character-color": character.color,
@@ -90,20 +104,39 @@ export function GameStage({
         </div>
         <div className={s.sceneCaption}>
           <span>场景 {String(state.act + 1).padStart(2, "0")}</span>
-          <p>{scene.intro}</p>
+          {opening && (
+            <div className={s.prologuePages} role="group" aria-label="序幕片段">
+              {prologue.map((item, index) => (
+                <button
+                  key={item.title}
+                  aria-pressed={page === index}
+                  onClick={() => setPage(index)}
+                >
+                  {item.title}
+                </button>
+              ))}
+            </div>
+          )}
+          <p>{opening ? reading.text : scene.intro}</p>
         </div>
-        <aside className={s.characterCard}>
+        <aside
+          className={`${s.characterCard} ${visual ? s.visualCharacter : ""}`}
+        >
           <img
             className={s.characterPortrait}
-            src={imageSource(character.portrait, 512)}
-            srcSet={imageSet(character.portrait)}
-            sizes="(max-width: 600px) 160px, 320px"
-            alt={`${character.name}立绘`}
+            src={imageSource(displayed.portrait, 512)}
+            srcSet={imageSet(displayed.portrait)}
+            sizes={
+              visual
+                ? "(max-width: 600px) 230px, 360px"
+                : "(max-width: 600px) 160px, 320px"
+            }
+            alt={`${displayed.name}立绘`}
           />
           <div>
-            <small>当前交谈</small>
-            <h3>{character.name}</h3>
-            <p>{character.role}</p>
+            <small>{opening ? "序幕 · " + reading.title : "当前交谈"}</small>
+            <h3>{displayed.name}</h3>
+            <p>{displayed.role}</p>
           </div>
         </aside>
         <div className={s.toolbar}>

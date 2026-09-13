@@ -200,7 +200,9 @@ export function GameDrawer({
                 <article className={s.historyItem} key={event.id}>
                   <small>
                     {event.kind === "player"
-                      ? "周凌"
+                      ? story.story_version >= 2
+                        ? "周菱菱"
+                        : "周凌"
                       : event.kind === "personal"
                         ? "王叔 · 私人回复"
                         : event.kind === "work"
