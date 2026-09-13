@@ -42,6 +42,7 @@ class PublicNpc(BaseModel):
 
 class PrivateNpc(PublicNpc):
     persona: str
+    scene_notes: dict[str, str] = Field(default_factory=dict)
 
 
 class Tip(BaseModel):
@@ -56,7 +57,19 @@ class PublicNpcs(BaseModel):
     zhang: PublicNpc
 
 
+class CommunityView(BaseModel):
+    title: str
+    text: str
+    author: str
+    source_title: str
+    url: str
+    act: int
+    provenance: str = "根据知乎开放平台搜索摘要整理，非作者原话；仅供比较，不是标准答案。"
+    retrieved: str = "2026-09-13"
+
+
 class StoryOut(BaseModel):
+    community: list[CommunityView] = Field(default_factory=list)
     title: str
     subtitle: str
     acts: list[Act] = Field(min_length=5, max_length=5)
@@ -65,6 +78,8 @@ class StoryOut(BaseModel):
 
 
 class StoryDefinition(BaseModel):
+    community: list[CommunityView] = Field(default_factory=list)
+    world: str = ""
     title: str
     subtitle: str
     acts: list[Act] = Field(min_length=5, max_length=5)
@@ -94,11 +109,14 @@ class StoryDefinition(BaseModel):
             acts=self.acts,
             npcs=PublicNpcs.model_validate(
                 {
-                    key: PublicNpc.model_validate(value.model_dump(exclude={"persona"}))
+                    key: PublicNpc.model_validate(
+                        value.model_dump(exclude={"persona", "scene_notes"})
+                    )
                     for key, value in self.npcs.items()
                 }
             ),
             tips=self.tips,
+            community=self.community,
         )
 
 

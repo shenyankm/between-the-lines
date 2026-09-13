@@ -8,10 +8,12 @@ from typing import Any
 
 from langgraph.types import Checkpointer
 
-from .agents import MODEL
 from .config import Settings
 from .context import AgentTurn
+from .domain import ACTION_TARGETS
 from .errors import ApiError
+from .game_types import GameState
+from .reactions import action_reply
 from .schemas import TurnInput
 from .services import GameService, owned_save
 
@@ -36,6 +38,7 @@ class TurnRunner:
         self.active: set[object] = set()
         self.tasks: set[asyncio.Task[dict[str, Any] | None]] = set()
         self.accepting = True
+        self.live_replies: dict[str, str] = {}
 
     async def submit(
         self, save_id: str, user_id: str, body: TurnInput
@@ -43,11 +46,7 @@ class TurnRunner:
         reservation = object()
 
         def reserve() -> None:
-            if (
-                body.action == "speak"
-                and self.settings.agent_mode == "deepseek"
-                and not self.settings.deepseek_api_key
-            ):
+            if body.action == "speak" and not self.settings.model_ready:
                 raise ApiError(503, "model_unconfigured", "对话服务尚未配置，请联系管理员。")
             if not self.accepting or len(self.active) >= self.settings.max_concurrent_turns:
                 raise ApiError(
@@ -88,7 +87,7 @@ class TurnRunner:
 
     async def execute(self, turn: AgentTurn, reservation: object) -> dict[str, Any] | None:
         usage: dict[str, Any] = {
-            "model": MODEL,
+            "model": self.settings.model_name,
             "mode": self.settings.agent_mode,
             "model_calls": 0,
             "input_tokens": 0,
@@ -103,7 +102,21 @@ class TurnRunner:
                 async with asyncio.timeout(self.settings.turn_timeout_seconds):
                     if turn.input.action == "speak":
                         async for chunk in self.reply(turn, self.checkpointer, usage):
+                            if chunk and not reply:
+                                usage["first_response_ms"] = round(
+                                    (time.monotonic() - started) * 1000
+                                )
                             reply += chunk
+                            self.live_replies[turn.id] = reply
+                    elif turn.input.action in ACTION_TARGETS:
+                        async with self.service.sessions() as db:
+                            save = await owned_save(db, turn.save_id, turn.user_id)
+                        reply = action_reply(
+                            turn.input.action, GameState.model_validate(save.state)
+                        )
+                        usage["first_response_ms"] = round((time.monotonic() - started) * 1000)
+                    elif turn.input.action == "contact_wang":
+                        reply = "王会计回复：‘谢谢菱菱，心意收到了。忙完项目，有空再聊。’这条私信只保存在你的手机里。"
                     elif turn.input.action in {"next", "leave", "epilogue"}:
                         async with self.service.sessions() as db:
                             save = await owned_save(db, turn.save_id, turn.user_id)
@@ -125,12 +138,13 @@ class TurnRunner:
                 outcome = result["status"]
             return result
         finally:
+            self.live_replies.pop(turn.id, None)
             self.active.discard(reservation)
             self.observe(
                 outcome,
                 time.monotonic() - started,
                 usage["model_calls"],
-                usage.get("cost_estimate_usd", 0.0),
+                usage.get("cost_estimate_usd") or 0.0,
             )
             logger.info(
                 "turn_finished",

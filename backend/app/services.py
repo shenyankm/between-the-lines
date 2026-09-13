@@ -7,12 +7,22 @@ from sqlalchemy import Numeric, func, select
 from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from . import investigation
 from .config import Settings
 from .context import AgentContext, AgentTurn
 from .db import Event, Save, Turn, User, utcnow
-from .domain import NPCS, RuleError, apply_npc, apply_player, visible_state
+from .domain import (
+    ACTION_LABELS,
+    ACTION_TARGETS,
+    NPCS,
+    RuleError,
+    apply_npc,
+    apply_player,
+    available_actions,
+    visible_state,
+)
 from .errors import ApiError
-from .game_types import GameState
+from .game_types import Decision, GameState
 from .schemas import PlayStateOut, TurnInput
 from .story import load_story
 
@@ -160,6 +170,19 @@ class GameService:
                 state, text = apply_player(GameState.model_validate(save.state), body.action)
             except RuleError as exc:
                 raise ApiError(422, "rule_violation", str(exc)) from exc
+            if body.action in investigation.DECISIONS:
+                reason = body.text.strip()
+                if not 2 <= len(reason) <= 500:
+                    raise ApiError(422, "decision_reason_required", "请用2到500字写下选择理由。")
+                state.decisions.append(
+                    Decision(
+                        act=state.act,
+                        action=body.action,
+                        reason=reason,
+                        evidence=list(state.evidence),
+                    )
+                )
+                text += " 我的理由：" + reason
             if body.action == "next":
                 text = self.story.acts[state.act].intro
             turn = Turn(
@@ -169,11 +192,16 @@ class GameService:
             await db.flush()
             save.state = state.model_dump(mode="json")
             save.version += 1
+            target = ACTION_TARGETS.get(body.action, body.npc)
             audience = (
                 [body.npc]
                 if body.action == "speak"
-                else ["zhang"]
-                if body.action == "report"
+                else [target]
+                if body.action in {"report", "boundary", "repair", "document_rumor"}
+                or (
+                    body.action in investigation.RULES
+                    and body.action not in investigation.PUBLIC_ACTIONS
+                )
                 else []
                 if body.action == "contact_wang"
                 else sorted(NPCS)
@@ -187,7 +215,7 @@ class GameService:
                     data={
                         "kind": "player",
                         "text": text or body.text,
-                        "npc": body.npc,
+                        "npc": target,
                         "action": body.action,
                         "act": state.act,
                     },
@@ -207,12 +235,115 @@ class GameService:
                     .limit(30)
                 )
             ).all()
+            # Event journal is persistent and already role scoped. Important quotes
+            # survive ordinary chat scrolling without a second summarization model.
+            memories = (
+                await db.scalars(
+                    select(Event)
+                    .where(
+                        Event.save_id == turn.save_id,
+                        Event.audience.contains([npc]),
+                        Event.operation == "memory",
+                    )
+                    .order_by(Event.created_at.desc(), Event.id.desc())
+                    .limit(24)
+                )
+            ).all()
+            milestones = (
+                await db.scalars(
+                    select(Event)
+                    .where(
+                        Event.save_id == turn.save_id,
+                        Event.audience.contains([npc]),
+                        Event.operation == "player",
+                        Event.data["action"].astext != "speak",
+                    )
+                    .order_by(Event.created_at.desc(), Event.id.desc())
+                    .limit(16)
+                )
+            ).all()
+        state = GameState.model_validate(save.state)
         return AgentContext.model_validate(
             {
-                "facts": visible_state(GameState.model_validate(save.state), npc),
-                "history": [e.data for e in reversed(events)],
+                "facts": visible_state(state, npc),
+                "relationship": f"{getattr(state.trust, npc)}/100；孙淼为熟悉度和戒心，不表示诚实；李姐、张工为工作信任，不改变职业底线。",
+                "evidence": investigation.npc_evidence(state, npc),
+                "history": [
+                    e.data
+                    for e in reversed(events)
+                    if e.data["kind"] not in {"memory", "suggestion"}
+                ],
+                "memories": [
+                    "玩家曾亲口说（不等于已执行）：" + e.data["text"] for e in reversed(memories)
+                ]
+                + ["已确认的行动：" + e.data["text"] for e in reversed(milestones)],
+                "available_actions": {
+                    a: label
+                    for a, label in available_actions(state).items()
+                    if a not in investigation.RULES
+                },
+                "consequences": [
+                    c
+                    for c in state.consequences
+                    if ("私下" not in c and "表面应下" not in c and "时限转交" not in c)
+                    or (npc == "zhang" and ("私下核实传言" in c or "张工私下更正" in c))
+                ],
             }
         )
+
+    async def _agent_note(
+        self, turn: AgentTurn, kind: str, text: str, action: str | None = None
+    ) -> str:
+        async with self.sessions.begin() as db:
+            save = await owned_save(db, turn.save_id, turn.user_id, True)
+            record = await db.get(Turn, turn.id)
+            if (
+                not record
+                or record.save_id != save.id
+                or record.status != "running"
+                or record.payload["npc"] != turn.input.npc
+            ):
+                raise RuleError("回合已结束或角色无权操作。")
+            if record.payload["action"] != "speak":
+                raise RuleError("行动回应时不能生成新的建议或记忆。")
+            if kind == "suggestion":
+                if action not in available_actions(GameState.model_validate(save.state)):
+                    raise RuleError("当前无法提出这项行动。")
+            elif not text.strip() or len(text) > 240 or text not in record.payload["text"]:
+                raise RuleError("只能记住玩家本轮亲口说过的原话，最多240字。")
+            previous = await db.scalar(
+                select(Event).where(Event.turn_id == turn.id, Event.operation == kind)
+            )
+            if previous:
+                return "本轮已经记录，请直接回复玩家。"
+            db.add(
+                Event(
+                    save_id=save.id,
+                    turn_id=turn.id,
+                    operation=kind,
+                    audience=[turn.input.npc],
+                    data={
+                        "kind": kind,
+                        "text": text,
+                        "npc": turn.input.npc,
+                        "act": save.state["act"],
+                        "action": action,
+                    },
+                )
+            )
+            return (
+                "建议已展示，尚未执行，等待玩家确认。"
+                if kind == "suggestion"
+                else "已记住玩家原话；这不是已经完成的行动。"
+            )
+
+    async def propose_action(self, turn: AgentTurn, action: str) -> str:
+        if action not in ACTION_LABELS:
+            raise RuleError("没有这项可建议的行动。")
+        return await self._agent_note(turn, "suggestion", ACTION_LABELS[action], action)
+
+    async def remember_player(self, turn: AgentTurn, quote: str) -> str:
+        return await self._agent_note(turn, "memory", quote)
 
     async def npc_operation(self, turn_id: str, npc: str, operation: str) -> str:
         async with self.sessions.begin() as db:
@@ -224,6 +355,8 @@ class GameService:
             await db.refresh(turn)
             if turn.status != "running" or turn.payload["npc"] != npc:
                 raise RuleError("回合已结束或角色无权操作。")
+            if turn.payload["action"] != "speak":
+                raise RuleError("这是对已确认行动的回应，不能追加工作操作。")
             previous = await db.scalar(
                 select(Event).where(Event.turn_id == turn_id, Event.operation == operation)
             )
@@ -247,19 +380,27 @@ class GameService:
     async def finish_turn(
         self, turn_id: str, text: str | None, usage: dict[str, Any], error: bool = False
     ) -> dict[str, Any] | None:
-        usage["billing_complete"] = not error
+        input_price: float | None = self.settings.deepseek_input_usd_per_million
+        output_price: float | None = self.settings.deepseek_output_usd_per_million
+        if self.settings.agent_mode == "openai":
+            input_price = self.settings.openai_input_usd_per_million
+            output_price = self.settings.openai_output_usd_per_million
+        priced = input_price is not None and output_price is not None
+        usage["billing_complete"] = not error and (priced or self.settings.agent_mode == "mock")
         usage["cost_estimate_usd"] = (
             0.0
             if self.settings.agent_mode == "mock"
             else round(
                 (
-                    usage.get("input_tokens", 0) * self.settings.deepseek_input_usd_per_million
-                    + usage.get("output_tokens", 0) * self.settings.deepseek_output_usd_per_million
+                    usage.get("input_tokens", 0) * (input_price or 0)
+                    + usage.get("output_tokens", 0) * (output_price or 0)
                 )
                 / 1_000_000,
                 8,
             )
         )
+        if self.settings.agent_mode != "mock" and not priced:
+            usage["cost_estimate_usd"] = None
         async with self.sessions.begin() as db:
             turn = cast(Turn, await db.get(Turn, turn_id))
             save = await owned_save(db, turn.save_id, turn.user_id, True)
@@ -276,11 +417,17 @@ class GameService:
                         save_id=save.id,
                         turn_id=turn.id,
                         operation="reply",
-                        audience=[] if epilogue else [turn.payload["npc"]],
+                        audience=[]
+                        if epilogue or turn.payload["action"] == "contact_wang"
+                        else [ACTION_TARGETS.get(turn.payload["action"], turn.payload["npc"])],
                         data={
-                            "kind": "epilogue" if epilogue else "npc",
+                            "kind": "epilogue"
+                            if epilogue
+                            else "work"
+                            if turn.payload["action"] == "contact_wang"
+                            else "npc",
                             "text": text,
-                            "npc": turn.payload["npc"],
+                            "npc": ACTION_TARGETS.get(turn.payload["action"], turn.payload["npc"]),
                             "act": save.state["act"],
                         },
                     )
@@ -325,6 +472,7 @@ class GameService:
             return PlayStateOut.model_validate(
                 {
                     "save": snapshot(save),
+                    "investigation": investigation.read_model(GameState.model_validate(save.state)),
                     "events": [{"id": event.id, **event.data} for event in events],
                     "active_turn": {"id": active.id, "request_id": active.request_id}
                     if active

@@ -1,0 +1,147 @@
+.panel,
+.result {
+  margin: 24px 0;
+  border: 1px solid #425364;
+  background: #182431;
+  border-radius: 12px;
+  padding: 20px;
+  color: #e0e6eb;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.panel summary,
+.result summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.panel small,
+.result small {
+  font-size: 12px;
+  color: #b4c2cc;
+  font-weight: 400;
+}
+.panel h3,
+.result h2 {
+  font-size: 17px;
+  margin: 20px 0 10px;
+}
+.muted {
+  color: #b4c2cc;
+  font-size: 13px;
+}
+.relationships {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+  font-size: 13px;
+}
+.relationships strong {
+  float: right;
+}
+.relationships meter {
+  display: block;
+  width: 100%;
+  height: 12px;
+}
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.actions small {
+  display: block;
+  margin: 5px 3px;
+}
+.panel button,
+.result button {
+  border: 1px solid #73869a;
+  background: #263849;
+  border-radius: 6px;
+  color: #e7edf1;
+  padding: 10px 14px;
+  font: inherit;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.panel button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.panel button:hover:not(:disabled),
+.result button:hover {
+  background: #354c60;
+}
+.confirmation {
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid #b89c76;
+  border-radius: 8px;
+  background: #213140;
+}
+.confirmation h3 {
+  margin-top: 0;
+}
+.confirmation textarea {
+  display: block;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 100px;
+  margin-top: 8px;
+  padding: 12px;
+  background: #101e2a;
+  color: #e4eaf0;
+  border: 1px solid #72869a;
+  font: inherit;
+  border-radius: 6px;
+}
+.confirmation > div {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+.record {
+  padding: 10px 0;
+  border-top: 1px solid #3f5061;
+  font-size: 14px;
+}
+.views {
+  padding-top: 14px;
+  margin-top: 16px;
+  border-top: 1px solid #526171;
+}
+.views article {
+  padding: 12px 0;
+  border-bottom: 1px solid #3f5061;
+  font-size: 14px;
+}
+.views h4 {
+  margin: 0;
+  color: #d3b78f;
+}
+.views a {
+  color: #a8cadf;
+}
+.views small {
+  display: block;
+  margin-top: 10px;
+}
+.result p {
+  white-space: pre-wrap;
+}
+@media (max-width: 600px) {
+  .panel,
+  .result {
+    padding: 14px;
+  }
+  .relationships {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}

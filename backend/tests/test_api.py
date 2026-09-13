@@ -112,7 +112,10 @@ def test_failure_keeps_committed_action(app, client, monkeypatch):
     response, payload = turn(client, save, "speak", text="请说明缺少材料")
     assert '"status": "failed"' in response.text
     assert "requirements" in save["state"]["flags"]
-    assert not any(e["kind"] == "npc" for e in client.get(f"/api/saves/{save['id']}/events").json())
+    assert not any(
+        e["kind"] == "npc" and e["act"] == 2
+        for e in client.get(f"/api/saves/{save['id']}/events").json()
+    )
     version = save["version"]
     client.post(f"/api/saves/{save['id']}/turns", json=payload)
     assert client.get(f"/api/saves/{save['id']}").json()["version"] == version

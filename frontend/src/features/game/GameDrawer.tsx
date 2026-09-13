@@ -81,6 +81,18 @@ export function GameDrawer({
                   <ChevronRight size={18} />
                 </button>
               ))}
+              <article className={s.note} aria-label="长期关系记忆">
+                <strong>{story.npcs[npc].name}记得你说过</strong>
+                {events
+                  .filter((e) => e.kind === "memory" && e.npc === npc)
+                  .slice(-6)
+                  .map((e) => (
+                    <p key={e.id}>“{e.text}”</p>
+                  ))}
+                {!events.some((e) => e.kind === "memory" && e.npc === npc) && (
+                  <p>还没有记录长期偏好或约定。</p>
+                )}
+              </article>
               <article className={s.note}>
                 <span className={s.overline}>朋友圈 · 王会计</span>
                 <p>感谢大家的祝福，正式开启退休生活！</p>
@@ -156,11 +168,15 @@ export function GameDrawer({
                   <small>
                     {event.kind === "player"
                       ? "周凌"
-                      : event.kind === "work"
-                        ? "工作记录"
-                        : event.kind === "epilogue"
-                          ? "结局回顾"
-                          : story.npcs[event.npc]?.name}
+                      : event.kind === "suggestion"
+                        ? "待确认建议"
+                        : event.kind === "memory"
+                          ? `${story.npcs[event.npc]?.name}的记忆`
+                          : event.kind === "work"
+                            ? "工作记录"
+                            : event.kind === "epilogue"
+                              ? "结局回顾"
+                              : story.npcs[event.npc]?.name}
                   </small>
                   <p>{event.text}</p>
                 </article>

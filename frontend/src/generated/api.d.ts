@@ -317,9 +317,34 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue";
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue" | "repair" | "written_record" | "document_rumor" | "ask_sun" | "ask_li" | "audit_purchase" | "confide_sun" | "settle_purchase" | "escalate_purchase" | "trace_rumor" | "ask_zhang" | "interview_sun" | "resolve_rumor" | "publish_rumor" | "attend_review" | "take_break";
             /** Target */
             target?: ("sun" | "li" | "zhang") | null;
+        };
+        /** CommunityView */
+        CommunityView: {
+            /** Title */
+            title: string;
+            /** Text */
+            text: string;
+            /** Author */
+            author: string;
+            /** Source Title */
+            source_title: string;
+            /** Url */
+            url: string;
+            /** Act */
+            act: number;
+            /**
+             * Provenance
+             * @default 根据知乎开放平台搜索摘要整理，非作者原话；仅供比较，不是标准答案。
+             */
+            provenance: string;
+            /**
+             * Retrieved
+             * @default 2026-09-13
+             */
+            retrieved: string;
         };
         /** ConfigOut */
         ConfigOut: {
@@ -331,9 +356,20 @@ export interface components {
              * Agent Mode
              * @enum {string}
              */
-            agent_mode: "mock" | "deepseek";
+            agent_mode: "mock" | "deepseek" | "openai";
             /** Model Ready */
             model_ready: boolean;
+        };
+        /** Decision */
+        Decision: {
+            /** Act */
+            act: number;
+            /** Action */
+            action: string;
+            /** Reason */
+            reason: string;
+            /** Evidence */
+            evidence: string[];
         };
         /** DevLogin */
         DevLogin: {
@@ -356,13 +392,22 @@ export interface components {
         ErrorEnvelope: {
             error: components["schemas"]["ErrorBody"];
         };
+        /** EvidenceOut */
+        EvidenceOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Text */
+            text: string;
+        };
         /** GameEventOut */
         GameEventOut: {
             /**
              * Kind
              * @enum {string}
              */
-            kind: "player" | "npc" | "work" | "epilogue";
+            kind: "player" | "npc" | "work" | "epilogue" | "suggestion" | "memory";
             /** Text */
             text: string;
             /**
@@ -373,7 +418,7 @@ export interface components {
             /** Act */
             act?: number | null;
             /** Action */
-            action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue") | null;
+            action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue" | "repair" | "written_record" | "document_rumor" | "ask_sun" | "ask_li" | "audit_purchase" | "confide_sun" | "settle_purchase" | "escalate_purchase" | "trace_rumor" | "ask_zhang" | "interview_sun" | "resolve_rumor" | "publish_rumor" | "attend_review" | "take_break") | null;
             /** Id */
             id: string;
         };
@@ -396,6 +441,13 @@ export interface components {
             procurement: "pending" | "approved";
             /** Ending */
             ending: string | null;
+            /** Consequences */
+            consequences?: string[];
+            trust?: components["schemas"]["Trust"];
+            /** Evidence */
+            evidence?: string[];
+            /** Decisions */
+            decisions?: components["schemas"]["Decision"][];
         };
         /** Interlude */
         Interlude: {
@@ -408,6 +460,34 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** InvestigationAction */
+        InvestigationAction: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue" | "repair" | "written_record" | "document_rumor" | "ask_sun" | "ask_li" | "audit_purchase" | "confide_sun" | "settle_purchase" | "escalate_purchase" | "trace_rumor" | "ask_zhang" | "interview_sun" | "resolve_rumor" | "publish_rumor" | "attend_review" | "take_break";
+            /** Label */
+            label: string;
+            /**
+             * Target
+             * @enum {string}
+             */
+            target: "sun" | "li" | "zhang";
+            /** Blocked */
+            blocked: string;
+            /** Decision */
+            decision: boolean;
+            /** Tradeoff */
+            tradeoff: string;
+        };
+        /** InvestigationOut */
+        InvestigationOut: {
+            /** Actions */
+            actions?: components["schemas"]["InvestigationAction"][];
+            /** Records */
+            records?: components["schemas"]["EvidenceOut"][];
+        };
         /** LiveOut */
         LiveOut: {
             /**
@@ -419,6 +499,7 @@ export interface components {
         };
         /** PlayStateOut */
         PlayStateOut: {
+            investigation?: components["schemas"]["InvestigationOut"];
             save: components["schemas"]["SaveOut"];
             /** Events */
             events: components["schemas"]["GameEventOut"][];
@@ -465,6 +546,8 @@ export interface components {
         };
         /** StoryOut */
         StoryOut: {
+            /** Community */
+            community?: components["schemas"]["CommunityView"][];
             /** Title */
             title: string;
             /** Subtitle */
@@ -483,6 +566,24 @@ export interface components {
             text: string;
             /** Source */
             source: string;
+        };
+        /** Trust */
+        Trust: {
+            /**
+             * Sun
+             * @default 45
+             */
+            sun: number;
+            /**
+             * Li
+             * @default 45
+             */
+            li: number;
+            /**
+             * Zhang
+             * @default 45
+             */
+            zhang: number;
         };
         /** TurnInput */
         TurnInput: {
@@ -504,7 +605,7 @@ export interface components {
              * @default speak
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue";
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "leave" | "epilogue" | "repair" | "written_record" | "document_rumor" | "ask_sun" | "ask_li" | "audit_purchase" | "confide_sun" | "settle_purchase" | "escalate_purchase" | "trace_rumor" | "ask_zhang" | "interview_sun" | "resolve_rumor" | "publish_rumor" | "attend_review" | "take_break";
             /**
              * Text
              * @default
@@ -549,7 +650,7 @@ export interface components {
             /** Model */
             model?: string | null;
             /** Mode */
-            mode?: ("mock" | "deepseek") | null;
+            mode?: ("mock" | "deepseek" | "openai") | null;
             /**
              * Model Calls
              * @default 0
@@ -575,11 +676,13 @@ export interface components {
              * @default 0
              */
             elapsed_ms: number;
+            /** First Response Ms */
+            first_response_ms?: number | null;
             /**
              * Cost Estimate Usd
              * @default 0
              */
-            cost_estimate_usd: number;
+            cost_estimate_usd: number | null;
             /**
              * Billing Complete
              * @default false
@@ -1439,7 +1542,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description validation_failed / empty_message / rule_violation */
+            /** @description validation_failed / empty_message / rule_violation / decision_reason_required */
             422: {
                 headers: {
                     [name: string]: unknown;

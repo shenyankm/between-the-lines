@@ -379,7 +379,9 @@ langchain-google-genai==4.4.0 \
 langchain-openai==1.6.2 \
     --hash=sha256:368e34ab3bdd30af422371b2f2f9346f21e79beae8b0823c253633819d1fd2f8 \
     --hash=sha256:bec6d190e1e47e774c2be8728bc93457cef1ab2ec3295c277d8daefab434e880
-    # via langchain-deepseek
+    # via
+    #   between-the-lines-api
+    #   langchain-deepseek
 langchain-protocol==0.0.19 \
     --hash=sha256:4cdf879a492a35980fd859ae792d3c65458ccaae504e183c9a10d7eac1f0720f \
     --hash=sha256:79d90a1425122ac87e8052e2ec054fbd09c3edbf341bdfb6397112a495c7bf8c

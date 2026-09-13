@@ -54,7 +54,7 @@ VOCABULARY: dict[int, tuple[str, ...]] = {
         "unsupported_save_version",
     ),
     415: ("json_required",),
-    422: ("validation_failed", "empty_message", "rule_violation"),
+    422: ("validation_failed", "empty_message", "rule_violation", "decision_reason_required"),
     429: ("daily_limit_reached", "concurrency_budget_exhausted"),
     500: ("internal_error",),
     503: ("oauth_not_configured", "model_unconfigured", "monthly_cost_cap_reached"),

@@ -116,6 +116,7 @@ export async function sendTurn(
   requestId: string,
   onStatus: (message: string) => void,
   signal?: AbortSignal,
+  onPreview?: (npc: Npc, text: string) => void,
 ): Promise<Result> {
   const response = await fetch(`/api/saves/${saveId}/turns`, {
     method: "POST",
@@ -152,6 +153,15 @@ export async function sendTurn(
           if (!record(frame.data) || typeof frame.data.text !== "string")
             throw new Error("回复格式无效，请恢复回合结果。");
           onStatus(frame.data.text);
+        }
+        if (frame?.event === "preview") {
+          if (
+            !record(frame.data) ||
+            typeof frame.data.text !== "string" ||
+            !["sun", "li", "zhang"].includes(String(frame.data.npc))
+          )
+            throw new Error("回复格式无效，请恢复回合结果。");
+          onPreview?.(frame.data.npc as Npc, frame.data.text);
         }
         if (frame?.event === "done") {
           if (!isResult(frame.data))

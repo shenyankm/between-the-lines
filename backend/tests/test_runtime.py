@@ -110,9 +110,9 @@ async def test_future_save_format_is_rejected_before_mutation(app):
 @pytest.mark.parametrize(
     "choice,ending,credit,stress,heat",
     [
-        ("boundary", "保持职业关系和边界", 90, 0, 0),
-        ("contact_wang", "关系重新协商", 90, 0, 0),
-        ("public_confront", "撕破脸", 80, 15, 25),
+        ("boundary", "保持职业关系和边界", 90, 10, 0),
+        ("contact_wang", "关系重新协商", 90, 10, 0),
+        ("public_confront", "撕破脸", 85, 30, 25),
     ],
 )
 def test_all_regular_endings_keep_their_exact_rules(choice, ending, credit, stress, heat):
@@ -122,6 +122,8 @@ def test_all_regular_endings_keep_their_exact_rules(choice, ending, credit, stre
     state, _ = apply_npc(state, "sun", "request_materials")
     for action in ("supplement", "report"):
         state, _ = apply_player(state, action)
+    if choice == "public_confront":
+        state, _ = apply_player(state, "written_record")
     state, _ = apply_npc(state, "li", "approve_purchase")
     for action in ("next", "clarify", "deliver", "next"):
         state, _ = apply_player(state, action)

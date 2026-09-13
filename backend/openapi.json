@@ -889,7 +889,7 @@
             }
           },
           "422": {
-            "description": "validation_failed / empty_message / rule_violation",
+            "description": "validation_failed / empty_message / rule_violation / decision_reason_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1076,7 +1076,23 @@
               "clarify",
               "deliver",
               "leave",
-              "epilogue"
+              "epilogue",
+              "repair",
+              "written_record",
+              "document_rumor",
+              "ask_sun",
+              "ask_li",
+              "audit_purchase",
+              "confide_sun",
+              "settle_purchase",
+              "escalate_purchase",
+              "trace_rumor",
+              "ask_zhang",
+              "interview_sun",
+              "resolve_rumor",
+              "publish_rumor",
+              "attend_review",
+              "take_break"
             ],
             "title": "Action"
           },
@@ -1104,6 +1120,54 @@
         ],
         "title": "Choice"
       },
+      "CommunityView": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "author": {
+            "type": "string",
+            "title": "Author"
+          },
+          "source_title": {
+            "type": "string",
+            "title": "Source Title"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "act": {
+            "type": "integer",
+            "title": "Act"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance",
+            "default": "根据知乎开放平台搜索摘要整理，非作者原话；仅供比较，不是标准答案。"
+          },
+          "retrieved": {
+            "type": "string",
+            "title": "Retrieved",
+            "default": "2026-09-13"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "text",
+          "author",
+          "source_title",
+          "url",
+          "act"
+        ],
+        "title": "CommunityView"
+      },
       "ConfigOut": {
         "properties": {
           "dev_login": {
@@ -1118,7 +1182,8 @@
             "type": "string",
             "enum": [
               "mock",
-              "deepseek"
+              "deepseek",
+              "openai"
             ],
             "title": "Agent Mode"
           },
@@ -1135,6 +1200,37 @@
           "model_ready"
         ],
         "title": "ConfigOut"
+      },
+      "Decision": {
+        "properties": {
+          "act": {
+            "title": "Act",
+            "type": "integer"
+          },
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "act",
+          "action",
+          "reason",
+          "evidence"
+        ],
+        "title": "Decision",
+        "type": "object"
       },
       "DevLogin": {
         "properties": {
@@ -1184,6 +1280,29 @@
         ],
         "title": "ErrorEnvelope"
       },
+      "EvidenceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "text"
+        ],
+        "title": "EvidenceOut"
+      },
       "GameEventOut": {
         "properties": {
           "kind": {
@@ -1192,7 +1311,9 @@
               "player",
               "npc",
               "work",
-              "epilogue"
+              "epilogue",
+              "suggestion",
+              "memory"
             ],
             "title": "Kind"
           },
@@ -1236,7 +1357,23 @@
                   "clarify",
                   "deliver",
                   "leave",
-                  "epilogue"
+                  "epilogue",
+                  "repair",
+                  "written_record",
+                  "document_rumor",
+                  "ask_sun",
+                  "ask_li",
+                  "audit_purchase",
+                  "confide_sun",
+                  "settle_purchase",
+                  "escalate_purchase",
+                  "trace_rumor",
+                  "ask_zhang",
+                  "interview_sun",
+                  "resolve_rumor",
+                  "publish_rumor",
+                  "attend_review",
+                  "take_break"
                 ]
               },
               {
@@ -1310,6 +1447,30 @@
               }
             ],
             "title": "Ending"
+          },
+          "consequences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Consequences",
+            "type": "array"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/Decision"
+            },
+            "title": "Decisions",
+            "type": "array"
           }
         },
         "required": [
@@ -1352,6 +1513,99 @@
         ],
         "title": "Interlude"
       },
+      "InvestigationAction": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "speak",
+              "begin",
+              "contact_wang",
+              "boundary",
+              "public_confront",
+              "next",
+              "supplement",
+              "report",
+              "clarify",
+              "deliver",
+              "leave",
+              "epilogue",
+              "repair",
+              "written_record",
+              "document_rumor",
+              "ask_sun",
+              "ask_li",
+              "audit_purchase",
+              "confide_sun",
+              "settle_purchase",
+              "escalate_purchase",
+              "trace_rumor",
+              "ask_zhang",
+              "interview_sun",
+              "resolve_rumor",
+              "publish_rumor",
+              "attend_review",
+              "take_break"
+            ],
+            "title": "Action"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "sun",
+              "li",
+              "zhang"
+            ],
+            "title": "Target"
+          },
+          "blocked": {
+            "type": "string",
+            "title": "Blocked"
+          },
+          "decision": {
+            "type": "boolean",
+            "title": "Decision"
+          },
+          "tradeoff": {
+            "type": "string",
+            "title": "Tradeoff"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "label",
+          "target",
+          "blocked",
+          "decision",
+          "tradeoff"
+        ],
+        "title": "InvestigationAction"
+      },
+      "InvestigationOut": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationAction"
+            },
+            "type": "array",
+            "title": "Actions"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceOut"
+            },
+            "type": "array",
+            "title": "Records"
+          }
+        },
+        "type": "object",
+        "title": "InvestigationOut"
+      },
       "LiveOut": {
         "properties": {
           "status": {
@@ -1366,6 +1620,9 @@
       },
       "PlayStateOut": {
         "properties": {
+          "investigation": {
+            "$ref": "#/components/schemas/InvestigationOut"
+          },
           "save": {
             "$ref": "#/components/schemas/SaveOut"
           },
@@ -1501,6 +1758,13 @@
       },
       "StoryOut": {
         "properties": {
+          "community": {
+            "items": {
+              "$ref": "#/components/schemas/CommunityView"
+            },
+            "type": "array",
+            "title": "Community"
+          },
           "title": {
             "type": "string",
             "title": "Title"
@@ -1562,6 +1826,33 @@
         ],
         "title": "Tip"
       },
+      "Trust": {
+        "properties": {
+          "sun": {
+            "default": 45,
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Sun",
+            "type": "integer"
+          },
+          "li": {
+            "default": 45,
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Li",
+            "type": "integer"
+          },
+          "zhang": {
+            "default": 45,
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Zhang",
+            "type": "integer"
+          }
+        },
+        "title": "Trust",
+        "type": "object"
+      },
       "TurnInput": {
         "properties": {
           "request_id": {
@@ -1598,7 +1889,23 @@
               "clarify",
               "deliver",
               "leave",
-              "epilogue"
+              "epilogue",
+              "repair",
+              "written_record",
+              "document_rumor",
+              "ask_sun",
+              "ask_li",
+              "audit_purchase",
+              "confide_sun",
+              "settle_purchase",
+              "escalate_purchase",
+              "trace_rumor",
+              "ask_zhang",
+              "interview_sun",
+              "resolve_rumor",
+              "publish_rumor",
+              "attend_review",
+              "take_break"
             ],
             "title": "Action",
             "default": "speak"
@@ -1717,7 +2024,8 @@
                 "type": "string",
                 "enum": [
                   "mock",
-                  "deepseek"
+                  "deepseek",
+                  "openai"
                 ]
               },
               {
@@ -1751,8 +2059,26 @@
             "title": "Elapsed Ms",
             "default": 0
           },
+          "first_response_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Response Ms"
+          },
           "cost_estimate_usd": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Cost Estimate Usd",
             "default": 0.0
           },

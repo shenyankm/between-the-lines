@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from ..auth import current_user
 from ..db import Event, Save, Turn, User
-from ..domain import initial_state
+from ..domain import ACTION_TARGETS, initial_state
 from ..errors import (
     AUTH_RESPONSES,
     MUTATION_RESPONSES,
@@ -35,8 +35,7 @@ async def config(request: Request) -> dict[str, Any]:
         and runtime_for(request).settings.environment != "production",
         "zhihu_login": runtime_for(request).settings.oauth_ready,
         "agent_mode": runtime_for(request).settings.agent_mode,
-        "model_ready": bool(runtime_for(request).settings.deepseek_api_key)
-        or runtime_for(request).settings.agent_mode == "mock",
+        "model_ready": runtime_for(request).settings.model_ready,
     }
 
 
@@ -136,13 +135,26 @@ async def submit(
             "status",
             {
                 "turn_id": turn_id,
-                "text": "对方正在回复…" if body.action == "speak" else "正在保存行动…",
+                "text": "对方正在回复…"
+                if body.action == "speak" or body.action in ACTION_TARGETS
+                else "正在保存行动…",
             },
         )
+        previous = ""
+        while not result.done():
+            preview = runtime.runner.live_replies.get(turn_id, "")
+            if preview and preview != previous:
+                yield sse("preview", {"npc": body.npc, "text": preview})
+                previous = preview
+            # Waiting on the task without cancelling it preserves disconnect recovery.
+            await asyncio.wait({result}, timeout=0.05)
         raw = await asyncio.shield(result)
         final = TurnResult.model_validate(raw).model_dump(mode="json")
         if final and final.get("status") == "completed" and final.get("text"):
-            yield sse("dialogue", {"npc": body.npc, "text": final["text"]})
+            yield sse(
+                "dialogue",
+                {"npc": ACTION_TARGETS.get(body.action, body.npc), "text": final["text"]},
+            )
         yield sse("done", final)
 
     return StreamingResponse(

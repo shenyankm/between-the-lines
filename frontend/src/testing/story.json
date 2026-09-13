@@ -1,4 +1,46 @@
 {
+  "community": [
+    {
+      "title": "让节点可核对",
+      "text": "将日志、时间戳和双方的处理记录放在一起，找出协作究竟卡在哪里，再明确各自要做的事。",
+      "author": "猎鹰家的小鼠",
+      "source_title": "职场里，“我这边没问题”是不是一种隐性甩锅？",
+      "url": "https://www.zhihu.com/question/2068386969168638693/answer/2069375285192140682",
+      "act": 2,
+      "provenance": "根据知乎开放平台搜索摘要整理，非作者原话；仅供比较，不是标准答案。",
+      "retrieved": "2026-09-13"
+    },
+    {
+      "title": "留痕也可以是协作基础",
+      "text": "书面记录不一定源于对人的怀疑。跨团队协作中，记忆会出错、人员会变动，可追溯的约定能减少争议。",
+      "author": "半闲斋主闲话",
+      "source_title": "如何看待职场中“工作留痕”越来越重要的现象？",
+      "url": "https://zhuanlan.zhihu.com/p/2070446998998848494",
+      "act": 2,
+      "provenance": "根据知乎开放平台搜索摘要整理，非作者原话；仅供比较，不是标准答案。",
+      "retrieved": "2026-09-13"
+    },
+    {
+      "title": "不必回应每一轮议论",
+      "text": "这篇回答认为，反复解释有时会延长讨论；在决定是否回应前，也要考虑传言的实际影响与自己的精力。",
+      "author": "未提供作者名",
+      "source_title": "被同事造谣“靠关系入职”，全部门都在传，该澄清还是假装没听见？",
+      "url": "https://www.zhihu.com/question/1998554669526581425/answer/1999023888575768119",
+      "act": 3,
+      "provenance": "根据知乎开放平台搜索摘要整理，非作者原话；仅供比较，不是标准答案。",
+      "retrieved": "2026-09-13"
+    },
+    {
+      "title": "把目标与边界一起守住",
+      "text": "专注自己的成长目标，同时用可追溯的工作沟通明确边界、时间与责任，并向直属领导寻求具体支持。",
+      "author": "唐安妮",
+      "source_title": "在职场中遭遇语言暴力或排挤时该怎么办？",
+      "url": "https://www.zhihu.com/question/1976606342216164906/answer/1977395107729798544",
+      "act": 3,
+      "provenance": "根据知乎开放平台搜索摘要整理，非作者原话；仅供比较，不是标准答案。",
+      "retrieved": "2026-09-13"
+    }
+  ],
   "title": "言外之意",
   "subtitle": "BETWEEN THE LINES",
   "acts": [
@@ -49,7 +91,7 @@
       "chapter_title": "被卡住的采购单",
       "location": "财务窗口",
       "time": "周二 · 10:30",
-      "intro": "催化剂优化项目的加急采购两天没有进展。先确认缺少什么，再让每一步处理有据可查。",
+      "intro": "加急采购已滞留两天。孙淼说是材料问题，李姐却刚收到单据。你可以对照两人的口径、调取流转日志，再决定私下纠正还是向张工追查责任。",
       "background": "/assets/finance-rain.png",
       "choices": [
         {
@@ -60,6 +102,16 @@
           "label": "向张工同步进度",
           "action": "report",
           "target": "zhang"
+        },
+        {
+          "label": "私下修复沟通",
+          "action": "repair",
+          "target": "sun"
+        },
+        {
+          "label": "提交书面沟通记录",
+          "action": "written_record",
+          "target": "li"
         }
       ],
       "interlude": {
@@ -80,6 +132,11 @@
         {
           "label": "在例会上澄清传言",
           "action": "clarify"
+        },
+        {
+          "label": "保留证据，请张工私下核实",
+          "action": "document_rumor",
+          "target": "zhang"
         },
         {
           "label": "提交实验结果",

@@ -34,6 +34,20 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
     last_text = history[-1].get("text", "") if history else ""
     flags = facts["flags"]
     tool_result = messages[-1]["content"] if messages[-1]["role"] == "tool" else None
+    if context.get("当前回合类型") == "行动回应":
+        action = history[-1].get("action", "") if history else ""
+        responses = {
+            "boundary": "好，以后我直接跟你说事情，不替你定义情绪。",
+            "public_confront": "你一定要当着大家这样问吗？采购的事以后我们按记录说清楚。",
+            "repair": "当时我也下不来台。既然说开了，工作我们直接沟通，材料还是照流程交。",
+            "written_record": "记录我收到了。材料齐全后你再发起审核，我会按书面依据核对。",
+            "supplement": "材料收到了。你可以现在向我发起审核，我会核对后给出结果。",
+            "report": "风险我知道了。你需要我协调实验排期的话，直接说，我来落实支持。",
+            "clarify": "这件事在例会上说清了。接下来我们看项目结果。",
+            "document_rumor": "证据先留好，我私下核实。这之前，例会上先不扩大讨论。",
+            "deliver": "结果与计划收到了。后续按这个安排走，有变动及时同步。",
+        }
+        return {"role": "assistant", "content": responses.get(action, "收到，我们继续。")}
     operation = None
     if facts["act"] == 2 and not tool_result:
         if npc in {"sun", "li"} and "requirements" not in flags:
@@ -42,6 +56,36 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
             operation = "approve_purchase"
         elif npc == "zhang" and "reported" in flags and "supported" not in flags:
             operation = "support_project"
+    if not tool_result and not operation:
+        desired = next(
+            (
+                a
+                for word, a in (
+                    ("不要替我定义", "boundary"),
+                    ("当众质问", "public_confront"),
+                    ("私下修复", "repair"),
+                    ("补齐采购", "supplement"),
+                    ("保留证据", "document_rumor"),
+                )
+                if word in last_text and a in context.get("可确认行动", {})
+            ),
+            None,
+        )
+        if desired:
+            return {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_proposal",
+                        "type": "function",
+                        "function": {
+                            "name": "propose_action",
+                            "arguments": json.dumps({"action": desired}),
+                        },
+                    }
+                ],
+            }
     if operation:
         return {
             "role": "assistant",

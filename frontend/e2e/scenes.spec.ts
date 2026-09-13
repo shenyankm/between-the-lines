@@ -21,8 +21,14 @@ test("all six locations render, interludes cancel safely and advance once", asyn
       credit: 50,
       stress: 25,
       heat: 10,
-      flags: [],
-      procurement: "pending",
+      flags: [
+        "boundary",
+        "requirements",
+        "materials",
+        "clarified",
+        "delivered",
+      ],
+      procurement: "approved",
       ending: act === 4 ? "保持职业关系和边界" : null,
     },
   });

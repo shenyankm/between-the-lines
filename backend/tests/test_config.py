@@ -119,3 +119,36 @@ def test_oauth_ready_needs_every_endpoint_not_just_the_credentials():
     }
     assert build(**partial).oauth_ready is False
     assert build(**partial, zhihu_userinfo_url="https://partner.example/userinfo").oauth_ready
+
+
+def test_openai_readiness_and_production_credentials():
+    assert not build(
+        environment="test", agent_mode="openai", openai_api_key="", monthly_cost_cap_usd=0
+    ).model_ready
+    assert (
+        build(
+            environment="test",
+            agent_mode="openai",
+            openai_api_key="fixture",
+            monthly_cost_cap_usd=0,
+        ).model_name
+        == "gpt-4.1-mini"
+    )
+    with pytest.raises(ValidationError, match="OPENAI_API_KEY"):
+        build(
+            agent_mode="openai",
+            openai_api_key="",
+            openai_input_usd_per_million=1,
+            openai_output_usd_per_million=2,
+        )
+    with pytest.raises(ValidationError, match="OPENAI_BASE_URL"):
+        build(agent_mode="openai", openai_base_url="http://gateway.example")
+    with pytest.raises(ValidationError, match="gateway token prices"):
+        build(agent_mode="openai", openai_api_key="fixture")
+    assert build(
+        agent_mode="openai",
+        openai_api_key="fixture",
+        deepseek_api_key="",
+        openai_input_usd_per_million=1,
+        openai_output_usd_per_million=2,
+    ).model_ready

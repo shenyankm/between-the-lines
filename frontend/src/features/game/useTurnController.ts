@@ -17,6 +17,7 @@ interface View {
   pending: string | null;
   error: string;
   status: string;
+  liveReply?: { npc: Npc; text: string };
 }
 const idle: View = { phase: "idle", pending: null, error: "", status: "" };
 const admissionErrors = new Set([
@@ -159,6 +160,10 @@ export function useTurnController(
               if (!signal.aborted) setView((v) => ({ ...v, status: message }));
             },
             signal,
+            (npc, text) => {
+              if (!signal.aborted)
+                setView((v) => ({ ...v, liveReply: { npc, text } }));
+            },
           );
           await resolve(result, signal);
         } catch (replayError) {
@@ -303,6 +308,10 @@ export function useTurnController(
             if (!signal.aborted) setView((v) => ({ ...v, status: message }));
           },
           signal,
+          (npc, text) => {
+            if (!signal.aborted)
+              setView((v) => ({ ...v, liveReply: { npc, text } }));
+          },
         );
         await resolve(result, signal);
         return !signal.aborted && result.status === "completed";

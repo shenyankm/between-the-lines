@@ -517,3 +517,162 @@ describe("Play: scene rendering", () => {
     expect(button("生成故事回顾").disabled).toBe(false);
   });
 });
+
+it("does not open a premature interlude and explains the unfinished action", async () => {
+  server.use(...playHandlers({ save: save({ state: { act: 1, flags: [] } }) }));
+  renderPlay();
+  await screen.findByRole("heading", { name: "公司食堂" });
+  expect(button("继续故事").disabled).toBe(true);
+  fireEvent.click(button("继续故事"));
+  expect(screen.queryByRole("button", { name: "进入下一幕" })).toBeNull();
+  expect(screen.getByText(/聊清楚后，从上方选择一个行动/)).toBeTruthy();
+});
+
+it("disables completed actions and guides a submitted purchase toward its approver", async () => {
+  server.use(
+    ...playHandlers({
+      save: save({
+        state: {
+          act: 2,
+          flags: ["requirements", "materials"],
+          procurement: "pending",
+        },
+      }),
+    }),
+  );
+  renderPlay();
+  await screen.findByRole("heading", { name: "财务窗口" });
+  expect(button("补齐采购材料").disabled).toBe(true);
+  expect(button("继续故事").disabled).toBe(true);
+  expect(screen.getByText(/打开手机联系李姐/)).toBeTruthy();
+});
+
+describe("Play: suggested actions require confirmation", () => {
+  const suggestionEvents: GameEvent[] = [
+    {
+      id: "intent",
+      kind: "player",
+      npc: "sun",
+      act: 1,
+      action: "speak",
+      text: "请不要替我定义情绪。",
+    },
+    {
+      id: "suggestion",
+      kind: "suggestion",
+      npc: "sun",
+      act: 1,
+      action: "boundary",
+      text: "向孙淼明确表达边界",
+    },
+    {
+      id: "reply",
+      kind: "npc",
+      npc: "sun",
+      act: 1,
+      text: "我听明白你的意思了。",
+    },
+  ];
+  it("does not submit on display or dismissal", async () => {
+    let requests = 0;
+    server.use(
+      ...playHandlers({
+        save: save({ state: { act: 1, flags: ["started"] } }),
+        events: suggestionEvents,
+      }),
+      http.post(TURNS_ROUTE, () => {
+        requests++;
+        return HttpResponse.json({});
+      }),
+    );
+    renderPlay();
+    await screen.findByRole("button", { name: "确认行动" });
+    expect(requests).toBe(0);
+    fireEvent.click(button("暂不执行"));
+    expect(screen.queryByRole("button", { name: "确认行动" })).toBeNull();
+    expect(requests).toBe(0);
+  });
+  it("submits the proposed action only after confirmation", async () => {
+    const received: TurnInput[] = [];
+    const current = save({ state: { act: 1, flags: ["started"] } });
+    server.use(
+      ...playHandlers({ save: current, events: suggestionEvents }),
+      http.post(TURNS_ROUTE, async ({ request }) => {
+        received.push((await request.json()) as TurnInput);
+        return sse([
+          frame("done", {
+            turn_id: "confirmed",
+            status: "completed",
+            retryable: false,
+            text: "好，我记住了。",
+            save: current,
+          }),
+        ]);
+      }),
+    );
+    renderPlay();
+    fireEvent.click(await screen.findByRole("button", { name: "确认行动" }));
+    await waitFor(() => expect(received.length).toBe(1));
+    expect(received[0]?.action).toBe("boundary");
+    expect(received[0]?.npc).toBe("sun");
+  });
+  it("hides proposals after another player action or for another actor", async () => {
+    server.use(
+      ...playHandlers({
+        save: save({ state: { act: 1 } }),
+        events: [
+          ...suggestionEvents,
+          {
+            id: "later",
+            kind: "player",
+            npc: "sun",
+            act: 1,
+            action: "speak",
+            text: "暂时不说这个。",
+          },
+        ],
+      }),
+    );
+    renderPlay();
+    await screen.findByRole("textbox", { name: "对角色说的话" });
+    expect(screen.queryByRole("button", { name: "确认行动" })).toBeNull();
+  });
+});
+
+it("shows a streamed reply immediately, keeps it with the right NPC, and clears failed previews", async () => {
+  const gate = deferred();
+  const current = save({ state: { act: 1 } });
+  server.use(
+    ...playHandlers({ save: current }),
+    http.post(TURNS_ROUTE, () =>
+      sse(
+        [
+          frame("status", { text: "对方正在回复…" }),
+          frame("preview", { npc: "sun", text: "我听到了你的意思。" }),
+        ],
+        gate.promise,
+        [
+          frame("done", {
+            turn_id: "partial-fail",
+            status: "failed",
+            retryable: true,
+            text: "回复中断，请重试。",
+            save: current,
+          }),
+        ],
+      ),
+    ),
+  );
+  renderPlay();
+  await screen.findByRole("textbox", { name: "对角色说的话" });
+  fireEvent.change(composer(), { target: { value: "你好" } });
+  fireEvent.click(button("发送"));
+  await screen.findByText("我听到了你的意思。");
+  expect(button("发送").disabled).toBe(true);
+  fireEvent.click(button("手机"));
+  fireEvent.click(screen.getByRole("button", { name: /^李姐/ }));
+  expect(screen.queryByText("我听到了你的意思。")).toBeNull();
+  gate.resolve();
+  expect(await alertText()).toBe("回复中断，请重试。");
+  expect(screen.queryByText("我听到了你的意思。")).toBeNull();
+});

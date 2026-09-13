@@ -87,9 +87,10 @@ def test_provider_rate_limit_has_no_unbounded_retry(app, monkeypatch):
             },
         )
         assert '"status": "failed"' in response.text
+        # Authored action reactions make no model calls; dialogue is attempted once.
         assert count == 1
         events = client.get(f"/api/saves/{save['id']}/events").json()
-        assert not any(e["kind"] in {"npc", "work"} for e in events)
+        assert not any(e["kind"] in {"npc", "work"} and e["act"] == 2 for e in events)
 
 
 def cap(monkeypatch, app, usd: float, mode: str = "deepseek") -> None:

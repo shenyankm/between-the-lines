@@ -39,7 +39,6 @@
   color: #c9af83;
 }
 .home h1 {
-  font-family: "Songti SC", "STSong", serif;
   font-size: clamp(60px, 8vw, 108px);
   font-weight: 400;
   letter-spacing: 14px;
@@ -55,7 +54,6 @@
   margin-bottom: 30px;
 }
 .tagline {
-  font-family: "Songti SC", serif;
   font-size: 26px;
   line-height: 1.8;
   letter-spacing: 3px;
@@ -145,7 +143,6 @@
   padding: 50px 30px;
 }
 .page h1 {
-  font-family: "Songti SC", serif;
   font-size: 42px;
   margin-top: 36px;
 }
@@ -189,7 +186,6 @@
 .gameHeader .brand {
   font-size: 19px;
   letter-spacing: 3px;
-  font-family: "Songti SC", serif;
 }
 .chapterNav {
   display: flex;
@@ -236,7 +232,6 @@
   top: 38px;
 }
 .sceneInfo h2 {
-  font-family: "Songti SC", serif;
   font-weight: 400;
   font-size: 30px;
   letter-spacing: 3px;
@@ -296,7 +291,6 @@
   letter-spacing: 3px;
 }
 .sceneCaption p {
-  font-family: "Songti SC", serif;
   font-size: 18px;
   line-height: 1.9;
   color: #d2d9e2;
@@ -320,7 +314,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "Songti SC", serif;
   font-size: 42px;
   background: linear-gradient(135deg, var(--character-color), #253749);
   color: #f0e9df;
@@ -332,7 +325,6 @@
   letter-spacing: 2px;
 }
 .characterCard h3 {
-  font-family: "Songti SC", serif;
   font-size: 28px;
   font-weight: 400;
   margin: 10px 0;
@@ -552,7 +544,6 @@
   align-items: center;
   justify-content: center;
   background: #37495d;
-  font-family: "Songti SC", serif;
   font-size: 22px;
 }
 .selectedContact {
@@ -628,7 +619,6 @@
   padding: 28px 0;
 }
 .ending h1 {
-  font-family: "Songti SC", serif;
   font-size: 34px;
   font-weight: 400;
   color: #d7bd92;
@@ -953,7 +943,6 @@
   letter-spacing: 2px;
 }
 .interludeCopy h2 {
-  font-family: "Songti SC", serif;
   font-weight: 400;
 }
 .interludeCopy p {
@@ -980,4 +969,46 @@
       transform: translateY(0);
     }
   }
+}
+
+.playerLine {
+  border-left: 2px solid #72869c;
+  padding: 8px 14px;
+  margin: 18px 0 0;
+  color: #b9c7d5;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.playerLine span {
+  color: #c5b08d;
+  margin-right: 12px;
+}
+.choices button:disabled,
+.conversationFooter button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.quickWork {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+.quickWork:empty {
+  display: none;
+}
+.quickWork button {
+  background: #243747;
+  border: 1px solid #667d90;
+  color: #dae6ee;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+.quickWork button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

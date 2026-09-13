@@ -11,6 +11,7 @@ import type { Action, Npc } from "../../types";
 import { Conversation } from "./Conversation";
 import { GameDrawer } from "./GameDrawer";
 import { GameStage } from "./GameStage";
+import { nextStep } from "./progress";
 import { playKey, useTurnController } from "./useTurnController";
 function PlaySession({ userId }: { userId: string }) {
   const { id = "" } = useParams(),
@@ -28,11 +29,12 @@ function PlaySession({ userId }: { userId: string }) {
     queryFn: ({ signal }) => gameApi.story(signal),
   });
   const [input, setInput] = useState("");
-  const { busy, pending, error, status, submit, recover } = useTurnController(
-    userId,
-    id,
-    playQuery.data?.active_turn?.request_id,
-  );
+  const [submittedMessage, setSubmittedMessage] = useState<{
+    npc: Npc;
+    text: string;
+  } | null>(null);
+  const { busy, pending, error, status, liveReply, submit, recover } =
+    useTurnController(userId, id, playQuery.data?.active_turn?.request_id);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [interludeAct, setInterludeAct] = useState<number | null>(null);
   useEffect(() => {
@@ -48,8 +50,11 @@ function PlaySession({ userId }: { userId: string }) {
   }
   async function act(action: Action, text = "", target: Npc = npc) {
     const submittedDraft = input;
+    selectNpc(target);
+    if (action === "speak") setSubmittedMessage({ npc: target, text });
     if (saveQuery.data && (await submit(saveQuery.data, action, text, target)))
       setInput((current) => (current === submittedDraft ? "" : current));
+    setSubmittedMessage(null);
   }
   if (saveQuery.error)
     return (
@@ -92,6 +97,7 @@ function PlaySession({ userId }: { userId: string }) {
         setPanel={setPanel}
       />
       <Conversation
+        investigation={playQuery.data?.investigation}
         story={story}
         state={state}
         scene={scene}
@@ -104,13 +110,18 @@ function PlaySession({ userId }: { userId: string }) {
         act={act}
         input={input}
         setInput={setInput}
+        submittedText={
+          submittedMessage?.npc === npc ? submittedMessage.text : ""
+        }
         busy={busy}
         status={status}
+        preview={liveReply?.npc === npc ? liveReply.text : ""}
         error={error}
         pending={pending}
         recover={recover}
         onNext={() =>
-          scene.interlude ? setInterludeAct(state.act) : void act("next")
+          !nextStep(state) &&
+          (scene.interlude ? setInterludeAct(state.act) : void act("next"))
         }
       />
       {interludeAct !== null && (

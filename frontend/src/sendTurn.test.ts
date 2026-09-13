@@ -213,3 +213,37 @@ describe("sendTurn() error branches", () => {
     expect(error).toBeInstanceOf(TypeError);
   });
 });
+
+it("delivers dialogue previews before completion without treating them as saved results", async () => {
+  const gate = deferred(),
+    first = deferred();
+  const seen: string[] = [];
+  let completed = false;
+  onTurn(() =>
+    sse([frame("preview", { npc: "sun", text: "我听到了，" })], gate.promise, [
+      frame("done", done),
+    ]),
+  );
+  const pending = sendTurn(
+    "save-1",
+    2,
+    "sun",
+    "speak",
+    "你好",
+    "req-preview",
+    () => {},
+    undefined,
+    (npc, text) => {
+      seen.push(`${npc}:${text}`);
+      first.resolve();
+    },
+  ).then((result) => {
+    completed = true;
+    return result;
+  });
+  await first.promise;
+  expect(seen).toEqual(["sun:我听到了，"]);
+  expect(completed).toBe(false);
+  gate.resolve();
+  await expect(pending).resolves.toEqual(done);
+});

@@ -120,6 +120,7 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
                             yield
                         finally:
                             await runner.close()
+                            await gateway.close()
                             sweeper.cancel()
                             with suppress(asyncio.CancelledError):
                                 await sweeper
