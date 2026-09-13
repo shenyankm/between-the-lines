@@ -136,3 +136,5 @@ uv pip install --python "$(command -v python)" --require-hashes -r backend/requi
 ## CI
 
 GitHub Actions 自动执行后端测试、接口契约同步、前端检查和构建、Docker 集成、桌面/手机端到端测试及备份恢复。测试使用模拟 LLM，不需要真实密钥。工作流与本地复现方法见 [CI 说明](docs/ci.md)。分支保护可使用汇总检查 `CI required`。
+
+单故事重构的模块边界、事务、SSE 契约和恢复状态机见 [架构说明](docs/architecture.md)。`make contract-generate` 用于显式生成，`make contract` 与 `make lock-check` 只检查、不修改文件。

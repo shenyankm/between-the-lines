@@ -17,9 +17,9 @@
 
 以下是代码层面已经强制执行的约束，而非仅仅是文档建议：
 
-- **生产环境拒绝不安全启动。** `backend/app/config.py` 的 `production_guards` 校验器在 `ENVIRONMENT=production` 时拒绝启动，条件包括：启用了开发登录、使用 mock agent、`SESSION_SECRET` 短于 32 字符或以 `development` 开头、`PUBLIC_ORIGIN` 非 HTTPS、缺少 `DEEPSEEK_API_KEY`、`API_WORKERS != 1`。
+- **生产环境拒绝不安全启动。** `backend/app/config.py` 的 `production_guards` 校验器在 `ENVIRONMENT=production` 时拒绝启动，条件包括：启用了开发登录、使用 mock agent、`SESSION_SECRET` 短于 32 字符或以 `development` 开头、`PUBLIC_ORIGIN` 非 HTTPS、缺少 `DEEPSEEK_API_KEY`、模型地址非 HTTPS 或未配置正数月度费用上限。
 - **会话令牌不明文存储。** `backend/app/auth.py` 存储 `secrets.token_urlsafe(32)` 的 SHA-256 摘要，7 天过期，Cookie 为 `httponly` + `samesite=lax`，生产环境附加 `secure`。
-- **同源部署 + Origin 校验代替 CORS。** `backend/app/main.py` 的中间件校验 Origin，并要求所有变更类请求为 JSON，以此作为 CSRF 防线。取舍理由见 `docs/adr/ADR-010`。
+- **同源部署 + Origin 校验代替 CORS。** `backend/app/factory.py` 的中间件校验 Origin，并要求所有变更类请求为 JSON，以此作为 CSRF 防线。单进程、事务和接口边界见 [架构说明](docs/architecture.md)。
 - **日志脱敏。** 认证失败只记录异常类型，不记录凭据或个人信息；`backend/tests/test_logging.py` 对此有回归断言。
 - **Agent 能力受限。** `backend/app/agents.py` 禁用 deepagents 的通用子代理，排除 `task` 与 `execute` 工具，文件工具仅作用于 `StateBackend`——不接触宿主文件系统或 shell。模型与工具调用次数受 `MAX_MODEL_CALLS` / `MAX_TOOL_CALLS` 限制。
 - **检查点线程 ID 由服务端派生**（`{user}:{save}:{npc}`），客户端无法自选，避免跨用户读取对话检查点。
@@ -38,4 +38,4 @@
 
 ## 密钥管理
 
-密钥通过宿主机的 `.env` 文件注入，权限要求 `600`（`make doctor` 会校验）。`.env`、`*.pem`、`*.key` 与 `doc-fetch-resources/` 均被 `.gitignore` 排除，并由 pre-commit hook 二次拦截。本项目当前未使用密钥管理服务；引入的时机与理由见 `docs/adr/`。
+密钥通过宿主机的 `.env` 文件注入，权限要求 `600`（`make doctor` 会校验）。`.env`、`*.pem`、`*.key` 与 `doc-fetch-resources/` 均被 `.gitignore` 排除，并由 pre-commit hook 二次拦截。本项目当前未使用密钥管理服务。
