@@ -170,3 +170,15 @@ it("handles CRLF and UTF-8 split at every byte and safely cancels the response r
   ).toEqual(result);
   expect(statuses).toEqual(["中文状态"]);
 });
+
+it("pins a story request to the saved content revision", async () => {
+  let query = "";
+  server.use(
+    http.get("/api/story", ({ request }) => {
+      query = new URL(request.url).search;
+      return HttpResponse.json(story);
+    }),
+  );
+  await gameApi.story(undefined, 3, 2);
+  expect(query).toBe("?version=3&revision=2");
+});

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { expect, it } from "vitest";
 import { server } from "../../testing/server";
@@ -80,4 +80,44 @@ it("keeps a failed generation's saved facts visible", async () => {
   expect(
     screen.getByText("本次生成未完成，展示已保存事实，不补写新的经历。"),
   ).toBeTruthy();
+});
+
+it("recovers a failed read and displays event summaries when there was no player quote", async () => {
+  let calls = 0;
+  server.use(
+    http.post("/api/saves/save-1/jobs", () => {
+      calls++;
+      if (calls === 1) return new HttpResponse(null, { status: 400 });
+      return HttpResponse.json({
+        id: "ending",
+        kind: "ending",
+        status: "completed",
+        result: {
+          text: "事实正文",
+          interactions: [
+            null,
+            {
+              actual_expression: "",
+              event_summary: "提交了实验结果",
+              feedback: [null, "已收到"],
+            },
+            { actual_expression: 3, event_summary: 3, feedback: "invalid" },
+          ],
+        },
+      });
+    }),
+  );
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <EndingNarrative userId="test-user" save={save()} />
+    </QueryClientProvider>,
+  );
+  await screen.findByText("结局正文暂时无法生成，以下事实总结仍然有效。");
+  fireEvent.click(screen.getByText("重试读取"));
+  await screen.findByText("提交了实验结果");
+  expect(screen.getByText("已收到")).toBeTruthy();
+  expect(screen.getByText("事实正文")).toBeTruthy();
 });

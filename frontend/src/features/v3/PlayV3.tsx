@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { isEvent } from "../../contracts";
 import type { GameEvent } from "../../types";
-import { Link } from "react-router";
-import { api } from "../../api";
+import { Link, useNavigate } from "react-router";
+import { api, gameApi } from "../../api";
 import type { Action, Npc, PlayState, Story, TurnInput } from "../../types";
 import { useTurnController } from "../game/useTurnController";
-import { readDraft, writeDraft } from "../game/drafts";
+import { clearIdentityDrafts, readDraft, writeDraft } from "../game/drafts";
 import { ProductPanel } from "../game/ProductPanel";
 import { EventHistory } from "../game/EventHistory";
 import { SceneInterlude } from "../../SceneInterlude";
@@ -20,6 +20,8 @@ import { Discussion } from "./Discussion";
 import { Ending } from "./Ending";
 import s from "./V3.module.css";
 
+import { ErrorNotice } from "../../ErrorNotice";
+
 type Panel = "phone" | "work" | "relations" | "discussion" | "history" | null;
 const contacts: Npc[] = ["sun", "li", "zhang", "wang"];
 export function PlayV3({
@@ -31,6 +33,26 @@ export function PlayV3({
   play: PlayState;
   story: Story;
 }) {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const [logoutError, setLogoutError] = useState<unknown>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError(null);
+    try {
+      await gameApi.logout();
+      clearIdentityDrafts(userId);
+      await client.cancelQueries();
+      client.clear();
+      void navigate("/");
+    } catch (error) {
+      setLogoutError(error);
+    } finally {
+      setLoggingOut(false);
+    }
+  }
   const save = play.save,
     state = save.state as StateV3;
   const [panel, setPanel] = useState<Panel>(null),
@@ -381,6 +403,9 @@ export function PlayV3({
           </button>
         ))}
         <button onClick={() => setPanel("history")}>完整记录</button>
+        <button disabled={loggingOut} onClick={() => void logout()}>
+          退出登录
+        </button>
         <label>
           <input
             type="checkbox"
@@ -477,7 +502,13 @@ export function PlayV3({
       )}
       <div className={s.status} role="status">
         {controller.status}
-        {controller.error}
+        <ErrorNotice error={controller.issue} message={controller.error} />
+        <ErrorNotice
+          error={logoutError}
+          onRetry={() => void logout()}
+          retryLabel="重试退出"
+          disabled={loggingOut}
+        />
         {controller.pending && (
           <button onClick={() => void controller.recover()}>
             恢复回合结果
