@@ -405,7 +405,9 @@ export const gameApi = {
   createSave: () => checked("/saves", isSave, {}),
   story: (signal?: AbortSignal, version = 1, revision?: number) =>
     checked(
-      version === 1 ? "/story" : `/story?version=${version}${revision === undefined ? "" : `&revision=${revision}`}`,
+      version === 1
+        ? "/story"
+        : `/story?version=${version}${revision === undefined ? "" : `&revision=${revision}`}`,
       isStory,
       undefined,
       signal,

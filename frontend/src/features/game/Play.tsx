@@ -42,9 +42,19 @@ function LegacyPlaySession({
   const saveQuery = { data: playQuery.data?.save, error: playQuery.error };
   const eventsQuery = { data: playQuery.data?.events };
   const storyQuery = useQuery({
-    queryKey: ["story", saveQuery.data?.story_version ?? 1, saveQuery.data?.read_only],
+    queryKey: [
+      "story",
+      saveQuery.data?.story_version ?? 1,
+      saveQuery.data?.read_only,
+    ],
     queryFn: ({ signal }) =>
-      gameApi.story(signal, saveQuery.data?.story_version ?? 1, saveQuery.data?.story_version === 3 && saveQuery.data.read_only ? 1 : undefined),
+      gameApi.story(
+        signal,
+        saveQuery.data?.story_version ?? 1,
+        saveQuery.data?.story_version === 3 && saveQuery.data.read_only
+          ? 1
+          : undefined,
+      ),
     enabled: !!saveQuery.data,
   });
   const [, refreshDraft] = useState(0);
@@ -379,21 +389,64 @@ function LegacyPlaySession({
 
 // The v3 stage owns its recovery controller. Never mount the legacy controller
 // alongside it, including while a save/story request is pending.
-function PlaySession({ userId, guest = false }: { userId: string; guest?: boolean }) {
+function PlaySession({
+  userId,
+  guest = false,
+}: {
+  userId: string;
+  guest?: boolean;
+}) {
   const { id = "" } = useParams();
-  const play = useQuery({ queryKey: playKey(userId, id), queryFn: ({signal}) => gameApi.playState(id, signal) });
+  const play = useQuery({
+    queryKey: playKey(userId, id),
+    queryFn: ({ signal }) => gameApi.playState(id, signal),
+  });
   const save = play.data?.save;
   const current = save?.story_version === 3 && !save.read_only;
-  const story = useQuery({ queryKey: ["story", 3, false], queryFn: ({signal}) => gameApi.story(signal, 3), enabled: current });
-  useEffect(() => { if (save?.story_version === 3 || save?.read_only) void gameApi.visit(id).catch(() => {}); }, [id, save?.story_version, save?.read_only]);
-  if (!play.data) return <main className={s.page}><Link to="/">返回首页</Link>{play.error ? <ErrorNotice error={play.error} onRetry={() => void play.refetch()} /> : "正在读取故事…"}</main>;
-  if (save?.read_only) return <main className={s.page}>
-    <Link to="/">返回首页 · 开始新故事</Link>
-    <h1>旧版故事 · 只读历史</h1>
-    <p>{save.ending_summary ?? save.scene_intro}</p>
-    <EventHistory userId={userId} saveId={id} version={save.version} />
-  </main>;
-  if (current) return story.data ? <PlayV3 userId={userId} play={play.data} story={story.data} /> : <main className={s.page}>{story.error ? <ErrorNotice error={story.error} onRetry={() => void story.refetch()} /> : "正在翻开你的故事…"}</main>;
+  const story = useQuery({
+    queryKey: ["story", 3, false],
+    queryFn: ({ signal }) => gameApi.story(signal, 3),
+    enabled: current,
+  });
+  useEffect(() => {
+    if (save?.story_version === 3 || save?.read_only)
+      void gameApi.visit(id).catch(() => {});
+  }, [id, save?.story_version, save?.read_only]);
+  if (!play.data)
+    return (
+      <main className={s.page}>
+        <Link to="/">返回首页</Link>
+        {play.error ? (
+          <ErrorNotice error={play.error} onRetry={() => void play.refetch()} />
+        ) : (
+          "正在读取故事…"
+        )}
+      </main>
+    );
+  if (save?.read_only)
+    return (
+      <main className={s.page}>
+        <Link to="/">返回首页 · 开始新故事</Link>
+        <h1>旧版故事 · 只读历史</h1>
+        <p>{save.ending_summary ?? save.scene_intro}</p>
+        <EventHistory userId={userId} saveId={id} version={save.version} />
+      </main>
+    );
+  if (current)
+    return story.data ? (
+      <PlayV3 userId={userId} play={play.data} story={story.data} />
+    ) : (
+      <main className={s.page}>
+        {story.error ? (
+          <ErrorNotice
+            error={story.error}
+            onRetry={() => void story.refetch()}
+          />
+        ) : (
+          "正在翻开你的故事…"
+        )}
+      </main>
+    );
   return <LegacyPlaySession userId={userId} guest={guest} />;
 }
 

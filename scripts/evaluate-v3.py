@@ -43,7 +43,9 @@ class World:
         if sample["act"] >= 3:
             path += ["next"]
         for action in path:
-            self.state, _ = transition(self.state, action, V3_CATALOG[action][2] or "sun", event_id=str(uuid4()))
+            self.state, _ = transition(
+                self.state, action, V3_CATALOG[action][2] or "sun", event_id=str(uuid4())
+            )
         # Seed private and other-role history, then apply the same audience boundary
         # used by the DB adapter. The sentinel must never enter a workplace prompt.
         self.events = [{"audience": [sample["npc"]], "data": event} for event in sample["history"]]

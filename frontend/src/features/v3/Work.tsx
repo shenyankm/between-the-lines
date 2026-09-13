@@ -90,27 +90,41 @@ export function Work({
       </nav>
       {tab === "purchase" ? (
         <>
-          <h3>采购申请 · {{pending: "尚未开始", returned: "已退回", review: "等待审核", approved: "已通过"}[state.work?.purchase ?? "pending"]}</h3>
-          <p>普通采购需报价及用途说明；加急依据仅在申请加急时使用。原始申请与每次处理意见分别保留。</p>
-          {!state.work?.submissions?.length && <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              act("submit_purchase", "sun", { params: { purpose } });
-            }}
-          >
-            <label>
-              实验用途
-              <textarea
-                value={purpose}
-                maxLength={1000}
-                required
-                onChange={(e) => setPurpose(e.target.value)}
-              />
-            </label>
-            <button disabled={!enabled("submit_purchase")}>
-              提交第一版申请
-            </button>
-          </form>}
+          <h3>
+            采购申请 ·{" "}
+            {
+              {
+                pending: "尚未开始",
+                returned: "已退回",
+                review: "等待审核",
+                approved: "已通过",
+              }[state.work?.purchase ?? "pending"]
+            }
+          </h3>
+          <p>
+            普通采购需报价及用途说明；加急依据仅在申请加急时使用。原始申请与每次处理意见分别保留。
+          </p>
+          {!state.work?.submissions?.length && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                act("submit_purchase", "sun", { params: { purpose } });
+              }}
+            >
+              <label>
+                实验用途
+                <textarea
+                  value={purpose}
+                  maxLength={1000}
+                  required
+                  onChange={(e) => setPurpose(e.target.value)}
+                />
+              </label>
+              <button disabled={!enabled("submit_purchase")}>
+                提交第一版申请
+              </button>
+            </form>
+          )}
           <fieldset>
             <legend>游戏内材料附件</legend>
             {(
@@ -151,7 +165,11 @@ export function Work({
             ))}
           </fieldset>
           <button
-            disabled={!enabled("supplement") || !evidence.includes("quote") || !evidence.includes("purpose")}
+            disabled={
+              !enabled("supplement") ||
+              !evidence.includes("quote") ||
+              !evidence.includes("purpose")
+            }
             onClick={() => act("supplement", "sun", { params: { evidence } })}
           >
             提交所选材料与说明
@@ -161,9 +179,22 @@ export function Work({
             <ol>
               {state.work.submissions.map((row, i) => (
                 <li key={i}>
-                  材料第 {row.version} 版 · {row.version === 1 ? "昨日提交" : "本次补充"}
+                  材料第 {row.version} 版 ·{" "}
+                  {row.version === 1 ? "昨日提交" : "本次补充"}
                   <p>{row.purpose}</p>
-                  <p>附件：{row.evidence.map((id) => ({quote: "报价单", purpose: "用途说明", urgency: "加急依据"})[id as "quote" | "purpose" | "urgency"] ?? id).join("、")}</p>
+                  <p>
+                    附件：
+                    {row.evidence
+                      .map(
+                        (id) =>
+                          ({
+                            quote: "报价单",
+                            purpose: "用途说明",
+                            urgency: "加急依据",
+                          })[id as "quote" | "purpose" | "urgency"] ?? id,
+                      )
+                      .join("、")}
+                  </p>
                   <small>事件 {row.event_id.slice(0, 8)}</small>
                 </li>
               ))}
@@ -172,10 +203,20 @@ export function Work({
             <p>尚未提交。聊天不会推进截止时间。</p>
           )}
           <ol aria-label="审核处理记录">
-            {state.work?.reviews?.map((row, i) => <li key={i}>
-              {row.time} · {{sun: "孙淼", li: "李姐", zhang: "张工", wang: "王会计"}[row.actor]} · {row.decision}
-              <p>针对材料第 {row.version} 版：{row.detail}</p>
-            </li>)}
+            {state.work?.reviews?.map((row, i) => (
+              <li key={i}>
+                {row.time} ·{" "}
+                {
+                  { sun: "孙淼", li: "李姐", zhang: "张工", wang: "王会计" }[
+                    row.actor
+                  ]
+                }{" "}
+                · {row.decision}
+                <p>
+                  针对材料第 {row.version} 版：{row.detail}
+                </p>
+              </li>
+            ))}
           </ol>
           <Actions
             options={options.filter((a) => procurement.has(a.action))}

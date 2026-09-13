@@ -20,6 +20,10 @@ app = create_app(Settings(_env_file=None, environment="test", agent_mode="mock")
 args.output.write_text(json.dumps(app.openapi(), ensure_ascii=False, indent=2))
 
 args.story_output.write_text(
-    json.dumps(load_story(args.story_version).public().model_dump(exclude_none=True), ensure_ascii=False, indent=2)
+    json.dumps(
+        load_story(args.story_version).public().model_dump(exclude_none=True),
+        ensure_ascii=False,
+        indent=2,
+    )
     + "\n"
 )

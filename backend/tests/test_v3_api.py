@@ -80,11 +80,27 @@ BASE = [
         (["begin", "draft_exit", "submit_exit"], "active_exit"),
         (["begin", "next", "next", "project_review", "close_story"], "career_cost"),
         (
-            [*BASE, "dispute_return", "confirm_responsibility", "change_rules", "project_review", "apply_rules", "close_story"],
+            [
+                *BASE,
+                "dispute_return",
+                "confirm_responsibility",
+                "change_rules",
+                "project_review",
+                "apply_rules",
+                "close_story",
+            ],
             "rules_rewritten",
         ),
         (
-            [*BASE, "repair_friendship", "acknowledge_harm", "complete_remedy", "project_review", "follow_up", "close_story"],
+            [
+                *BASE,
+                "repair_friendship",
+                "acknowledge_harm",
+                "complete_remedy",
+                "project_review",
+                "follow_up",
+                "close_story",
+            ],
             "limited_repair",
         ),
         (

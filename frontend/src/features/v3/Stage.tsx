@@ -18,7 +18,10 @@ export function Script({
   const [count, setCount] = useState(0);
   useEffect(() => {
     if (reduced || !line || count >= line.text.length) return;
-    const timer = setTimeout(() => setCount((n) => Math.min(n + 2, line.text.length)), 35);
+    const timer = setTimeout(
+      () => setCount((n) => Math.min(n + 2, line.text.length)),
+      35,
+    );
     return () => clearTimeout(timer);
   }, [line, reduced, count]);
   if (!line) return null;
@@ -35,7 +38,16 @@ export function Script({
       }}
     >
       <strong>
-        {{sun: "孙淼", li: "李姐", zhang: "张工", wang: "王会计", narrator: "旁白", inner: "内心独白", group: "同事群像", player: "周菱菱"}[line.speaker] ?? "现场"}
+        {{
+          sun: "孙淼",
+          li: "李姐",
+          zhang: "张工",
+          wang: "王会计",
+          narrator: "旁白",
+          inner: "内心独白",
+          group: "同事群像",
+          player: "周菱菱",
+        }[line.speaker] ?? "现场"}
       </strong>
       <span>{full ? line.text : line.text.slice(0, count)}</span>
       <small>{full ? "点击继续 →" : "点击显示全文"}</small>
@@ -64,9 +76,10 @@ export function Portraits({
     shown === "sun-coat" ? "/assets/sun-coat.png" : person?.portrait;
   return (
     <div className={s.portraits} aria-hidden="true">
-      {player && (!portraits || portraits.some((p) => p.startsWith("player"))) && (
-        <img className={s.left} src={imageSource(playerAsset, 512)} alt="" />
-      )}
+      {player &&
+        (!portraits || portraits.some((p) => p.startsWith("player"))) && (
+          <img className={s.left} src={imageSource(playerAsset, 512)} alt="" />
+        )}
       {person && npcAsset && (
         <img className={s.right} src={imageSource(npcAsset, 512)} alt="" />
       )}
