@@ -22,7 +22,7 @@ const PENDING_KEY = `pending:${SAVE_ID}`;
 const RECOVER = "恢复回合结果";
 const TURNS_ROUTE = "/api/saves/:id/turns";
 
-function renderPlay(): void {
+function renderPlay(): QueryClient {
   // retry:false keeps failure assertions immediate instead of waiting out
   // React Query's three exponential retries.
   const client = new QueryClient({
@@ -37,6 +37,7 @@ function renderPlay(): void {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 
 /** Shape of the `crypto.randomUUID()` idempotency key Play stores per turn. */
@@ -249,6 +250,44 @@ describe("Play: recovering an interrupted turn", () => {
 });
 
 describe("Play: submitting a turn", () => {
+  it("preserves a new draft while the previous action finishes refreshing", async () => {
+    const gate = deferred();
+    const before = save({ version: 2, state: { act: 1 } });
+    const after = save({ version: 3, state: { act: 1 } });
+    let reads = 0;
+    server.use(...playHandlers({ save: before }));
+    server.use(
+      http.get("/api/saves/:id/play-state", async () => {
+        reads += 1;
+        if (reads > 1) await gate.promise;
+        return HttpResponse.json({
+          save: reads > 1 ? after : before,
+          events: [],
+          active_turn: null,
+        });
+      }),
+      http.post(TURNS_ROUTE, () =>
+        sse([
+          frame("done", {
+            turn_id: "t",
+            status: "completed",
+            save: after,
+            text: "",
+            retryable: false,
+          }),
+        ]),
+      ),
+    );
+    const client = renderPlay();
+    await screen.findByRole("heading", { name: "公司食堂" });
+    fireEvent.click(button("明确表达我的边界"));
+    await screen.findByText("已存档 · 3");
+    await waitFor(() => expect(composer().disabled).toBe(false));
+    fireEvent.change(composer(), { target: { value: "新写的草稿" } });
+    gate.resolve();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    expect(composer().value).toBe("新写的草稿");
+  });
   it("streams a reply, holding the idempotency key until it resolves", async () => {
     const gate = deferred();
     const before = save({ version: 2, state: { act: 1 } });

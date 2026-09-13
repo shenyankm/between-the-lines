@@ -47,8 +47,9 @@ function PlaySession({ userId }: { userId: string }) {
     void navigate("/");
   }
   async function act(action: Action, text = "", target: Npc = npc) {
+    const submittedDraft = input;
     if (saveQuery.data && (await submit(saveQuery.data, action, text, target)))
-      setInput("");
+      setInput((current) => (current === submittedDraft ? "" : current));
   }
   if (saveQuery.error)
     return (
