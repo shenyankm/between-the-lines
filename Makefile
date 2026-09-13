@@ -1,4 +1,4 @@
-# Single source of truth for local tasks. CI runs a strict subset of `make check`.
+# Single source of truth for local tasks. CI adds isolated process and browser checks to these code gates.
 #
 # HARD CONSTRAINT: this project uses the host Miniconda interpreter and must not
 # create a virtual environment. That rules out `uv sync` and `uv run` -- both
@@ -103,13 +103,12 @@ migrate: ## Apply Alembic migrations
 	cd $(BACKEND) && DATABASE_URL=$(HOST_DATABASE_URL) $(PYTHON) -m alembic upgrade head
 
 .PHONY: migrate-check
-migrate-check: ## Fail if the models drift from the committed schema
-	cd $(BACKEND) && DATABASE_URL=$(HOST_DATABASE_URL) $(PYTHON) -m alembic upgrade head \
-		&& DATABASE_URL=$(HOST_DATABASE_URL) $(PYTHON) -m alembic check
+migrate-check: ## Read-only schema drift check (run migrate explicitly first)
+	cd $(BACKEND) && DATABASE_URL=$(HOST_DATABASE_URL) $(PYTHON) -m alembic check
 
 .PHONY: api
 api: ## Run the API on the host in mock mode (no real LLM calls)
-	cd $(BACKEND) && AGENT_MODE=mock DATABASE_URL=$(HOST_DATABASE_URL) \
+	cd $(BACKEND) && AGENT_MODE=mock LOG_FORMAT=text DATABASE_URL=$(HOST_DATABASE_URL) \
 		CHECKPOINT_URL=$(HOST_CHECKPOINT_URL) \
 		$(PYTHON) -m uvicorn app.main:app --reload
 
@@ -178,25 +177,25 @@ coverage: ## Coverage for backend and frontend against the committed floors
 build: ## Production frontend build (includes tsc)
 	$(fe) build
 
-.PHONY: contract
-contract: ## Regenerate the OpenAPI and TypeScript contract; fail on drift
+.PHONY: contract contract-generate
+contract: ## Check API artifacts without rewriting files
+	$(PYTHON) scripts/check-generated.py contract
+
+contract-generate: ## Explicitly regenerate the OpenAPI and TypeScript contract
 	$(PYTHON) scripts/export-openapi.py
 	$(fe) generate:api
-	git diff --exit-code -- $(BACKEND)/openapi.json $(FRONTEND)/src/generated/api.d.ts
 
 .PHONY: lock-check
-lock-check: ## Fail if uv.lock or the hashed export drift
-	$(UV) lock --project $(BACKEND) --check
-	$(UV) export --project $(BACKEND) --frozen --no-emit-project --format requirements-txt --output-file $(BACKEND)/requirements.lock --quiet
-	git diff --exit-code -- $(BACKEND)/uv.lock $(BACKEND)/requirements.lock
+lock-check: ## Check lock and export without rewriting files
+	$(PYTHON) scripts/check-generated.py lock
 
 .PHONY: version-check
 version-check: ## Fail if backend and frontend versions disagree
 	$(PYTHON) scripts/check-version-sync.py
 
 .PHONY: check
-check: lock-check version-check lint typecheck test build contract migrate-check ## Everything CI enforces, in CI order
-	@echo "check: OK -- CI is a subset of this target"
+check: lock-check version-check lint typecheck test build contract migrate-check ## Code gates; run isolated process/browser/operations checks separately
+	@echo "check: OK -- isolated integration gates are separate"
 
 ##@ Dependencies and audit
 
@@ -236,7 +235,7 @@ backup: ## Dump PostgreSQL and copy it off-host (requires BACKUP_REMOTE)
 	sh scripts/backup.sh
 
 .PHONY: verify-restore
-verify-restore: ## Restore drill; without FROM_BACKUP this validates mechanics only
+verify-restore: ## Restore current database into an isolated copy; validates mechanics only
 	sh scripts/verify-restore.sh
 
 .PHONY: load-test

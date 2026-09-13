@@ -14,6 +14,7 @@ services:
       timeout: 3s
       retries: 20
   api:
+    stop_grace_period: 90s
     build: ./backend
     env_file: .env
     depends_on:

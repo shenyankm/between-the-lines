@@ -73,8 +73,7 @@ jobs:
         run: |
           uv lock --project backend --check
           uv pip install --python "$(command -v python)" --require-hashes -r backend/requirements.lock
-          uv export --project backend --frozen --no-emit-project --format requirements-txt --output-file backend/requirements.lock --quiet
-          git diff --exit-code -- backend/uv.lock backend/requirements.lock
+          python scripts/check-generated.py lock
           pnpm --dir frontend install --frozen-lockfile
       - name: Lint Python
         run: |
@@ -94,13 +93,13 @@ jobs:
           python -m pytest -q --cov=app --cov-report=term-missing
           --cov-report=xml:../artifacts/coverage.xml
           --junitxml=../artifacts/pytest.xml
+      - name: Verify TCP disconnect recovery
+        run: python scripts/test-disconnect.py
       - name: Verify crash recovery
         run: python scripts/test-restart.py
       - name: Check generated OpenAPI and TypeScript contract
         run: |
-          python scripts/export-openapi.py
-          pnpm --dir frontend generate:api
-          git diff --exit-code -- backend/openapi.json frontend/src/generated/api.d.ts
+          python scripts/check-generated.py contract
       - name: Upload backend results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -110,6 +109,7 @@ jobs:
             artifacts/pytest.xml
             artifacts/coverage.xml
             artifacts/restart-test.json
+            artifacts/disconnect-test.json
           if-no-files-found: ignore
           retention-days: 7
 
@@ -198,6 +198,11 @@ jobs:
           docker compose cp api:/tmp/load-test.json artifacts/load-test.json
       - name: Verify backup restore
         run: sh scripts/verify-restore.sh
+      - name: Verify graceful API shutdown
+        run: |
+          docker compose exec -T api python -c 'from pathlib import Path; assert b"uvicorn" in Path("/proc/1/cmdline").read_bytes().split(b"\0")'
+          docker compose stop api
+          docker compose logs --no-color api | grep -q 'Application shutdown complete'
       - name: Collect container logs
         if: always()
         run: |

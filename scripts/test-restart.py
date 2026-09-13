@@ -23,13 +23,13 @@ child_code = """
 import asyncio, os
 from pathlib import Path
 import app.main as main
-from app.services import npc_operation
+
 async def paused(turn, checkpointer, usage):
-    await npc_operation(turn.id, 'sun', 'request_materials')
+    await main.app.state.runtime.service.npc_operation(turn.id, 'sun', 'request_materials')
     Path(os.environ['TEST_MARKER']).write_text('committed')
     await asyncio.sleep(120)
     yield 'unreachable'
-main.run_agent = paused
+main.app.state.dependencies.reply = paused
 import uvicorn
 uvicorn.run(main.app, host='127.0.0.1', port=8002, log_level='error')
 """
