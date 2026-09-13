@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 assets = ROOT / "frontend/public/assets"
 manifest = {}
 for source in sorted(assets.glob("*.png")):
-    character = source.stem in {"sun", "li", "zhang"}
+    character = source.stem in {"sun", "li", "zhang", "zhang-male", "player", "wang", "player-coat", "sun-coat"}
     variants = []
     with Image.open(source) as image:
         for width in [256, 512, 1024] if character else [768, 1280, 1672]:

@@ -16,6 +16,23 @@
       "bytes": 82812
     }
   ],
+  "/assets/brand-logo.png": [
+    {
+      "width": 768,
+      "src": "/assets/brand-logo-768-163021c19d84.webp",
+      "bytes": 8522
+    },
+    {
+      "width": 1280,
+      "src": "/assets/brand-logo-1280-3cbd2c5c092f.webp",
+      "bytes": 16348
+    },
+    {
+      "width": 1672,
+      "src": "/assets/brand-logo-1672-cf1661756b41.webp",
+      "bytes": 23200
+    }
+  ],
   "/assets/cafeteria-noon.png": [
     {
       "width": 768,
@@ -135,6 +152,57 @@
       "bytes": 117680
     }
   ],
+  "/assets/player-coat.png": [
+    {
+      "width": 256,
+      "src": "/assets/player-coat-256-cf91181c4186.webp",
+      "bytes": 15934
+    },
+    {
+      "width": 512,
+      "src": "/assets/player-coat-512-0d7c01ece293.webp",
+      "bytes": 41294
+    },
+    {
+      "width": 1024,
+      "src": "/assets/player-coat-1024-9429fc075c1b.webp",
+      "bytes": 122836
+    }
+  ],
+  "/assets/player.png": [
+    {
+      "width": 256,
+      "src": "/assets/player-256-36c5a84f0132.webp",
+      "bytes": 17834
+    },
+    {
+      "width": 512,
+      "src": "/assets/player-512-a4c8897de08a.webp",
+      "bytes": 45960
+    },
+    {
+      "width": 1024,
+      "src": "/assets/player-1024-43fe643a2f4f.webp",
+      "bytes": 116456
+    }
+  ],
+  "/assets/sun-coat.png": [
+    {
+      "width": 256,
+      "src": "/assets/sun-coat-256-b2f7c4956be1.webp",
+      "bytes": 19498
+    },
+    {
+      "width": 512,
+      "src": "/assets/sun-coat-512-7ff1f141831e.webp",
+      "bytes": 50288
+    },
+    {
+      "width": 1024,
+      "src": "/assets/sun-coat-1024-e8ce1d46a87d.webp",
+      "bytes": 137354
+    }
+  ],
   "/assets/sun.png": [
     {
       "width": 256,
@@ -150,6 +218,57 @@
       "width": 1024,
       "src": "/assets/sun-1024-85246df71d77.webp",
       "bytes": 151932
+    }
+  ],
+  "/assets/tea-room.png": [
+    {
+      "width": 768,
+      "src": "/assets/tea-room-768-c677e286fc11.webp",
+      "bytes": 49412
+    },
+    {
+      "width": 1280,
+      "src": "/assets/tea-room-1280-d02d3069759a.webp",
+      "bytes": 102746
+    },
+    {
+      "width": 1672,
+      "src": "/assets/tea-room-1672-5686b148b2c4.webp",
+      "bytes": 147878
+    }
+  ],
+  "/assets/wang.png": [
+    {
+      "width": 256,
+      "src": "/assets/wang-256-6f453e352804.webp",
+      "bytes": 17420
+    },
+    {
+      "width": 512,
+      "src": "/assets/wang-512-0fd9fd8a5935.webp",
+      "bytes": 49134
+    },
+    {
+      "width": 1024,
+      "src": "/assets/wang-1024-c3e6007be3d2.webp",
+      "bytes": 156306
+    }
+  ],
+  "/assets/zhang-male.png": [
+    {
+      "width": 256,
+      "src": "/assets/zhang-male-256-f8f6b3320a3e.webp",
+      "bytes": 19792
+    },
+    {
+      "width": 512,
+      "src": "/assets/zhang-male-512-6fe3b2714307.webp",
+      "bytes": 52624
+    },
+    {
+      "width": 1024,
+      "src": "/assets/zhang-male-1024-ba5c443bb5a0.webp",
+      "bytes": 155336
     }
   ],
   "/assets/zhang.png": [
