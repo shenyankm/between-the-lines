@@ -23,6 +23,8 @@ const actions: Record<Action, true> = {
   approve_purchase: true,
   support_project: true,
   verify_notice: true,
+  join_farewell: true,
+  attend_farewell: true,
   joint_review: true,
   partner_breakup: true,
   partner_distance: true,
@@ -37,16 +39,40 @@ const actions: Record<Action, true> = {
   supplement: true,
   report: true,
   clarify: true,
+  review_clarification: true,
   deliver: true,
   cut_ties: true,
   keep_distance: true,
   leave: true,
   epilogue: true,
+  submit_purchase: true,
+  dispute_return: true,
+  trace_rumor: true,
+  confirm_responsibility: true,
+  change_rules: true,
+  apply_rules: true,
+  repair_friendship: true,
+  acknowledge_harm: true,
+  complete_remedy: true,
+  follow_up: true,
+  partner_undecided: true,
+  rest: true,
+  draft_support: true,
+  submit_support: true,
+  review_support: true,
+  request_help: true,
+  appease: true,
+  request_extension: true,
+  project_review: true,
+  correct_loss: true,
+  draft_exit: true,
+  submit_exit: true,
+  close_story: true,
 };
 export const isAction = (v: unknown): v is Action =>
   typeof v === "string" && Object.hasOwn(actions, v);
 export const isNpc = (v: unknown): v is Npc =>
-  v === "sun" || v === "li" || v === "zhang";
+  v === "sun" || v === "li" || v === "zhang" || v === "wang";
 export function isSave(v: unknown): v is Save {
   if (
     !record(v) ||
@@ -125,6 +151,21 @@ export function isPlayState(v: unknown): v is PlayState {
   return (
     record(v) &&
     isSave(v.save) &&
+    (v.performance_version == null || integer(v.performance_version)) &&
+    (v.performance === undefined ||
+      (Array.isArray(v.performance) &&
+        v.performance.every(
+          (line) =>
+            record(line) &&
+            strings(line, ["id", "speaker", "text"]) &&
+            Array.isArray(line.portraits) &&
+            line.portraits.every((p) => typeof p === "string") &&
+            (line.location == null || typeof line.location === "string") &&
+            (line.background == null ||
+              (typeof line.background === "string" &&
+                line.background.startsWith("/assets/") &&
+                !line.background.includes(".."))),
+        ))) &&
     (v.available_actions === undefined ||
       (Array.isArray(v.available_actions) &&
         v.available_actions.every(

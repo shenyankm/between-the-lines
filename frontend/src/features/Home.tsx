@@ -129,7 +129,7 @@ export function Home() {
           却悄悄改变了你的位置。
         </p>
         <p className={s.description}>
-          成为研发专员周凌，在对话、流言与工作之间，
+          成为研发专员周菱菱，在对话、流言与工作之间，
           <br className={s.desktop} />
           找到属于自己的回应。
         </p>

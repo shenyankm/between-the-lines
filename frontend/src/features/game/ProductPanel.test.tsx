@@ -26,7 +26,7 @@ const card = {
     { url: "javascript:bad", title: "恶意", author: "" },
   ],
 };
-function mount(ending: boolean, fillDraft = vi.fn(), version = 2) {
+function mount(ending: boolean, fillDraft = vi.fn(), version = 3) {
   const current = {
     ...save({ state: { ending: ending ? "故事完成" : null } }),
     story_version: version,

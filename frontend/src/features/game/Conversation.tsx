@@ -39,7 +39,7 @@ export function Conversation({
   story: Story;
   state: Save["state"];
   scene: Story["acts"][number];
-  character: Story["npcs"][Npc];
+  character: NonNullable<Story["npcs"][Npc]>;
   save: Save;
   npc: Npc;
   lastReply: GameEvent | undefined;
@@ -157,7 +157,10 @@ export function Conversation({
             .slice(-6)
             .map((e) => (
               <p key={e.id} className={s.muted}>
-                {e.kind === "player" ? "你" : story.npcs[e.npc].name}：{e.text}
+                {e.kind === "player"
+                  ? "你"
+                  : (story.npcs[e.npc] ?? story.npcs.sun).name}
+                ：{e.text}
               </p>
             ))}
           {events

@@ -76,12 +76,15 @@ export function GameDrawer({
                 >
                   <img
                     className={s.avatar}
-                    src={imageSource(story.npcs[key].portrait, 256)}
+                    src={imageSource(
+                      (story.npcs[key] ?? story.npcs.sun).portrait,
+                      256,
+                    )}
                     alt=""
                   />
                   <span>
-                    <strong>{story.npcs[key].name}</strong>
-                    <small>{story.npcs[key].role}</small>
+                    <strong>{(story.npcs[key] ?? story.npcs.sun).name}</strong>
+                    <small>{(story.npcs[key] ?? story.npcs.sun).role}</small>
                   </span>
                   <ChevronRight size={18} />
                 </button>
@@ -207,7 +210,7 @@ export function GameDrawer({
                           ? "工作记录"
                           : event.kind === "epilogue"
                             ? "结局回顾"
-                            : story.npcs[event.npc]?.name}
+                            : (story.npcs[event.npc] ?? story.npcs.sun)?.name}
                   </small>
                   <p>{event.text}</p>
                 </article>

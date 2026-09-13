@@ -31,6 +31,7 @@ export function save(
   over: { id?: string; version?: number; state?: Partial<GameState> } = {},
 ): Save {
   return {
+    read_only: false,
     story_id: "workplace-s1",
     story_version: 1,
     last_played_at: null,

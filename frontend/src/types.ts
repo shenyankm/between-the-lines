@@ -6,7 +6,9 @@ export type Action = NonNullable<TurnInput["action"]>;
 export type GameState = Schema["GameState"];
 export type Save = Schema["SaveOut"];
 export type Story = Schema["StoryOut"];
-export type GameEvent = Schema["GameEventOut"];
+export type GameEvent = Omit<Schema["GameEventOut"], "channel"> & {
+  channel?: Schema["GameEventOut"]["channel"];
+};
 export type Result = Schema["TurnResult"];
 export type PlayState = Schema["PlayStateOut"];
 export type Turn = Schema["TurnOut"];

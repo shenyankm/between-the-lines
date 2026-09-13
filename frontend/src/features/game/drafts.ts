@@ -8,10 +8,15 @@ export type Draft = {
 };
 const memory = new Map<string, Draft>();
 const prefix = (user: string) => `draft:v2:${user}:`;
-const key = (user: string, save: string, npc: Npc) =>
-  `${prefix(user)}${save}:${npc}`;
-export function readDraft(user: string, save: string, npc: Npc): Draft {
-  const name = key(user, save, npc);
+const key = (user: string, save: string, npc: Npc, scope = "") =>
+  `${prefix(user)}${save}:${npc}${scope ? `:${scope}` : ""}`;
+export function readDraft(
+  user: string,
+  save: string,
+  npc: Npc,
+  scope = "",
+): Draft {
+  const name = key(user, save, npc, scope);
   if (memory.has(name)) return memory.get(name)!;
   try {
     const value: unknown = JSON.parse(sessionStorage.getItem(name) || "null");
@@ -37,8 +42,14 @@ export function readDraft(user: string, save: string, npc: Npc): Draft {
   }
   return { text: "", act: 0 };
 }
-export function writeDraft(user: string, save: string, npc: Npc, draft: Draft) {
-  const name = key(user, save, npc);
+export function writeDraft(
+  user: string,
+  save: string,
+  npc: Npc,
+  draft: Draft,
+  scope = "",
+) {
+  const name = key(user, save, npc, scope);
   memory.set(name, draft);
   try {
     sessionStorage.setItem(name, JSON.stringify(draft));

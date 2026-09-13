@@ -1,0 +1,400 @@
+{
+  "story_version": 3,
+  "title": "言外之意",
+  "subtitle": "BETWEEN THE LINES",
+  "acts": [
+    {
+      "title": "序幕 · 微妙的恶意",
+      "chapter_title": "微妙的恶意",
+      "location": "研发工位",
+      "time": "周一 · 09:10",
+      "intro": "你是周菱菱，大家叫你菱菱，在一家传统化工国企从事催化剂研发。刚入职时，孙淼带你认路、陪你吃饭，你把她当作朋友。后来，新外套成了她的笑料，认真表达被说成敏感。你开始分辨：熟悉和亲近，是否真的意味着尊重。",
+      "background": "/assets/office-morning.png",
+      "choices": [
+        {
+          "label": "进入故事",
+          "action": "begin"
+        }
+      ]
+    },
+    {
+      "title": "第一幕 · 缺席的欢送会",
+      "chapter_title": "缺席的欢送会",
+      "location": "茶水间",
+      "time": "周五 · 12:15",
+      "intro": "你听见孙淼和李姐讨论王会计的欢送会。是否参加、如何回应，现在由你自己决定。",
+      "background": "/assets/tea-room.png",
+      "choices": [
+        {
+          "label": "没事，你们继续聊。",
+          "action": "appease",
+          "target": "sun"
+        },
+        {
+          "label": "既然知道我可能会生气，为什么不直接问我？",
+          "action": "boundary",
+          "target": "sun"
+        },
+        {
+          "label": "欢送会的名单，可以把我加上吗？",
+          "action": "join_farewell",
+          "target": "sun"
+        }
+      ]
+    },
+    {
+      "title": "第二幕 · 被卡住的采购单",
+      "chapter_title": "被卡住的采购单",
+      "location": "办公室",
+      "time": "周二 · 10:30",
+      "intro": "昨日提交的采购申请停在孙淼处。先查看原始材料与退回意见，再决定如何处理。",
+      "background": "/assets/office-morning.png",
+      "choices": [
+        {
+          "label": "私聊孙淼，先把关系维持住。",
+          "action": "speak",
+          "target": "sun",
+          "entry": "phone"
+        },
+        {
+          "label": "在工作系统中补充说明并@相关人员。",
+          "action": "supplement",
+          "target": "sun",
+          "entry": "work"
+        },
+        {
+          "label": "整理完整的流程记录，向张工同步。",
+          "action": "report",
+          "target": "zhang"
+        }
+      ]
+    },
+    {
+      "title": "第三幕 · 流言的回声",
+      "chapter_title": "流言的回声",
+      "location": "项目会议室",
+      "time": "周四 · 09:00",
+      "intro": "办公室里传出你准备跳槽的说法。你可以澄清、向张工同步项目事实，或向李姐核对传播环节。",
+      "background": "/assets/meeting-morning.png",
+      "choices": [
+        {
+          "label": "直接在群里澄清谣言。",
+          "action": "clarify"
+        },
+        {
+          "label": "只向张工同步项目事实，不回应传言。",
+          "action": "report",
+          "target": "zhang"
+        },
+        {
+          "label": "联系李姐，确认谣言最初是从哪里传出的。",
+          "action": "trace_rumor",
+          "target": "li"
+        }
+      ]
+    },
+    {
+      "title": "终幕 · 你的选择",
+      "chapter_title": "你的选择",
+      "location": "研发工位",
+      "time": "故事之后",
+      "intro": "每次回应，都在为你和他人之间画下一条线。",
+      "background": "/assets/office.png",
+      "choices": []
+    }
+  ],
+  "npcs": {
+    "sun": {
+      "name": "孙淼",
+      "role": "财务出纳 · 同期同事",
+      "portrait": "/assets/sun.png",
+      "color": "#688999",
+      "greeting": "“菱菱，你不会又生气了吧？我只是随口一说。”"
+    },
+    "li": {
+      "name": "李姐",
+      "role": "财务会计",
+      "portrait": "/assets/li.png",
+      "color": "#998363",
+      "greeting": "“有什么事情，我们一项一项说。”"
+    },
+    "zhang": {
+      "name": "张工",
+      "role": "研发负责人",
+      "portrait": "/assets/zhang-male.png",
+      "color": "#768c89",
+      "greeting": "“坐吧，项目最近怎么样？”"
+    },
+    "wang": {
+      "name": "王会计",
+      "role": "退休财务前辈",
+      "portrait": "/assets/wang.png",
+      "color": "#a09a85",
+      "greeting": "退休以后，还是愿意听你说说。材料你愿意提供，我可以帮你理解流程；最终审核要找李姐。"
+    }
+  },
+  "tips": [
+    {
+      "title": "先确认事实",
+      "text": "把“她是不是针对我”转成“目前缺少哪些材料、由谁确认、什么时候有结果”。",
+      "source": "游戏编辑建议"
+    },
+    {
+      "title": "让进度可见",
+      "text": "向上级同步已完成的工作、当前阻碍和下一步，让支持有具体落点。",
+      "source": "游戏编辑建议"
+    },
+    {
+      "title": "边界不止一种",
+      "text": "保持职业关系、寻求帮助和主动离开，都可以是经过思考的选择。",
+      "source": "游戏编辑建议"
+    }
+  ],
+  "adaptation_note": "依据《游戏幕次与素材清单》及实施备注。主角为周菱菱；张工采用用户提供的男性立绘。",
+  "scenes": {
+    "prologue": [
+      {
+        "id": "identity",
+        "speaker": "player",
+        "text": "我是周菱菱，大家也叫我菱菱，一名研发专员。\n平时的工作不算显眼，写方案、跟进项目、整理会议纪要，尽量把每件事都留痕、做完整。\n我不太擅长和人发生冲突。别人一句玩笑，我会先想是不是自己太敏感；别人语气稍微变了，我会反复猜是不是哪里做得不够好。\n孙淼是我的同事，也是我很要好的朋友。她总说自己只是开玩笑，但那些话有时候会像细小的刺，扎在心里。\n李姐是财务部的同事，张工是我的上级。他们都和我的工作、评价以及之后的选择有关。",
+        "portraits": [
+          "player"
+        ]
+      },
+      {
+        "id": "coat-opening",
+        "speaker": "narrator",
+        "text": "周一早上，天气很冷。\n我穿了一件新买的黑色羽绒服来到公司。",
+        "portraits": [
+          "player-coat"
+        ]
+      },
+      {
+        "id": "coat-player",
+        "speaker": "player",
+        "text": "这件应该还挺适合上班，保暖，也不夸张。",
+        "portraits": [
+          "player-coat"
+        ]
+      },
+      {
+        "id": "coat-sun",
+        "speaker": "sun",
+        "text": "你买的啊？\n怎么说呢……有点像野猪。",
+        "portraits": [
+          "player-coat",
+          "sun-coat"
+        ]
+      },
+      {
+        "id": "coat-response",
+        "speaker": "player",
+        "text": "……有这么夸张吗？",
+        "portraits": [
+          "player-coat",
+          "sun-coat"
+        ]
+      },
+      {
+        "id": "coat-dismissal",
+        "speaker": "sun",
+        "text": "哎呀，我开玩笑的，你不会真的生气吧？\n其实也还好啦，就是显得人特别厚重。",
+        "portraits": [
+          "player-coat",
+          "sun-coat"
+        ]
+      },
+      {
+        "id": "inner",
+        "speaker": "inner",
+        "text": "我根本没想和她争。\n可为什么每次都是这样？先说一句难听的话，再马上补一句“开玩笑”。\n如果我不高兴，就是我太敏感；如果我反驳，就是我开不起玩笑。\n我明明什么都没做，却还要花时间想，是不是自己真的哪里不对。",
+        "portraits": [
+          "player-coat"
+        ]
+      }
+    ],
+    "act_1": [
+      {
+        "id": "act_1-opening-0",
+        "speaker": "narrator",
+        "text": "午休前，研发部和财务部正在讨论王会计的欢送会。\n周菱菱路过茶水间时，听见了自己的名字。",
+        "portraits": [],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      },
+      {
+        "id": "act_1-opening-1",
+        "speaker": "sun",
+        "text": "我就说嘛，别叫菱菱了。\n她肯定会生气，然后又觉得我们故意排挤她。",
+        "portraits": [
+          "player",
+          "sun"
+        ],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      },
+      {
+        "id": "act_1-opening-2",
+        "speaker": "li",
+        "text": "可是不通知她，好像也不太合适吧？",
+        "portraits": [
+          "player",
+          "li"
+        ],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      },
+      {
+        "id": "act_1-opening-3",
+        "speaker": "sun",
+        "text": "通知了她才麻烦。\n到时候她嘴上说没关系，回去又要想半天。",
+        "portraits": [
+          "player",
+          "sun"
+        ],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      },
+      {
+        "id": "act_1-opening-4",
+        "speaker": "sun",
+        "text": "菱菱？你什么时候站在这里的？",
+        "portraits": [
+          "player",
+          "sun"
+        ],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      }
+    ],
+    "act_2": [
+      {
+        "id": "act_2-opening-0",
+        "speaker": "narrator",
+        "text": "欢送会后，新的采购单迟迟没有通过。\n你检查了提交记录，发现流程停在孙淼那里。",
+        "portraits": []
+      },
+      {
+        "id": "act_2-opening-1",
+        "speaker": "player",
+        "text": "采购单我昨天已经提交了，系统显示还在你这里。是资料不完整吗？",
+        "portraits": [
+          "player"
+        ]
+      },
+      {
+        "id": "act_2-opening-2",
+        "speaker": "sun",
+        "text": "我看了一下，感觉有些地方不太规范。\n你先重新整理吧，反正现在也不急。",
+        "portraits": [
+          "player",
+          "sun"
+        ]
+      },
+      {
+        "id": "act_2-opening-3",
+        "speaker": "player",
+        "text": "这份单据是按照工作系统的模板提交的。具体是哪一项不规范？",
+        "portraits": [
+          "player"
+        ]
+      },
+      {
+        "id": "act_2-opening-4",
+        "speaker": "sun",
+        "text": "你别这么较真嘛。\n我也是怕你后面被张工说，先帮你卡一下。",
+        "portraits": [
+          "player",
+          "sun"
+        ]
+      }
+    ],
+    "act_3": [
+      {
+        "id": "act_3-opening-0",
+        "speaker": "narrator",
+        "text": "采购单的事情还没有完全结束，办公室里却出现了新的传言。",
+        "portraits": [],
+        "location": "办公室",
+        "background": "/assets/office-morning.png"
+      },
+      {
+        "id": "act_3-opening-1",
+        "speaker": "group",
+        "text": "听说周菱菱准备跳槽了。\n好像已经在看新的机会。\n难怪最近总是在整理工作记录。",
+        "portraits": [],
+        "location": "办公室",
+        "background": "/assets/office-morning.png"
+      },
+      {
+        "id": "act_3-opening-2",
+        "speaker": "zhang",
+        "text": "菱菱，最近项目进度需要重新确认。\n你这边是不是有什么安排？如果有变动，要尽早告诉我。",
+        "portraits": [
+          "player",
+          "zhang"
+        ],
+        "location": "项目会议室",
+        "background": "/assets/meeting-morning.png"
+      },
+      {
+        "id": "act_3-opening-3",
+        "speaker": "player",
+        "text": "项目没有问题，我会按计划交付。\n至于跳槽的事情，我没有说过，也没有做出决定。",
+        "portraits": [
+          "player"
+        ],
+        "location": "项目会议室",
+        "background": "/assets/meeting-morning.png"
+      },
+      {
+        "id": "act_3-opening-4",
+        "speaker": "zhang",
+        "text": "好，那就先把项目节点和交付记录整理给我。\n工作上的事情，还是以事实和记录为准。",
+        "portraits": [
+          "player",
+          "zhang"
+        ],
+        "location": "项目会议室",
+        "background": "/assets/meeting-morning.png"
+      }
+    ],
+    "act_3_follow_up": [
+      {
+        "id": "collaboration",
+        "speaker": "sun",
+        "text": "下一次协作开始了。孙淼：这次部门聚餐，你想参加吗？工作资料会单独发给你。你可以自己决定。",
+        "portraits": [
+          "player",
+          "sun"
+        ]
+      }
+    ],
+    "act_1_invitation": [
+      {
+        "id": "invitation-review",
+        "speaker": "li",
+        "text": "我来核对名单，把你的名字加上。欢送会在食堂开始，你可以自己决定是否参加。",
+        "portraits": [
+          "player",
+          "li"
+        ],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      }
+    ],
+    "act_1_farewell": [
+      {
+        "id": "farewell-arrival",
+        "speaker": "narrator",
+        "text": "你来到食堂，王会计正在和同事们告别。这一次，是否参与是你自己作出的决定。",
+        "portraits": [
+          "player"
+        ],
+        "location": "公司食堂",
+        "background": "/assets/cafeteria-noon.png"
+      }
+    ]
+  },
+  "wang_reply": "王叔的私人回复：“菱菱，心意我收到啦。以前一起核项目账，你做事认真，我一直记得。别为没赶上一顿饭难过，等有空咱们再叙。”"
+}

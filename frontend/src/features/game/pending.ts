@@ -45,6 +45,9 @@ export function validPayload(value: unknown, requestId: string): boolean {
         "proposal_id",
         "discussion_id",
         "perspective_id",
+        "channel",
+        "target",
+        "params",
       ].includes(key),
     )
   );

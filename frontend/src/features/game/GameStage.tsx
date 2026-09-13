@@ -22,7 +22,7 @@ export function GameStage({
   story: Story;
   state: Save["state"];
   scene: Story["acts"][number];
-  character: Story["npcs"][Npc];
+  character: NonNullable<Story["npcs"][Npc]>;
   npc: Npc;
   setPanel: (panel: Panel) => void;
 }) {

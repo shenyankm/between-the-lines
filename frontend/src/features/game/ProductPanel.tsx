@@ -15,7 +15,7 @@ const jobsGuard = (v: unknown): v is Job[] =>
     (j) =>
       record(j) &&
       typeof j.id === "string" &&
-      ["reflection", "discussion"].includes(String(j.kind)) &&
+      ["reflection", "discussion", "ending"].includes(String(j.kind)) &&
       ["running", "completed", "failed", "unknown"].includes(
         String(j.status),
       ) &&
@@ -50,16 +50,18 @@ export function ProductPanel({
   events,
   disabled,
   fillDraft,
+  initiallyOpen = false,
 }: {
   save: Save;
   userId: string;
   events: GameEvent[];
   disabled: boolean;
+  initiallyOpen?: boolean;
   fillDraft: (text: string, job: string, card: string) => void;
 }) {
   const client = useQueryClient(),
     navigate = useNavigate();
-  const [open, setOpen] = useState(false),
+  const [open, setOpen] = useState(initiallyOpen),
     [error, setError] = useState<unknown>(null),
     [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<GameEvent[]>([]),
@@ -81,7 +83,7 @@ export function ProductPanel({
     queryKey: ["snapshots", userId, save.id, save.version],
     queryFn: ({ signal }) =>
       api(`/saves/${save.id}/snapshots`, undefined, signal, true, pointsGuard),
-    enabled: open && save.story_version === 2,
+    enabled: open && save.story_version === 3,
   });
   async function perform(work: () => Promise<unknown>) {
     if (busy) return;
@@ -103,7 +105,7 @@ export function ProductPanel({
     }
     return id;
   };
-  async function generate(kind: "discussion" | "reflection") {
+  async function generate(kind: "discussion" | "reflection" | "ending") {
     await perform(async () => {
       const key = `${kind}:${save.version}`;
       await api(`/saves/${save.id}/jobs`, {
@@ -146,6 +148,14 @@ export function ProductPanel({
           <div className={s.choices}>
             {save.state.ending && (
               <button
+                disabled={busy || disabled}
+                onClick={() => void generate("ending")}
+              >
+                生成独立结局演出
+              </button>
+            )}
+            {save.state.ending && (
+              <button
                 disabled={
                   busy ||
                   disabled ||
@@ -181,6 +191,7 @@ export function ProductPanel({
                 {job.status === "running" ? "· 正在整理…" : ""}
               </h3>
               {job.result && <p>{prose(job.result.label)}</p>}
+              {job.kind === "ending" && <p>{prose(job.result?.text)}</p>}
               {objects(job.result?.nodes).map((node, i) => (
                 <div key={i}>
                   <p>
