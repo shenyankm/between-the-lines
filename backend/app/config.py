@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     # a fabricated 429 in the fixture cannot be silently absorbed, while real
     # traffic gets bounded backoff. This value only applies outside mock mode.
     deepseek_max_retries: int = 2
+    story_v2_enabled: bool = True
+    guest_enabled: bool = True
+    automatic_intents_enabled: bool = True
+    discussions_enabled: bool = True
+    guest_ai_limit: int = 8
+    guest_days: int = 7
+    trusted_proxy_networks: list[str] = []
+    active_save_limit: int = 20
+    mutation_limit_per_minute: int = 60
+    ai_input_byte_limit: int = 24000
     daily_turn_limit: int = 100
     max_concurrent_turns: int = 30
     turn_timeout_seconds: int = 60
@@ -46,6 +56,7 @@ class Settings(BaseSettings):
     deepseek_input_usd_per_million: float = 0.30
     deepseek_output_usd_per_million: float = 1.20
     zhihu_client_id: str = ""
+    zhihu_protocol: Literal["standard", "hackathon"] = "standard"
     zhihu_access_secret: str = ""
     zhihu_client_secret: str = ""
     zhihu_authorize_url: str = ""
@@ -72,11 +83,13 @@ class Settings(BaseSettings):
             # and unacceptable where they are billed. Refuse to boot without one.
             if self.monthly_cost_cap_usd <= 0:
                 raise ValueError("Production requires a positive MONTHLY_COST_CAP_USD")
+            if not self.oauth_ready:
+                raise ValueError("Production requires complete Zhihu OAuth configuration")
         return self
 
     @property
     def oauth_ready(self) -> bool:
-        return all(
+        return (self.zhihu_protocol != "hackathon" or bool(self.zhihu_access_secret)) and all(
             (
                 self.zhihu_client_id,
                 self.zhihu_client_secret,

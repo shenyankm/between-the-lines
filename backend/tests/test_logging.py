@@ -286,7 +286,7 @@ def test_unhandled_error_logs_the_traceback_and_returns_a_constant(client, logge
     assert len(unhandled) == 1
     # The traceback is what makes the 500 diagnosable, and it belongs here only.
     assert "RuntimeError" in str(unhandled[0]["exception"])
-    assert FAKE_KEY in str(unhandled[0]["exception"])
+    assert FAKE_KEY not in str(unhandled[0]["exception"])
 
 
 def test_request_id_correlates_the_response_and_the_500_log_line(client, logged, monkeypatch):

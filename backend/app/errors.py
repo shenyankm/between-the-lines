@@ -278,6 +278,17 @@ def install(app: FastAPI) -> None:
             "action",
             "text",
             "name",
+            "proposed_action",
+            "proposal_id",
+            "discussion_id",
+            "perspective_id",
+            "snapshot_id",
+            "story_id",
+            "story_version",
+            "kind",
+            "operation",
+            "before",
+            "limit",
         }
         messages = {
             "missing": "缺少必填字段。",
@@ -314,7 +325,8 @@ def install(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def on_unhandled(request: Request, exc: Exception) -> JSONResponse:
         with _correlated(request):
-            # The traceback goes to the log and only to the log: the response
+            # The formatter records only exception type; exception text can contain
+            # SQL parameters or OAuth secrets. The response
             # carries a constant string, so no exception text can reach a client.
             # Starlette re-raises after this handler returns, so uvicorn records
             # the failure too -- which is what makes a swallowed 500 impossible.

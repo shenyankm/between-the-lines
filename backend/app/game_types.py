@@ -20,6 +20,15 @@ Action = Literal[
     "keep_distance",
     "leave",
     "epilogue",
+    "request_materials",
+    "approve_purchase",
+    "support_project",
+    "verify_notice",
+    "joint_review",
+    "partner_breakup",
+    "partner_distance",
+    "propose",
+    "cancel_proposal",
 ]
 
 
@@ -41,3 +50,14 @@ class VisibleState(TypedDict):
     act: int
     procurement: Literal["pending", "approved"]
     flags: list[str]
+
+
+class GameStateV2(GameState):
+    story_version: Literal[2] = 2
+    node: str = "prologue"
+    partner_choice: Literal["breakup", "distance"] | None = None
+    ending_id: str | None = None
+
+
+def parse_state(value: dict[str, object]) -> GameState:
+    return (GameStateV2 if value.get("story_version") == 2 else GameState).model_validate(value)

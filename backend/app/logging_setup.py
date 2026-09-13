@@ -44,6 +44,13 @@ class _RequestIdFilter(logging.Filter):
         # out of the record's attribute dict -- which is what writing to it here
         # feeds. Going through __dict__ rather than `record.request_id = ...` keeps
         # mypy from having to suppress an attribute the stdlib type does not have.
+        if (
+            record.name == "uvicorn.access"
+            and isinstance(record.args, tuple)
+            and len(record.args) == 5
+        ):
+            peer, method, target, protocol, status = record.args
+            record.args = (peer, method, str(target).split("?", 1)[0], protocol, status)
         record.__dict__["request_id"] = request_id.get()
         return True
 
@@ -77,7 +84,9 @@ class JsonFormatter(logging.Formatter):
         if record.exc_info:
             # Tracebacks belong in the log and must never reach a 500 response;
             # app/errors.py is what keeps them apart.
-            payload["exception"] = self.formatException(record.exc_info)
+            payload["exception"] = (
+                record.exc_info[0].__name__ if record.exc_info[0] else "UnknownError"
+            )
         return json.dumps(payload, ensure_ascii=False)
 
 
@@ -88,6 +97,13 @@ class TextFormatter(logging.Formatter):
         super().__init__(_TEXT_FORMAT)
 
     def format(self, record: logging.LogRecord) -> str:
+        if record.exc_info:
+            record.__dict__["fields"] = {
+                **_extra_fields(record),
+                "exception": record.exc_info[0].__name__ if record.exc_info[0] else "UnknownError",
+            }
+            record.exc_info = None
+            record.exc_text = None
         line = super().format(record)
         fields = _extra_fields(record)
         if not fields:

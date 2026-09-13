@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/guest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Guest Login */
+        post: operations["guest_login_api_auth_guest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -280,10 +297,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/saves/{save_id}/visit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Visit */
+        post: operations["visit_api_saves__save_id__visit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/saves/{save_id}/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Manage */
+        post: operations["manage_api_saves__save_id__manage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/saves/{save_id}/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Snapshots */
+        get: operations["snapshots_api_saves__save_id__snapshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/saves/{save_id}/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Branch */
+        post: operations["branch_api_saves__save_id__branches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/saves/{save_id}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Jobs */
+        get: operations["jobs_api_saves__save_id__jobs_get"];
+        put?: never;
+        /** Create Job */
+        post: operations["create_job_api_saves__save_id__jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Diagnostic */
+        post: operations["diagnostic_api_diagnostics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Feedback */
+        post: operations["feedback_api_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/product-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Product Event */
+        post: operations["product_event_api_product_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AIAvailability */
+        AIAvailability: {
+            /**
+             * Available
+             * @default true
+             */
+            available: boolean;
+            /** Reason */
+            reason?: string | null;
+            /** Remaining */
+            remaining?: number | null;
+        };
         /** Act */
         Act: {
             /** Title */
@@ -309,6 +475,56 @@ export interface components {
             /** Request Id */
             request_id: string;
         };
+        /** AvailableAction */
+        AvailableAction: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal";
+            /** Label */
+            label: string;
+            /** Target */
+            target?: ("sun" | "li" | "zhang") | null;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Completed
+             * @default false
+             */
+            completed: boolean;
+            /**
+             * Requires Confirmation
+             * @default false
+             */
+            requires_confirmation: boolean;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Effect
+             * @default
+             */
+            effect: string;
+        };
+        /** BranchInput */
+        BranchInput: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Snapshot Id
+             * Format: uuid
+             */
+            snapshot_id: string;
+        };
         /** Choice */
         Choice: {
             /** Label */
@@ -317,7 +533,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue";
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal";
             /** Target */
             target?: ("sun" | "li" | "zhang") | null;
         };
@@ -334,6 +550,21 @@ export interface components {
             agent_mode: "mock" | "deepseek";
             /** Model Ready */
             model_ready: boolean;
+            /**
+             * Guest Login
+             * @default false
+             */
+            guest_login: boolean;
+            /**
+             * Story Version
+             * @default 1
+             */
+            story_version: number;
+        };
+        /** CreateSaveInput */
+        CreateSaveInput: {
+            /** Story Version */
+            story_version?: (1 | 2) | null;
         };
         /** DevLogin */
         DevLogin: {
@@ -342,6 +573,25 @@ export interface components {
              * @default 试玩者
              */
             name: string;
+        };
+        /** DiagnosticInput */
+        DiagnosticInput: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "render" | "uncaught" | "rejection" | "query";
+            /** Code */
+            code?: string | null;
+            /** Request Id */
+            request_id?: string | null;
+            /**
+             * Build
+             * @default unknown
+             */
+            build: string;
+            /** Stack */
+            stack?: string | null;
         };
         /** ErrorBody */
         ErrorBody: {
@@ -374,6 +624,11 @@ export interface components {
          * @enum {string}
          */
         FailureCode: "turn_timeout" | "execution_budget_exhausted" | "model_unavailable" | "empty_reply" | "turn_interrupted" | "turn_failed";
+        /** FeedbackInput */
+        FeedbackInput: {
+            /** Text */
+            text: string;
+        };
         /** FieldIssue */
         FieldIssue: {
             /** Field */
@@ -385,11 +640,15 @@ export interface components {
         };
         /** GameEventOut */
         GameEventOut: {
+            /** Effects */
+            effects?: {
+                [key: string]: unknown;
+            }[];
             /**
              * Kind
              * @enum {string}
              */
-            kind: "player" | "npc" | "work" | "epilogue" | "personal";
+            kind: "player" | "npc" | "work" | "epilogue" | "personal" | "narrative";
             /** Text */
             text: string;
             /**
@@ -400,7 +659,7 @@ export interface components {
             /** Act */
             act?: number | null;
             /** Action */
-            action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue") | null;
+            action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal") | null;
             /** Id */
             id: string;
         };
@@ -424,6 +683,47 @@ export interface components {
             /** Ending */
             ending: string | null;
         };
+        /** GameStateV2 */
+        GameStateV2: {
+            /** Act */
+            act: number;
+            /** Credit */
+            credit: number;
+            /** Stress */
+            stress: number;
+            /** Heat */
+            heat: number;
+            /** Flags */
+            flags: string[];
+            /**
+             * Procurement
+             * @enum {string}
+             */
+            procurement: "pending" | "approved";
+            /** Ending */
+            ending: string | null;
+            /**
+             * Story Version
+             * @default 2
+             * @constant
+             */
+            story_version: 2;
+            /**
+             * Node
+             * @default prologue
+             */
+            node: string;
+            /**
+             * Partner Choice
+             * @default null
+             */
+            partner_choice: ("breakup" | "distance") | null;
+            /**
+             * Ending Id
+             * @default null
+             */
+            ending_id: string | null;
+        };
         /** Interlude */
         Interlude: {
             /** Image */
@@ -434,6 +734,36 @@ export interface components {
             time: string;
             /** Text */
             text: string;
+        };
+        /** JobInput */
+        JobInput: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "reflection" | "discussion";
+            /** Version */
+            version: number;
+        };
+        /** JobOut */
+        JobOut: {
+            /** Act */
+            act?: number | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Status */
+            status: string;
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** LiveOut */
         LiveOut: {
@@ -455,6 +785,36 @@ export interface components {
             /** Events */
             events: components["schemas"]["GameEventOut"][];
             active_turn: components["schemas"]["ActiveTurn"] | null;
+            /** Available Actions */
+            available_actions?: components["schemas"]["AvailableAction"][];
+            proposal?: components["schemas"]["ProposalOut"] | null;
+            /** Events Cursor */
+            events_cursor?: string | null;
+            ai?: components["schemas"]["AIAvailability"];
+        };
+        /** ProductEventInput */
+        ProductEventInput: {
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "recap_viewed" | "recovery_completed" | "recovery_failed" | "approval_stuck";
+        };
+        /** ProposalOut */
+        ProposalOut: {
+            /** Id */
+            id: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal";
+            /** Version */
+            version: number;
+            /** Label */
+            label: string;
+            /** Effect */
+            effect: string;
         };
         /** PublicNpc */
         PublicNpc: {
@@ -498,15 +858,59 @@ export interface components {
             /** Description */
             description: string;
         };
+        /** SaveManagement */
+        SaveManagement: {
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "archive" | "unarchive" | "delete" | "restore";
+        };
         /** SaveOut */
         SaveOut: {
             /** Id */
             id: string;
             /** Version */
             version: number;
-            state: components["schemas"]["GameState"];
+            /** State */
+            state: components["schemas"]["GameStateV2"] | components["schemas"]["GameState"];
+            /**
+             * Story Id
+             * @default workplace-s1
+             */
+            story_id: string;
+            /**
+             * Story Version
+             * @default 1
+             */
+            story_version: number;
+            /**
+             * Last Played At
+             * @default null
+             */
+            last_played_at: string | null;
+            /**
+             * Parent Save Id
+             * @default null
+             */
+            parent_save_id: string | null;
+            /**
+             * Archived At
+             * @default null
+             */
+            archived_at: string | null;
+            /**
+             * Deleted At
+             * @default null
+             */
+            deleted_at: string | null;
             /** Relationships */
             relationships?: components["schemas"]["Relationship"][];
+            /**
+             * Scene Intro
+             * @default null
+             */
+            scene_intro: string | null;
             /**
              * Ending Summary
              * @default null
@@ -517,8 +921,25 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** SnapshotOut */
+        SnapshotOut: {
+            /** Id */
+            id: string;
+            /** Node */
+            node: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** StoryOut */
         StoryOut: {
+            /**
+             * Story Version
+             * @default 1
+             */
+            story_version: number;
             /** Title */
             title: string;
             /** Subtitle */
@@ -579,12 +1000,20 @@ export interface components {
              * @default speak
              * @enum {string}
              */
-            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue";
+            action: "speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal";
             /**
              * Text
              * @default
              */
             text: string;
+            /** Proposed Action */
+            proposed_action?: ("speak" | "begin" | "contact_wang" | "boundary" | "public_confront" | "next" | "supplement" | "report" | "clarify" | "deliver" | "cut_ties" | "keep_distance" | "leave" | "epilogue" | "request_materials" | "approve_purchase" | "support_project" | "verify_notice" | "joint_review" | "partner_breakup" | "partner_distance" | "propose" | "cancel_proposal") | null;
+            /** Proposal Id */
+            proposal_id?: string | null;
+            /** Discussion Id */
+            discussion_id?: string | null;
+            /** Perspective Id */
+            perspective_id?: string | null;
         };
         /** TurnOut */
         TurnOut: {
@@ -620,6 +1049,14 @@ export interface components {
             retryable: boolean;
             /** @default null */
             failure: components["schemas"]["TurnFailure"] | null;
+            /** Effects */
+            effects?: {
+                [key: string]: unknown;
+            }[];
+            /** Proposal */
+            proposal?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** TurnUsage */
         TurnUsage: {
@@ -669,6 +1106,20 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Identity Type
+             * @default member
+             */
+            identity_type: string;
+            /** Guest Expires At */
+            guest_expires_at?: string | null;
+            /** Ai Remaining */
+            ai_remaining?: number | null;
+            /**
+             * Binding Pending
+             * @default false
+             */
+            binding_pending: boolean;
         };
         /** StatusEvent */
         StatusEvent: {
@@ -968,6 +1419,53 @@ export interface operations {
             };
         };
     };
+    guest_login_api_auth_guest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     health_api_health_get: {
         parameters: {
             query?: never;
@@ -1097,7 +1595,10 @@ export interface operations {
     };
     story_api_story_get: {
         parameters: {
-            query?: never;
+            query?: {
+                version?: number;
+                story_id?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1111,6 +1612,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description internal_error */
@@ -1178,7 +1715,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSaveInput"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -1207,8 +1748,35 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description json_required */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1296,7 +1864,10 @@ export interface operations {
     };
     events_api_saves__save_id__events_get: {
         parameters: {
-            query?: never;
+            query?: {
+                before?: string | null;
+                limit?: number;
+            };
             header?: never;
             path: {
                 save_id: string;
@@ -1611,6 +2182,790 @@ export interface operations {
                 headers: {
                     /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
                     "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    visit_api_saves__save_id__visit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveOut"];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    manage_api_saves__save_id__manage_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveManagement"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveOut"];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    snapshots_api_saves__save_id__snapshots_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SnapshotOut"][];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    branch_api_saves__save_id__branches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BranchInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveOut"];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    jobs_api_saves__save_id__jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"][];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    create_job_api_saves__save_id__jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                save_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description request_body_invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description request_id_reused / turn_still_running / save_busy / version_conflict / unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed / empty_message / rule_violation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description daily_limit_reached / concurrency_budget_exhausted */
+            429: {
+                headers: {
+                    /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description model_unconfigured / monthly_cost_cap_reached */
+            503: {
+                headers: {
+                    /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    diagnostic_api_diagnostics_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiagnosticInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    feedback_api_feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    product_event_api_product_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductEventInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description not_authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description forbidden_origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description save_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unsupported_save_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description json_required */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description validation_failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal_error */
+            500: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {

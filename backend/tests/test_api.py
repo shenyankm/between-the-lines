@@ -59,6 +59,10 @@ def test_full_story_and_reload(client):
     assert save["state"]["ending"] == "找回自我 · 只留工作往来"
     events = client.get(f"/api/saves/{save['id']}/events").json()
     assert any(e["kind"] == "work" for e in events)
+    assert not any(e["kind"] == "epilogue" for e in events)
+    response, _ = turn(client, save, "epilogue", "sun", "")
+    assert response.status_code == 200
+    events = client.get(f"/api/saves/{save['id']}/events").json()
     assert any(e["kind"] == "epilogue" and "私人来往" in e["text"] for e in events)
     assert client.get(f"/api/saves/{save['id']}").json() == save
 

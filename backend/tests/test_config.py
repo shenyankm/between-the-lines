@@ -31,6 +31,11 @@ PRODUCTION = {
     "deepseek_api_key": "fixture-key-not-a-real-credential",
     "deepseek_api_base": "https://api.deepseek.com",
     "monthly_cost_cap_usd": 25.0,
+    "zhihu_client_id": "fixture",
+    "zhihu_client_secret": "fixture-secret",
+    "zhihu_authorize_url": "https://auth.example/authorize",
+    "zhihu_token_url": "https://auth.example/token",
+    "zhihu_userinfo_url": "https://auth.example/me",
 }
 
 
@@ -117,5 +122,7 @@ def test_oauth_ready_needs_every_endpoint_not_just_the_credentials():
         "zhihu_authorize_url": "https://partner.example/authorize",
         "zhihu_token_url": "https://partner.example/token",
     }
-    assert build(**partial).oauth_ready is False
+    assert Settings(_env_file=None, environment="test", **partial).oauth_ready is False
+    with pytest.raises(ValidationError, match="OAuth"):
+        build(**partial, zhihu_userinfo_url="")
     assert build(**partial, zhihu_userinfo_url="https://partner.example/userinfo").oauth_ready

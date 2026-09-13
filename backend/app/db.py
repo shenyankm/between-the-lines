@@ -5,6 +5,7 @@ from uuid import uuid4
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -34,6 +35,11 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     subject: Mapped[str] = mapped_column(String(255), unique=True)
     name: Mapped[str] = mapped_column(String(100))
+    identity_type: Mapped[str] = mapped_column(
+        String(16), default="member", server_default="member"
+    )
+    guest_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    merged_into: Mapped[str | None] = mapped_column(String(36))
 
 
 class LoginSession(Base):
@@ -51,6 +57,20 @@ class Save(Base):
     state_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     state: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    story_id: Mapped[str] = mapped_column(
+        String(50), default="workplace-s1", server_default="workplace-s1"
+    )
+    story_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    last_played_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=text("now()")
+    )
+    checkpoint_namespace: Mapped[str] = mapped_column(
+        String(150), default=new_id, server_default=""
+    )
+    parent_save_id: Mapped[str | None] = mapped_column(String(36))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Turn(Base):
@@ -87,7 +107,10 @@ class Event(Base):
     )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
-    turn_id: Mapped[str] = mapped_column(ForeignKey("turns.id", ondelete="CASCADE"))
+    turn_id: Mapped[str | None] = mapped_column(
+        ForeignKey("turns.id", ondelete="CASCADE"), nullable=True
+    )
+    source_event_id: Mapped[str | None] = mapped_column(String(36))
     operation: Mapped[str] = mapped_column(String(100))
     audience: Mapped[list[str]] = mapped_column(JSONB)
     data: Mapped[dict[str, Any]] = mapped_column(JSONB)
@@ -108,3 +131,115 @@ class ZhihuContent(Base):
     comment_count: Mapped[int] = mapped_column(Integer)
     topics: Mapped[list[str]] = mapped_column(JSONB)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    review_status: Mapped[str] = mapped_column(
+        String(16), default="candidate", server_default="candidate"
+    )
+    content_hash: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    review_note: Mapped[str] = mapped_column(Text, default="", server_default="")
+
+
+class Proposal(Base):
+    __tablename__ = "action_proposals"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
+    turn_id: Mapped[str] = mapped_column(ForeignKey("turns.id", ondelete="CASCADE"))
+    action: Mapped[str] = mapped_column(String(40))
+    version: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    __table_args__ = (
+        Index(
+            "uq_proposal_pending",
+            "save_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+
+class SaveSnapshot(Base):
+    __tablename__ = "save_snapshots"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
+    node: Mapped[str] = mapped_column(String(80))
+    state: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    history: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    __table_args__ = (UniqueConstraint("save_id", "node"),)
+
+
+class BranchRequest(Base):
+    __tablename__ = "branch_requests"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    snapshot_id: Mapped[str] = mapped_column(String(36))
+    save_id: Mapped[str] = mapped_column(String(36))
+
+
+class AIJob(Base):
+    __tablename__ = "ai_jobs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    request_id: Mapped[str] = mapped_column(String(36))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(16), default="running")
+    reserved_usd: Mapped[float] = mapped_column(Float, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0)
+    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+    __table_args__ = (UniqueConstraint("save_id", "request_id"),)
+
+
+class OAuthBinding(Base):
+    __tablename__ = "oauth_bindings"
+    state_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    guest_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    member_id: Mapped[str | None] = mapped_column(String(36))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+
+
+class ProductEvent(Base):
+    __tablename__ = "product_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    name: Mapped[str] = mapped_column(String(50), index=True)
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+
+class RateBucket(Base):
+    __tablename__ = "rate_buckets"
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class ProductAggregate(Base):
+    __tablename__ = "product_aggregates"
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer)
+
+
+class AISpend(Base):
+    """Billing ledger survives save/task cleanup and never contains dialogue."""
+
+    __tablename__ = "ai_spend"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), index=True)
+    save_id: Mapped[str] = mapped_column(String(36))
+    kind: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(16), default="reserved")
+    reserved_usd: Mapped[float] = mapped_column(Float, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )

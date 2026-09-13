@@ -1,15 +1,16 @@
 """HTTP adapters for the single-story application."""
 
 import asyncio
+import hashlib
 import json
 import logging
 from collections.abc import AsyncIterator
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import literal, select, tuple_
 
 from ..auth import current_user
 from ..db import Event, Save, Turn, User
@@ -22,10 +23,13 @@ from ..errors import (
     TURN_RESPONSES,
     ApiError,
 )
+from ..game_types import GameStateV2
 from ..logging_setup import request_id as correlation_id
+from ..product import check_save_capacity, record_product_event
 from ..runtime import runtime_for
 from ..schemas import (
     ConfigOut,
+    CreateSaveInput,
     GameEventOut,
     PlayStateOut,
     SaveOut,
@@ -35,7 +39,7 @@ from ..schemas import (
     TurnResult,
 )
 from ..services import owned_save, snapshot
-from ..story import StoryOut
+from ..story import StoryOut, load_story
 
 router = APIRouter()
 
@@ -43,6 +47,8 @@ router = APIRouter()
 @router.get("/api/config", response_model=ConfigOut)
 async def config(request: Request) -> dict[str, Any]:
     return {
+        "guest_login": runtime_for(request).settings.guest_enabled,
+        "story_version": 2 if runtime_for(request).settings.story_v2_enabled else 1,
         "dev_login": runtime_for(request).settings.dev_login_enabled
         and runtime_for(request).settings.environment != "production",
         "zhihu_login": runtime_for(request).settings.oauth_ready,
@@ -52,9 +58,22 @@ async def config(request: Request) -> dict[str, Any]:
     }
 
 
-@router.get("/api/story", response_model=StoryOut)
-async def story(request: Request) -> StoryOut:
-    return runtime_for(request).story.public()
+@router.get("/api/story", response_model=StoryOut, responses=SAVE_RESPONSES)
+async def story(
+    request: Request,
+    response: Response,
+    version: int = Query(default=1, ge=1, le=2),
+    story_id: str = "workplace-s1",
+) -> StoryOut | Response:
+    if story_id != "workplace-s1":
+        raise ApiError(404, "not_found")
+    definition = load_story(version).public()
+    response.headers["ETag"] = (
+        '"' + hashlib.sha256(definition.model_dump_json().encode()).hexdigest() + '"'
+    )
+    if request.headers.get("if-none-match") == response.headers["ETag"]:
+        return Response(status_code=304, headers={"ETag": response.headers["ETag"]})
+    return definition
 
 
 @router.get(
@@ -66,18 +85,33 @@ async def saves(request: Request, user: User = Depends(current_user)) -> list[di
     async with runtime_for(request).sessions() as db:
         items = (
             await db.scalars(
-                select(Save).where(Save.user_id == user.id).order_by(Save.created_at.desc())
+                select(Save)
+                .where(Save.user_id == user.id)
+                .order_by(Save.last_played_at.desc(), Save.id.desc())
             )
         ).all()
     return [snapshot(item) for item in items]
 
 
 @router.post(
-    "/api/saves", response_model=SaveOut, responses={**MUTATION_RESPONSES, **AUTH_RESPONSES}
+    "/api/saves", response_model=SaveOut, responses={**MUTATION_RESPONSES, **SAVE_RESPONSES}
 )
-async def create_save(request: Request, user: User = Depends(current_user)) -> dict[str, Any]:
+async def create_save(
+    request: Request, body: CreateSaveInput, user: User = Depends(current_user)
+) -> dict[str, Any]:
     async with runtime_for(request).sessions.begin() as db:
-        save = Save(user_id=user.id, state=initial_state().model_dump(mode="json"))
+        await db.scalar(select(User).where(User.id == user.id).with_for_update())
+        settings = runtime_for(request).settings
+        await check_save_capacity(db, user, settings.active_save_limit)
+        version = body.story_version or (2 if settings.story_v2_enabled else 1)
+        if version == 2 and not settings.story_v2_enabled:
+            raise ApiError(422, "rule_violation", "新版故事暂未开放。")
+        state = initial_state().model_dump(mode="json")
+        if version == 2:
+            state = GameStateV2.model_validate(state).model_dump(mode="json")
+        save = Save(
+            user_id=user.id, state=state, story_version=version, state_schema_version=version
+        )
         db.add(save)
         await db.flush()
         return snapshot(save)
@@ -95,17 +129,32 @@ async def get_save(
     "/api/saves/{save_id}/events", response_model=list[GameEventOut], responses=SAVE_RESPONSES
 )
 async def events(
-    save_id: UUID, request: Request, user: User = Depends(current_user)
+    save_id: UUID,
+    request: Request,
+    user: User = Depends(current_user),
+    before: UUID | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
 ) -> list[dict[str, Any]]:
     async with runtime_for(request).sessions() as db:
         await owned_save(db, str(save_id), user.id)
-        items = (
-            await db.scalars(
-                select(Event)
-                .where(Event.save_id == str(save_id))
-                .order_by(Event.created_at, Event.id)
+        query = select(Event).where(Event.save_id == str(save_id))
+        if before:
+            cursor = await db.get(Event, str(before))
+            if not cursor or cursor.save_id != str(save_id):
+                raise ApiError(404, "not_found")
+            query = query.where(
+                tuple_(Event.created_at, Event.id)
+                < tuple_(literal(cursor.created_at), literal(cursor.id))
             )
-        ).all()
+        items = list(
+            reversed(
+                (
+                    await db.scalars(
+                        query.order_by(Event.created_at.desc(), Event.id.desc()).limit(limit)
+                    )
+                ).all()
+            )
+        )
     return [{"id": item.id, **item.data} for item in items]
 
 
@@ -124,7 +173,15 @@ async def get_turn(
         )
         if not turn:
             raise ApiError(404, "turn_not_found")
-        return {"id": turn.id, "status": turn.status, "result": turn.result, "usage": turn.usage}
+        output = {"id": turn.id, "status": turn.status, "result": turn.result, "usage": turn.usage}
+    if turn.status != "running":
+        await record_product_event(
+            runtime_for(request).sessions,
+            user.id,
+            "recovery_completed" if turn.status == "completed" else "recovery_failed",
+            turn.id,
+        )
+    return output
 
 
 @router.get(
@@ -147,7 +204,14 @@ async def submit(
     save_id: UUID, body: TurnInput, request: Request, user: User = Depends(current_user)
 ) -> StreamingResponse:
     runtime = runtime_for(request)
-    turn_id, result = await runtime.runner.submit(str(save_id), user.id, body)
+    try:
+        turn_id, result = await runtime.runner.submit(str(save_id), user.id, body)
+    except ApiError as exc:
+        if exc.code == "rule_violation" and body.action in {"approve_purchase", "joint_review"}:
+            await record_product_event(
+                runtime.sessions, user.id, "approval_stuck", str(body.request_id)
+            )
+        raise
 
     async def stream() -> AsyncIterator[str]:
         yield sse(

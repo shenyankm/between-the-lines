@@ -19,7 +19,9 @@ pytestmark = pytest.mark.integration
 
 def test_legacy_saves_payloads_events_and_sessions_survive_migration(app):
     url = os.environ["CHECKPOINT_URL"]
-    assert url.endswith("/btl_test"), "Migration drill only runs on the dedicated test database"
+    assert url.endswith("/btl_test") or "/btl_upgrade_test_" in url, (
+        "Migration drill only runs on the dedicated test database"
+    )
     cwd = Path(__file__).resolve().parents[1]
     subprocess.run(
         [sys.executable, "-m", "alembic", "downgrade", "0002"],

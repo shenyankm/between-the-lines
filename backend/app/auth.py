@@ -2,13 +2,15 @@ import hashlib
 import logging
 import secrets
 from datetime import timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 
-from .db import LoginSession, User, new_id, utcnow
+from . import zhihu_oauth
+from .db import LoginSession, OAuthBinding, ProductEvent, User, new_id, utcnow
 from .errors import (
     AUTH_RESPONSES,
     BODY_RESPONSES,
@@ -18,6 +20,7 @@ from .errors import (
     codes,
     envelope_response,
 )
+from .product import process_bindings, rate_limit
 from .runtime import Runtime, runtime_for
 from .schemas import DevLogin, LogoutOut, UserOut
 
@@ -38,7 +41,14 @@ async def current_user(request: Request) -> User:
             .join(LoginSession)
             .where(LoginSession.token_hash == digest(token), LoginSession.expires_at > utcnow())
         )
-    if not user:
+    if (
+        not user
+        or user.merged_into
+        or (
+            user.identity_type == "guest"
+            and (not user.guest_expires_at or user.guest_expires_at <= utcnow())
+        )
+    ):
         raise ApiError(401, "not_authenticated")
     return user
 
@@ -96,8 +106,24 @@ async def dev_login(body: DevLogin, request: Request, response: Response) -> dic
 
 
 @router.get("/me", response_model=UserOut, responses=AUTH_RESPONSES)
-async def me(user: User = Depends(current_user)) -> dict[str, str]:
-    return {"id": user.id, "name": user.name}
+async def me(request: Request, user: User = Depends(current_user)) -> dict[str, Any]:
+    runtime = runtime_for(request)
+    await process_bindings(runtime.sessions)
+    async with runtime.sessions() as db:
+        ai = await runtime.service.ai_status(db, user.id)
+        pending = await db.scalar(
+            select(OAuthBinding.state_hash)
+            .where(OAuthBinding.member_id == user.id, OAuthBinding.status == "waiting")
+            .limit(1)
+        )
+    return {
+        "id": user.id,
+        "name": user.name,
+        "identity_type": user.identity_type,
+        "guest_expires_at": user.guest_expires_at,
+        "ai_remaining": ai["remaining"],
+        "binding_pending": bool(pending),
+    }
 
 
 @router.post("/logout", response_model=LogoutOut, responses=MUTATION_RESPONSES)
@@ -124,9 +150,27 @@ async def zhihu_login(request: Request) -> RedirectResponse:
     runtime = runtime_for(request)
     if not runtime.settings.oauth_ready:
         raise ApiError(503, "oauth_not_configured")
+    state = secrets.token_urlsafe(32)
+    try:
+        user = await current_user(request)
+    except ApiError:
+        user = None
+    if user and user.identity_type == "guest":
+        async with runtime.sessions.begin() as db:
+            db.add(
+                OAuthBinding(
+                    state_hash=digest(state),
+                    guest_id=user.id,
+                    expires_at=utcnow() + timedelta(minutes=10),
+                )
+            )
     # authlib ships no stubs, so this await is Any; it resolves to a RedirectResponse.
+    if runtime.settings.zhihu_protocol == "hackathon":
+        return zhihu_oauth.authorize(request, runtime.settings, state)
     redirect: RedirectResponse = await runtime.oauth.zhihu.authorize_redirect(
-        request, runtime.settings.public_origin.rstrip("/") + "/api/auth/zhihu/callback"
+        request,
+        runtime.settings.public_origin.rstrip("/") + "/api/auth/zhihu/callback",
+        state=state,
     )
     return redirect
 
@@ -144,10 +188,14 @@ async def zhihu_callback(request: Request) -> RedirectResponse:
     if not runtime.settings.oauth_ready:
         raise ApiError(503, "oauth_not_configured")
     try:
-        token = await runtime.oauth.zhihu.authorize_access_token(request)
-        reply = await runtime.oauth.zhihu.get(runtime.settings.zhihu_userinfo_url, token=token)
-        reply.raise_for_status()
-        profile = reply.json()
+        if runtime.settings.zhihu_protocol == "hackathon":
+            code = zhihu_oauth.consume_code(request)
+            profile = await zhihu_oauth.exchange(runtime.settings, code)
+        else:
+            token = await runtime.oauth.zhihu.authorize_access_token(request)
+            reply = await runtime.oauth.zhihu.get(runtime.settings.zhihu_userinfo_url, token=token)
+            reply.raise_for_status()
+            profile = reply.json()
         subject = profile[runtime.settings.zhihu_subject_field]
         if not isinstance(subject, (str, int)) or not str(subject):
             raise ValueError("Missing identity")
@@ -158,11 +206,59 @@ async def zhihu_callback(request: Request) -> RedirectResponse:
         logger.warning("oauth_failed", extra={"fields": {"kind": type(exc).__name__}})
         raise ApiError(400, "oauth_failed") from None
     response = RedirectResponse("/", status_code=303)
-    await issue_session(
+    member = await issue_session(
         f"zhihu:{subject}",
         str(profile.get(runtime.settings.zhihu_name_field, "玩家")),
         response,
         runtime,
     )
+    async with runtime.sessions.begin() as db:
+        binding = await db.scalar(
+            select(OAuthBinding)
+            .where(OAuthBinding.state_hash == digest(request.query_params.get("state", "")))
+            .with_for_update()
+        )
+        if binding and binding.status == "pending" and binding.expires_at > utcnow():
+            binding.member_id = member["id"]
+            binding.status = "waiting"
+    await process_bindings(runtime.sessions)
     request.session.clear()
     return response
+
+
+@router.post("/guest", response_model=UserOut, responses=MUTATION_RESPONSES)
+async def guest_login(request: Request, response: Response) -> dict[str, Any]:
+    runtime = runtime_for(request)
+    if not runtime.settings.guest_enabled:
+        raise ApiError(404, "not_found")
+    try:
+        user = await current_user(request)
+        return {
+            "id": user.id,
+            "name": user.name,
+            "identity_type": user.identity_type,
+            "guest_expires_at": user.guest_expires_at,
+        }
+    except ApiError:
+        pass
+    subject = "guest:" + new_id()
+    async with runtime.sessions.begin() as db:
+        # Only the direct peer is trusted. A proxy must also apply its own IP limiter.
+        address = request.client.host if request.client else "unknown"
+        await rate_limit(db, "guest:" + digest(runtime.settings.session_secret + address), 5, 3600)
+        user = User(
+            subject=subject,
+            name="试玩者",
+            identity_type="guest",
+            guest_expires_at=utcnow() + timedelta(days=runtime.settings.guest_days),
+        )
+        db.add(user)
+        await db.flush()
+        db.add(ProductEvent(user_id=user.id, name="trial_started", data={}))
+    result = await issue_session(subject, "试玩者", response, runtime)
+    return {
+        **result,
+        "identity_type": "guest",
+        "guest_expires_at": user.guest_expires_at,
+        "ai_remaining": runtime.settings.guest_ai_limit,
+    }

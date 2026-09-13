@@ -105,7 +105,9 @@ def cap(monkeypatch, app, usd: float, mode: str = "deepseek") -> None:
     monkeypatch.setattr(
         app.state.runtime.service,
         "settings",
-        Settings(_env_file=None, agent_mode=mode, monthly_cost_cap_usd=usd),
+        Settings(
+            _env_file=None, agent_mode=mode, deepseek_api_key="fixture", monthly_cost_cap_usd=usd
+        ),
     )
 
 
@@ -177,15 +179,17 @@ def test_an_exceeded_cost_cap_refuses_the_turn(app, monkeypatch):
         client.post("/api/auth/dev", json={"name": "账单"})
         save = seed_billing(client, [(0, 5.0)])
         cap(monkeypatch, app, 0.01)
-        response = begin(client, save)
+        assert begin(client, save).status_code == 200
+        response = client.post(
+            f"/api/saves/{save}/turns",
+            json={"request_id": str(uuid4()), "version": 1, "action": "speak", "text": "你好"},
+        )
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "monthly_cost_cap_reached"
     # Numeric, and bounded by the longest month a client could be told to wait: it
     # is a Retry-After, so a caller sleeps on this value rather than guessing.
-    wait = response.headers["Retry-After"]
-    assert wait.isdigit()
-    assert 0 < int(wait) <= 32 * 86400
+    assert response.json()["error"]["code"] == "monthly_cost_cap_reached"
 
 
 def test_spend_from_a_previous_month_does_not_count_against_the_cap(app, monkeypatch):

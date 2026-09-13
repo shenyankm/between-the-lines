@@ -21,10 +21,13 @@ from .agents import AgentGateway
 from .auth import router as auth_router
 from .config import Settings
 from .errors import ERROR_RESPONSES, error_response, install
+from .jobs import JobRunner
 from .logging_setup import RequestIdMiddleware, configure_logging
 from .metrics import Metrics
+from .product import process_bindings
 from .routes.game import router as game_router
 from .routes.health import router as health_router
+from .routes.product import router as product_router
 from .runner import TurnRunner
 from .runtime import Dependencies, Runtime
 from .schemas import DialogueEvent, StatusEvent, StreamErrorEvent, TurnResult
@@ -94,6 +97,8 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
                                 access_token_url=settings.zhihu_token_url,
                                 client_kwargs={"scope": settings.zhihu_scope},
                             )
+                        jobs = JobRunner(service)
+                        jobs.active = runner.active
                         app.state.runtime = Runtime(
                             settings,
                             story,
@@ -104,14 +109,19 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
                             runner,
                             metrics,
                             oauth,
+                            jobs,
                         )
                         await service.recover_stale_turns(all_running=True)
+                        await jobs.recover()
+                        await process_bindings(sessions)
 
                         async def sweep() -> None:
                             while True:
                                 await asyncio.sleep(15)
                                 try:
                                     await service.recover_stale_turns()
+                                    await jobs.recover(all_running=False)
+                                    await process_bindings(sessions)
                                 except Exception:
                                     logging.getLogger("btl.recovery").error("recovery_deferred")
 
@@ -120,6 +130,7 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
                             yield
                         finally:
                             await runner.close()
+                            await jobs.close()
                             sweeper.cancel()
                             with suppress(asyncio.CancelledError):
                                 await sweeper
@@ -161,13 +172,18 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
         if request.url.path.startswith("/api"):
-            response.headers["Cache-Control"] = "no-store"
+            response.headers["Cache-Control"] = (
+                "public, max-age=0, must-revalidate"
+                if request.url.path == "/api/story" and response.status_code in {200, 304}
+                else "no-store"
+            )
         return response
 
     app.add_middleware(RequestIdMiddleware)
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(game_router)
+    app.include_router(product_router)
     original_openapi = app.openapi
 
     def openapi() -> dict[str, Any]:
@@ -176,6 +192,8 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
         for model in (StatusEvent, DialogueEvent, TurnResult, StreamErrorEvent):
             definition = model.model_json_schema(ref_template="#/components/schemas/{model}")
             components.update(definition.pop("$defs", {}))
+            if model is TurnResult:
+                definition["properties"]["proposal"].pop("default", None)
             components[model.__name__] = definition
         response = schema["paths"]["/api/saves/{save_id}/turns"]["post"]["responses"]["200"]
         response["description"] = (

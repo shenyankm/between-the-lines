@@ -85,11 +85,18 @@ async def test_deep_agent_tool_loop_isolation_and_fixed_model(monkeypatch, tool_
             extra_body={"thinking": {"type": "disabled"}},
         )
         gateway.model_factory = lambda: model
-        turn = SimpleNamespace(id="t", user_id="u", save_id="s", input=SimpleNamespace(npc="sun"))
+        turn = SimpleNamespace(
+            id="t",
+            user_id="u",
+            save_id="s",
+            input=SimpleNamespace(npc="sun", text="请登记这笔采购的材料要求。"),
+        )
         usage = {}
         replies = [reply async for reply in gateway.run_agent(turn, InMemorySaver(), usage)]
     assert replies == ["请补充报价单和用途说明。"]
     assert len(requests) == 2
+    player_message = next(m for m in reversed(requests[0]["messages"]) if m["role"] == "user")
+    assert json.loads(player_message["content"])["本轮玩家对白"] == turn.input.text
     assert usage["input_tokens"] == 40
     assert operations == ([("t", "sun", "request_materials")] if tool_name == "act_on_work" else [])
     assert any(m["role"] == "tool" for m in requests[1]["messages"])

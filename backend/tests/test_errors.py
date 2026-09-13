@@ -179,9 +179,13 @@ def test_a_turn_lookup_misses_with_its_own_code(player):
 def test_the_daily_limit_429_carries_a_numeric_retry_after(app, player, monkeypatch):
     monkeypatch.setattr(app.state.runtime.service.settings, "daily_turn_limit", 0)
     save = player.post("/api/saves", json={}).json()
+    player.post(
+        f"/api/saves/{save['id']}/turns",
+        json={"request_id": str(uuid4()), "version": 0, "action": "begin"},
+    )
     response = player.post(
         f"/api/saves/{save['id']}/turns",
-        json={"request_id": str(uuid4()), "version": save["version"], "action": "begin"},
+        json={"request_id": str(uuid4()), "version": 1, "action": "speak", "text": "你好"},
     )
     assert_envelope(response, 429, "daily_limit_reached")
     wait = response.headers["retry-after"]
@@ -194,9 +198,13 @@ def test_the_daily_limit_429_carries_a_numeric_retry_after(app, player, monkeypa
 def test_the_concurrency_429_carries_a_numeric_retry_after(app, player, monkeypatch):
     monkeypatch.setattr(app.state.settings, "max_concurrent_turns", 0)
     save = player.post("/api/saves", json={}).json()
+    player.post(
+        f"/api/saves/{save['id']}/turns",
+        json={"request_id": str(uuid4()), "version": 0, "action": "begin"},
+    )
     response = player.post(
         f"/api/saves/{save['id']}/turns",
-        json={"request_id": str(uuid4()), "version": save["version"], "action": "begin"},
+        json={"request_id": str(uuid4()), "version": 1, "action": "speak", "text": "你好"},
     )
     assert_envelope(response, 429, "concurrency_budget_exhausted")
     assert response.headers["retry-after"] == "5"

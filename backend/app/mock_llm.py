@@ -36,6 +36,33 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
             operation = "approve_purchase"
         elif npc == "zhang" and "reported" in flags and "supported" not in flags:
             operation = "support_project"
+    tool_name = "act_on_work"
+    arguments = {"operation": operation}
+    if context.get("故事版本") == 2 and not tool_result:
+        from .intents import MAJOR_PATTERNS, grounded, grounded_major
+
+        intent = next(
+            (
+                a
+                for a in (
+                    "boundary",
+                    "report",
+                    "request_materials",
+                    "approve_purchase",
+                    "support_project",
+                )
+                if grounded(context.get("本轮玩家对白", ""), a, npc, facts["act"])
+            ),
+            None,
+        )
+        intent = intent or next(
+            (a for a in MAJOR_PATTERNS if grounded_major(context.get("本轮玩家对白", ""), a)), None
+        )
+        operation = intent
+        if intent in {"boundary", "report", *MAJOR_PATTERNS}:
+            tool_name, arguments = "express_intent", {"action": intent}
+        else:
+            arguments = {"operation": intent}
     if operation:
         return {
             "role": "assistant",
@@ -45,8 +72,8 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
                     "id": "call_work",
                     "type": "function",
                     "function": {
-                        "name": "act_on_work",
-                        "arguments": json.dumps({"operation": operation}),
+                        "name": tool_name,
+                        "arguments": json.dumps(arguments),
                     },
                 }
             ],

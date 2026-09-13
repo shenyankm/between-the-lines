@@ -1,10 +1,12 @@
-from typing import Literal
+from datetime import datetime
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .actions import AvailableAction
 from .error_catalog import ErrorCode, FailureCode, Recovery, failure_message
-from .game_types import Action, GameState, Npc, TurnStatus
+from .game_types import Action, GameState, GameStateV2, Npc, TurnStatus, parse_state
 from .story import Relationship, load_story
 
 
@@ -15,21 +17,47 @@ class TurnInput(BaseModel):
     npc: Npc = "sun"
     action: Action = "speak"
     text: str = Field(default="", max_length=1500)
+    proposed_action: Action | None = None
+    proposal_id: UUID | None = None
+    discussion_id: UUID | None = None
+    perspective_id: str | None = Field(default=None, max_length=40)
+
+    def canonical_payload(self) -> dict[str, Any]:
+        value = self.model_dump(mode="json")
+        return {
+            k: v
+            for k, v in value.items()
+            if k in {"request_id", "version", "npc", "action", "text"} or v is not None
+        }
 
 
 class SaveOut(BaseModel):
     id: str
     version: int
-    state: GameState
+    state: GameStateV2 | GameState
+    story_id: str = "workplace-s1"
+    story_version: int = 1
+    last_played_at: datetime | None = None
+    parent_save_id: str | None = None
+    archived_at: datetime | None = None
+    deleted_at: datetime | None = None
+
+    @field_validator("state", mode="before")
+    @classmethod
+    def state_version(cls, value: Any) -> GameState:
+        return parse_state(value) if isinstance(value, dict) else value
+
     relationships: list[Relationship] = Field(default_factory=list)
+    scene_intro: str | None = None
     ending_summary: str | None = None
     npc_greetings: dict[Npc, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def narrative_projection(self) -> "SaveOut":
-        story = load_story()
+        story = load_story(self.story_version)
         self.relationships = story.relationships_for(self.state)
         self.ending_summary = story.ending_summary(self.state)
+        self.scene_intro = story.scene_intro(self.state)
         self.npc_greetings = {
             npc: story.greeting_for(npc, self.state.act, self.state.flags) for npc in story.npcs
         }
@@ -39,6 +67,10 @@ class SaveOut(BaseModel):
 class UserOut(BaseModel):
     id: str
     name: str
+    identity_type: str = "member"
+    guest_expires_at: datetime | None = None
+    ai_remaining: int | None = None
+    binding_pending: bool = False
 
 
 class DevLogin(BaseModel):
@@ -91,6 +123,8 @@ class TurnResult(BaseModel):
     save: SaveOut
     retryable: bool = False
     failure: TurnFailure | None = None
+    effects: list[dict[str, Any]] = Field(default_factory=list)
+    proposal: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def legacy_failure(self) -> "TurnResult":
@@ -104,7 +138,8 @@ class TurnResult(BaseModel):
 
 
 class GameEventData(BaseModel):
-    kind: Literal["player", "npc", "work", "epilogue", "personal"]
+    effects: list[dict[str, Any]] = Field(default_factory=list)
+    kind: Literal["player", "npc", "work", "epilogue", "personal", "narrative"]
     text: str
     npc: Npc
     act: int | None = None
@@ -120,10 +155,28 @@ class ActiveTurn(BaseModel):
     request_id: str
 
 
+class ProposalOut(BaseModel):
+    id: str
+    action: Action
+    version: int
+    label: str
+    effect: str
+
+
+class AIAvailability(BaseModel):
+    available: bool = True
+    reason: str | None = None
+    remaining: int | None = None
+
+
 class PlayStateOut(BaseModel):
     save: SaveOut
     events: list[GameEventOut]
     active_turn: ActiveTurn | None
+    available_actions: list[AvailableAction] = Field(default_factory=list)
+    proposal: ProposalOut | None = None
+    events_cursor: str | None = None
+    ai: AIAvailability = Field(default_factory=AIAvailability)
 
 
 class ConfigOut(BaseModel):
@@ -131,6 +184,8 @@ class ConfigOut(BaseModel):
     zhihu_login: bool
     agent_mode: Literal["mock", "deepseek"]
     model_ready: bool
+    guest_login: bool = False
+    story_version: int = 1
 
 
 class StatusEvent(BaseModel):
@@ -181,3 +236,59 @@ class ReadyOut(BaseModel):
     # underlying exception would turn a dependency's error string into a public
     # response body. Details go to the log.
     checks: dict[str, Literal["ok", "error"]]
+
+
+class CreateSaveInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    story_version: Literal[1, 2] | None = None
+
+
+class SaveManagement(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    operation: Literal["archive", "unarchive", "delete", "restore"]
+
+
+class BranchInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: UUID
+    snapshot_id: UUID
+
+
+class JobInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: UUID
+    kind: Literal["reflection", "discussion"]
+    version: int = Field(ge=0)
+
+
+class JobOut(BaseModel):
+    act: int | None = None
+    id: str
+    kind: str
+    status: str
+    result: dict[str, Any] | None = None
+
+
+class SnapshotOut(BaseModel):
+    id: str
+    node: str
+    created_at: datetime
+
+
+class DiagnosticInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["render", "uncaught", "rejection", "query"]
+    code: str | None = Field(default=None, max_length=80, pattern=r"^[a-z_]+$")
+    request_id: str | None = Field(default=None, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+    build: str = Field(default="unknown", max_length=40, pattern=r"^[A-Za-z0-9._-]+$")
+    stack: str | None = Field(default=None, max_length=2000)
+
+
+class FeedbackInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=1500)
+
+
+class ProductEventInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Literal["recap_viewed", "recovery_completed", "recovery_failed", "approval_stuck"]

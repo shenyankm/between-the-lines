@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -78,6 +78,17 @@ async def persist(rows: list[dict[str, Any]], sessions: async_sessionmaker[Async
                 (ZhihuContent.topics.contains(row["topics"]), ZhihuContent.topics),
                 else_=ZhihuContent.topics.op("||")(statement.excluded.topics),
             )
+            changed = or_(
+                *(
+                    getattr(ZhihuContent, field).is_distinct_from(row[field])
+                    for field in ("title", "summary", "source_url", "author_name")
+                ),
+                ~ZhihuContent.topics.contains(row["topics"]),
+            )
+            updates["review_status"] = case(
+                (changed, "candidate"), else_=ZhihuContent.review_status
+            )
+            updates["content_hash"] = case((changed, ""), else_=ZhihuContent.content_hash)
             await db.execute(
                 statement.on_conflict_do_update(
                     index_elements=[ZhihuContent.content_type, ZhihuContent.content_id],

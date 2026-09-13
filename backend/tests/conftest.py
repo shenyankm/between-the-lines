@@ -3,8 +3,12 @@ import os
 # Set before any application imports; test traffic never reaches a real LLM.
 os.environ["ENVIRONMENT"] = "test"
 os.environ["AGENT_MODE"] = "mock"
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://btl:btl@localhost:54329/btl_test"
-os.environ["CHECKPOINT_URL"] = "postgresql://btl:btl@localhost:54329/btl_test"
+os.environ["DATABASE_URL"] = os.environ.get(
+    "BTL_TEST_DATABASE_URL", "postgresql+asyncpg://btl:btl@localhost:54329/btl_test"
+)
+os.environ["CHECKPOINT_URL"] = os.environ["DATABASE_URL"].replace(
+    "postgresql+asyncpg:", "postgresql:"
+)
 
 import psycopg
 import pytest
@@ -19,6 +23,11 @@ def _truncate() -> None:
     # Synchronous on purpose: this fixture serves sync and async tests alike, and
     # driving the async engine from here would need an event loop that is either
     # absent (sync tests) or already owned by the test (async tests).
+    from urllib.parse import urlsplit
+
+    database = urlsplit(os.environ["CHECKPOINT_URL"]).path.removeprefix("/")
+    if database != "btl_test" and not database.startswith("btl_upgrade_test_"):
+        raise RuntimeError("Refusing to truncate a non-test database")
     with psycopg.connect(os.environ["CHECKPOINT_URL"]) as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT schemaname, tablename FROM pg_tables "
@@ -58,6 +67,7 @@ def app():
             _env_file=None,
             environment="test",
             agent_mode="mock",
+            story_v2_enabled=False,
             database_url=os.environ["DATABASE_URL"],
             checkpoint_url=os.environ["CHECKPOINT_URL"],
         )

@@ -113,7 +113,7 @@ class TurnRunner:
                     if turn.input.action == "speak":
                         async for chunk in self.reply(turn, self.checkpointer, usage):
                             reply += chunk
-                    elif turn.input.action in {"next", "leave", "epilogue"}:
+                    elif turn.input.action == "epilogue":
                         async with self.service.sessions() as db:
                             save = await owned_save(db, turn.save_id, turn.user_id)
                         if save.state["ending"]:

@@ -276,6 +276,57 @@
         }
       }
     },
+    "/api/auth/guest": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Guest Login",
+        "operationId": "guest_login_api_auth_guest_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Health",
@@ -407,6 +458,30 @@
       "get": {
         "summary": "Story",
         "operationId": "story_api_story_get",
+        "parameters": [
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2,
+              "minimum": 1,
+              "default": 1,
+              "title": "Version"
+            }
+          },
+          {
+            "name": "story_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "workplace-s1",
+              "title": "Story Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -420,6 +495,46 @@
           },
           "500": {
             "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -485,6 +600,16 @@
       "post": {
         "summary": "Create Save",
         "operationId": "create_save_api_saves_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSaveInput"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -526,8 +651,38 @@
               }
             }
           },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "401": {
             "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -632,6 +787,35 @@
               "type": "string",
               "format": "uuid",
               "title": "Save Id"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
             }
           }
         ],
@@ -1041,10 +1225,991 @@
           }
         }
       }
+    },
+    "/api/saves/{save_id}/visit": {
+      "post": {
+        "summary": "Visit",
+        "operationId": "visit_api_saves__save_id__visit_post",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Save Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/saves/{save_id}/manage": {
+      "post": {
+        "summary": "Manage",
+        "operationId": "manage_api_saves__save_id__manage_post",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Save Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveManagement"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/saves/{save_id}/snapshots": {
+      "get": {
+        "summary": "Snapshots",
+        "operationId": "snapshots_api_saves__save_id__snapshots_get",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Save Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SnapshotOut"
+                  },
+                  "title": "Response Snapshots Api Saves  Save Id  Snapshots Get"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/saves/{save_id}/branches": {
+      "post": {
+        "summary": "Branch",
+        "operationId": "branch_api_saves__save_id__branches_post",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Save Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BranchInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/saves/{save_id}/jobs": {
+      "post": {
+        "summary": "Create Job",
+        "operationId": "create_job_api_saves__save_id__jobs_post",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Save Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobOut"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "request_id_reused / turn_still_running / save_busy / version_conflict / unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed / empty_message / rule_violation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "request_body_invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "daily_limit_reached / concurrency_budget_exhausted",
+            "headers": {
+              "Retry-After": {
+                "description": "整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "model_unconfigured / monthly_cost_cap_reached",
+            "headers": {
+              "Retry-After": {
+                "description": "整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Jobs",
+        "operationId": "jobs_api_saves__save_id__jobs_get",
+        "parameters": [
+          {
+            "name": "save_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Save Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobOut"
+                  },
+                  "title": "Response Jobs Api Saves  Save Id  Jobs Get"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/diagnostics": {
+      "post": {
+        "summary": "Diagnostic",
+        "operationId": "diagnostic_api_diagnostics_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagnosticInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Diagnostic Api Diagnostics Post"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "summary": "Feedback",
+        "operationId": "feedback_api_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Feedback Api Feedback Post"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/product-events": {
+      "post": {
+        "summary": "Product Event",
+        "operationId": "product_event_api_product_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductEventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Product Event Api Product Events Post"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "unsupported_save_version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "forbidden_origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AIAvailability": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": true
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining"
+          }
+        },
+        "type": "object",
+        "title": "AIAvailability"
+      },
       "Act": {
         "properties": {
           "title": {
@@ -1119,6 +2284,111 @@
         ],
         "title": "ActiveTurn"
       },
+      "AvailableAction": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "speak",
+              "begin",
+              "contact_wang",
+              "boundary",
+              "public_confront",
+              "next",
+              "supplement",
+              "report",
+              "clarify",
+              "deliver",
+              "cut_ties",
+              "keep_distance",
+              "leave",
+              "epilogue",
+              "request_materials",
+              "approve_purchase",
+              "support_project",
+              "verify_notice",
+              "joint_review",
+              "partner_breakup",
+              "partner_distance",
+              "propose",
+              "cancel_proposal"
+            ],
+            "title": "Action"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sun",
+                  "li",
+                  "zhang"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "completed": {
+            "type": "boolean",
+            "title": "Completed",
+            "default": false
+          },
+          "requires_confirmation": {
+            "type": "boolean",
+            "title": "Requires Confirmation",
+            "default": false
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          },
+          "effect": {
+            "type": "string",
+            "title": "Effect",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "label"
+        ],
+        "title": "AvailableAction"
+      },
+      "BranchInput": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "snapshot_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Snapshot Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "snapshot_id"
+        ],
+        "title": "BranchInput"
+      },
       "Choice": {
         "properties": {
           "label": {
@@ -1141,7 +2411,16 @@
               "cut_ties",
               "keep_distance",
               "leave",
-              "epilogue"
+              "epilogue",
+              "request_materials",
+              "approve_purchase",
+              "support_project",
+              "verify_notice",
+              "joint_review",
+              "partner_breakup",
+              "partner_distance",
+              "propose",
+              "cancel_proposal"
             ],
             "title": "Action"
           },
@@ -1190,6 +2469,16 @@
           "model_ready": {
             "type": "boolean",
             "title": "Model Ready"
+          },
+          "guest_login": {
+            "type": "boolean",
+            "title": "Guest Login",
+            "default": false
+          },
+          "story_version": {
+            "type": "integer",
+            "title": "Story Version",
+            "default": 1
           }
         },
         "type": "object",
@@ -1200,6 +2489,28 @@
           "model_ready"
         ],
         "title": "ConfigOut"
+      },
+      "CreateSaveInput": {
+        "properties": {
+          "story_version": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CreateSaveInput"
       },
       "DevLogin": {
         "properties": {
@@ -1214,6 +2525,71 @@
         "additionalProperties": false,
         "type": "object",
         "title": "DevLogin"
+      },
+      "DiagnosticInput": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "render",
+              "uncaught",
+              "rejection",
+              "query"
+            ],
+            "title": "Kind"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "pattern": "^[a-z_]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9._-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "build": {
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "title": "Build",
+            "default": "unknown"
+          },
+          "stack": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stack"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "DiagnosticInput"
       },
       "ErrorBody": {
         "properties": {
@@ -1331,6 +2707,22 @@
         "title": "FailureCode",
         "type": "string"
       },
+      "FeedbackInput": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "FeedbackInput"
+      },
       "FieldIssue": {
         "properties": {
           "field": {
@@ -1356,6 +2748,14 @@
       },
       "GameEventOut": {
         "properties": {
+          "effects": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Effects"
+          },
           "kind": {
             "type": "string",
             "enum": [
@@ -1363,7 +2763,8 @@
               "npc",
               "work",
               "epilogue",
-              "personal"
+              "personal",
+              "narrative"
             ],
             "title": "Kind"
           },
@@ -1409,7 +2810,16 @@
                   "cut_ties",
                   "keep_distance",
                   "leave",
-                  "epilogue"
+                  "epilogue",
+                  "request_materials",
+                  "approve_purchase",
+                  "support_project",
+                  "verify_notice",
+                  "joint_review",
+                  "partner_breakup",
+                  "partner_distance",
+                  "propose",
+                  "cancel_proposal"
                 ]
               },
               {
@@ -1497,6 +2907,110 @@
         "title": "GameState",
         "type": "object"
       },
+      "GameStateV2": {
+        "properties": {
+          "act": {
+            "maximum": 4,
+            "minimum": 0,
+            "title": "Act",
+            "type": "integer"
+          },
+          "credit": {
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Credit",
+            "type": "integer"
+          },
+          "stress": {
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Stress",
+            "type": "integer"
+          },
+          "heat": {
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Heat",
+            "type": "integer"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "procurement": {
+            "enum": [
+              "pending",
+              "approved"
+            ],
+            "title": "Procurement",
+            "type": "string"
+          },
+          "ending": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ending"
+          },
+          "story_version": {
+            "const": 2,
+            "default": 2,
+            "title": "Story Version",
+            "type": "integer"
+          },
+          "node": {
+            "default": "prologue",
+            "title": "Node",
+            "type": "string"
+          },
+          "partner_choice": {
+            "anyOf": [
+              {
+                "enum": [
+                  "breakup",
+                  "distance"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Partner Choice"
+          },
+          "ending_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ending Id"
+          }
+        },
+        "required": [
+          "act",
+          "credit",
+          "stress",
+          "heat",
+          "flags",
+          "procurement",
+          "ending"
+        ],
+        "title": "GameStateV2",
+        "type": "object"
+      },
       "Interlude": {
         "properties": {
           "image": {
@@ -1524,6 +3038,82 @@
           "text"
         ],
         "title": "Interlude"
+      },
+      "JobInput": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "reflection",
+              "discussion"
+            ],
+            "title": "Kind"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "kind",
+          "version"
+        ],
+        "title": "JobInput"
+      },
+      "JobOut": {
+        "properties": {
+          "act": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Act"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status"
+        ],
+        "title": "JobOut"
       },
       "LiveOut": {
         "properties": {
@@ -1571,6 +3161,37 @@
                 "type": "null"
               }
             ]
+          },
+          "available_actions": {
+            "items": {
+              "$ref": "#/components/schemas/AvailableAction"
+            },
+            "type": "array",
+            "title": "Available Actions"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "events_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events Cursor"
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AIAvailability"
           }
         },
         "type": "object",
@@ -1580,6 +3201,84 @@
           "active_turn"
         ],
         "title": "PlayStateOut"
+      },
+      "ProductEventInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "recap_viewed",
+              "recovery_completed",
+              "recovery_failed",
+              "approval_stuck"
+            ],
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ProductEventInput"
+      },
+      "ProposalOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "speak",
+              "begin",
+              "contact_wang",
+              "boundary",
+              "public_confront",
+              "next",
+              "supplement",
+              "report",
+              "clarify",
+              "deliver",
+              "cut_ties",
+              "keep_distance",
+              "leave",
+              "epilogue",
+              "request_materials",
+              "approve_purchase",
+              "support_project",
+              "verify_notice",
+              "joint_review",
+              "partner_breakup",
+              "partner_distance",
+              "propose",
+              "cancel_proposal"
+            ],
+            "title": "Action"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "effect": {
+            "type": "string",
+            "title": "Effect"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "version",
+          "label",
+          "effect"
+        ],
+        "title": "ProposalOut"
       },
       "PublicNpc": {
         "properties": {
@@ -1691,6 +3390,26 @@
         "title": "Relationship",
         "type": "object"
       },
+      "SaveManagement": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "archive",
+              "unarchive",
+              "delete",
+              "restore"
+            ],
+            "title": "Operation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "operation"
+        ],
+        "title": "SaveManagement"
+      },
       "SaveOut": {
         "properties": {
           "id": {
@@ -1702,7 +3421,76 @@
             "type": "integer"
           },
           "state": {
-            "$ref": "#/components/schemas/GameState"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameStateV2"
+              },
+              {
+                "$ref": "#/components/schemas/GameState"
+              }
+            ],
+            "title": "State"
+          },
+          "story_id": {
+            "default": "workplace-s1",
+            "title": "Story Id",
+            "type": "string"
+          },
+          "story_version": {
+            "default": 1,
+            "title": "Story Version",
+            "type": "integer"
+          },
+          "last_played_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Played At"
+          },
+          "parent_save_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Parent Save Id"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Archived At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Deleted At"
           },
           "relationships": {
             "items": {
@@ -1710,6 +3498,18 @@
             },
             "title": "Relationships",
             "type": "array"
+          },
+          "scene_intro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scene Intro"
           },
           "ending_summary": {
             "anyOf": [
@@ -1746,8 +3546,37 @@
         "title": "SaveOut",
         "type": "object"
       },
+      "SnapshotOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "node": {
+            "type": "string",
+            "title": "Node"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "node",
+          "created_at"
+        ],
+        "title": "SnapshotOut"
+      },
       "StoryOut": {
         "properties": {
+          "story_version": {
+            "type": "integer",
+            "title": "Story Version",
+            "default": 1
+          },
           "title": {
             "type": "string",
             "title": "Title"
@@ -1892,7 +3721,16 @@
               "cut_ties",
               "keep_distance",
               "leave",
-              "epilogue"
+              "epilogue",
+              "request_materials",
+              "approve_purchase",
+              "support_project",
+              "verify_notice",
+              "joint_review",
+              "partner_breakup",
+              "partner_distance",
+              "propose",
+              "cancel_proposal"
             ],
             "title": "Action",
             "default": "speak"
@@ -1902,6 +3740,78 @@
             "maxLength": 1500,
             "title": "Text",
             "default": ""
+          },
+          "proposed_action": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "speak",
+                  "begin",
+                  "contact_wang",
+                  "boundary",
+                  "public_confront",
+                  "next",
+                  "supplement",
+                  "report",
+                  "clarify",
+                  "deliver",
+                  "cut_ties",
+                  "keep_distance",
+                  "leave",
+                  "epilogue",
+                  "request_materials",
+                  "approve_purchase",
+                  "support_project",
+                  "verify_notice",
+                  "joint_review",
+                  "partner_breakup",
+                  "partner_distance",
+                  "propose",
+                  "cancel_proposal"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Action"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "discussion_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discussion Id"
+          },
+          "perspective_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perspective Id"
           }
         },
         "additionalProperties": false,
@@ -1994,6 +3904,26 @@
               }
             ],
             "default": null
+          },
+          "effects": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Effects",
+            "type": "array"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal"
           }
         },
         "required": [
@@ -2080,6 +4010,39 @@
           "name": {
             "type": "string",
             "title": "Name"
+          },
+          "identity_type": {
+            "type": "string",
+            "title": "Identity Type",
+            "default": "member"
+          },
+          "guest_expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guest Expires At"
+          },
+          "ai_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Remaining"
+          },
+          "binding_pending": {
+            "type": "boolean",
+            "title": "Binding Pending",
+            "default": false
           }
         },
         "type": "object",

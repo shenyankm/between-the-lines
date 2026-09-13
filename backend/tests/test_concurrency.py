@@ -38,7 +38,7 @@ async def test_same_save_admission_and_quota(app, monkeypatch):
         assert (await first).status_code == 200
         fresh = (await c.get(f"/api/saves/{save['id']}")).json()
         assert fresh["version"] == 2
-        monkeypatch.setattr(app.state.runtime.service.settings, "daily_turn_limit", 2)
+        monkeypatch.setattr(app.state.runtime.service.settings, "daily_turn_limit", 1)
         blocked = await c.post(
             f"/api/saves/{save['id']}/turns",
             json={**body, "request_id": str(uuid4()), "version": 2},

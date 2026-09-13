@@ -7,13 +7,26 @@ from sqlalchemy import Numeric, func, select
 from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from .actions import CATALOG, MAJOR, PRIVATE, available_actions, effects, role_actions, transition
+from .budget import monthly_commitment, reservation, reserve_job, settle
 from .config import Settings
 from .context import AgentContext, AgentTurn
-from .db import Event, Save, Turn, User, utcnow
-from .domain import NPCS, RuleError, apply_npc, apply_player, visible_state
+from .db import (
+    AIJob,
+    AISpend,
+    Event,
+    ProductEvent,
+    Proposal,
+    Save,
+    SaveSnapshot,
+    Turn,
+    User,
+    utcnow,
+)
+from .domain import NPCS, RuleError, apply_npc, visible_state
 from .error_catalog import FailureCode, failure_message
 from .errors import ApiError
-from .game_types import GameState
+from .game_types import GameStateV2, parse_state
 from .schemas import PlayStateOut, SaveOut, TurnFailure, TurnInput
 from .story import load_story
 
@@ -50,21 +63,39 @@ async def month_to_date_cost(db: AsyncSession) -> float:
 
 
 def snapshot(save: Save) -> dict[str, Any]:
-    if save.state_schema_version != 1:
+    if (
+        save.state_schema_version not in {1, 2}
+        or save.state_schema_version != save.story_version
+        or save.state.get("story_version", 1) != save.story_version
+    ):
         raise ApiError(409, "unsupported_save_version")
     return SaveOut(
-        id=save.id, version=save.version, state=GameState.model_validate(save.state)
+        id=save.id,
+        version=save.version,
+        state=parse_state(save.state),
+        story_id=save.story_id,
+        story_version=save.story_version,
+        last_played_at=save.last_played_at,
+        parent_save_id=save.parent_save_id,
+        archived_at=save.archived_at,
+        deleted_at=save.deleted_at,
     ).model_dump(mode="json")
 
 
 async def owned_save(db: AsyncSession, save_id: str, user_id: str, lock: bool = False) -> Save:
-    query = select(Save).where(Save.id == save_id, Save.user_id == user_id)
+    query = select(Save).where(
+        Save.id == save_id, Save.user_id == user_id, Save.deleted_at.is_(None)
+    )
     save = await db.scalar(query.with_for_update() if lock else query)
     if not save:
         # One code for "not yours" and "not there" on purpose: distinguishing them
         # would let a caller enumerate save ids belonging to other players.
         raise ApiError(404, "save_not_found")
-    if save.state_schema_version != 1:
+    if (
+        save.state_schema_version not in {1, 2}
+        or save.state_schema_version != save.story_version
+        or save.state.get("story_version", 1) != save.story_version
+    ):
         raise ApiError(409, "unsupported_save_version")
     return save
 
@@ -84,12 +115,14 @@ class GameService:
     ) -> Turn:
         async with self.sessions.begin() as db:
             # Lock user before save: serializes quota checks across the user's saves.
-            await db.scalar(select(User).where(User.id == user_id).with_for_update())
+            user = cast(
+                User, await db.scalar(select(User).where(User.id == user_id).with_for_update())
+            )
             save = await owned_save(db, save_id, user_id, True)
             existing = await db.scalar(
                 select(Turn).where(Turn.save_id == save_id, Turn.request_id == str(body.request_id))
             )
-            payload = body.model_dump(mode="json")
+            payload = body.canonical_payload()
             if existing:
                 if existing.payload != payload:
                     raise ApiError(409, "request_id_reused")
@@ -108,66 +141,106 @@ class GameService:
                 raise ApiError(409, "save_busy")
             if save.version != body.version:
                 raise ApiError(409, "version_conflict")
-            now = utcnow()
-            since = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            used = (
-                await db.scalar(
-                    select(func.count())
-                    .select_from(Turn)
-                    .where(Turn.user_id == user_id, Turn.created_at >= since)
-                )
-                or 0
-            )
-            if used >= self.settings.daily_turn_limit:
+            if save.archived_at:
+                raise ApiError(422, "rule_violation", "请先恢复归档。")
+            if user.identity_type == "guest" and body.action == "next" and save.state["act"] == 1:
                 raise ApiError(
-                    429,
-                    "daily_limit_reached",
-                    None,
-                    # The window is a UTC day, so the wait is exactly knowable. Leaving
-                    # a client to guess is what turns a quota into a retry loop.
-                    {
-                        "Retry-After": str(
-                            int((since + timedelta(days=1) - now).total_seconds()) + 1
-                        )
-                    },
+                    422, "rule_violation", "第一幕已完成，绑定知乎后继续；试玩进度会保留。"
                 )
-            # The billing kill switch. Exempt in mock mode, where every turn costs
-            # nothing and a cap would only block CI; config.production_guards is what
-            # forbids booting a real deployment without one.
-            if self.settings.monthly_cost_cap_usd > 0 and self.settings.agent_mode != "mock":
-                spent = await month_to_date_cost(db)
-                if spent >= self.settings.monthly_cost_cap_usd:
-                    # Aggregate spend, never a credential and never a player's message.
-                    logger.warning(
-                        "cost_cap_reached",
-                        extra={
-                            "fields": {
-                                "spent_usd": spent,
-                                "cap_usd": self.settings.monthly_cost_cap_usd,
-                            }
-                        },
-                    )
-                    raise ApiError(
-                        503,
-                        "monthly_cost_cap_reached",
-                        None,
-                        {"Retry-After": str(_seconds_until_next_utc_month(now))},
-                    )
+            from .product import rate_limit
+
+            await rate_limit(db, "turn:" + user_id, self.settings.mutation_limit_per_minute, 60)
             if body.action == "speak" and not body.text.strip():
                 raise ApiError(422, "empty_message")
             try:
-                state, text = apply_player(GameState.model_validate(save.state), body.action)
+                before = parse_state(save.state)
+                pending = await db.scalar(
+                    select(Proposal).where(
+                        Proposal.save_id == save_id, Proposal.status == "pending"
+                    )
+                )
+                if (
+                    isinstance(before, GameStateV2)
+                    and body.action in MAJOR
+                    and (
+                        not pending
+                        or pending.id != str(body.proposal_id)
+                        or pending.version != save.version
+                        or pending.action != body.action
+                    )
+                ):
+                    raise ApiError(409, "version_conflict", "这项重要决定需要有效的确认卡。")
+                if body.action == "propose":
+                    if not isinstance(before, GameStateV2) or body.proposed_action not in MAJOR:
+                        raise RuleError("无效的确认行动。")
+                    transition(before, str(body.proposed_action), body.npc)
+                elif body.proposed_action is not None:
+                    raise RuleError("行动提议只能使用 propose 提交。")
+                state, text = transition(before, body.action, body.npc)
             except RuleError as exc:
                 raise ApiError(422, "rule_violation", str(exc)) from exc
+            if save.story_version == 2 and body.action == "next":
+                interlude = load_story(2).acts[before.act].interlude
+                if interlude:
+                    db.add(
+                        Event(
+                            save_id=save_id,
+                            turn_id=None,
+                            operation="interlude",
+                            audience=[],
+                            data={
+                                "kind": "narrative",
+                                "text": interlude.text,
+                                "npc": body.npc,
+                                "act": before.act,
+                            },
+                        )
+                    )
+            if body.action == "begin" or (body.action == "next" and save.story_version == 1):
+                db.add(
+                    ProductEvent(
+                        user_id=user_id,
+                        name="first_action" if body.action == "begin" else "chapter_completed",
+                        data={"act": before.act},
+                    )
+                )
             if body.action == "next":
-                text = self.story.acts[state.act].intro
+                text = load_story(save.story_version).acts[state.act].intro
             turn = Turn(
                 save_id=save_id, user_id=user_id, request_id=str(body.request_id), payload=payload
             )
             db.add(turn)
             await db.flush()
+            if body.action in {"speak", "epilogue"}:
+                await reserve_job(
+                    db,
+                    self.settings,
+                    user,
+                    save_id,
+                    str(body.request_id),
+                    "turn",
+                    payload,
+                    job_id=turn.id,
+                )
+            if body.discussion_id or body.perspective_id:
+                from .product import validate_reference
+
+                await validate_reference(db, save, body)
+            if pending:
+                pending.status = "confirmed" if str(body.proposal_id) == pending.id else "expired"
+                await db.flush()
+            save.last_played_at = utcnow()
             save.state = state.model_dump(mode="json")
             save.version += 1
+            if body.action == "propose":
+                db.add(
+                    Proposal(
+                        save_id=save_id,
+                        turn_id=turn.id,
+                        action=body.proposed_action,
+                        version=save.version,
+                    )
+                )
             audience = (
                 [body.npc]
                 if body.action == "speak"
@@ -176,7 +249,7 @@ class GameService:
                 else ["zhang"]
                 if body.action == "report"
                 else []
-                if body.action == "contact_wang"
+                if body.action in PRIVATE or body.action in {"propose", "cancel_proposal"}
                 else sorted(NPCS)
             )
             db.add(
@@ -191,6 +264,7 @@ class GameService:
                         "npc": body.npc,
                         "action": body.action,
                         "act": state.act,
+                        "effects": effects(before, state, text),
                     },
                 )
             )
@@ -203,7 +277,7 @@ class GameService:
                         audience=[],
                         data={
                             "kind": "personal",
-                            "text": self.story.wang_reply,
+                            "text": load_story(save.story_version).wang_reply,
                             "npc": body.npc,
                             "act": state.act,
                         },
@@ -218,15 +292,24 @@ class GameService:
             events = (
                 await db.scalars(
                     select(Event)
-                    .where(Event.save_id == turn.save_id, Event.audience.contains([npc]))
+                    .where(
+                        Event.save_id == turn.save_id,
+                        Event.audience.contains([npc]),
+                        Event.turn_id.is_distinct_from(turn.id),
+                    )
                     .order_by(Event.created_at.desc(), Event.id.desc())
                     .limit(30)
                 )
             ).all()
         return AgentContext.model_validate(
             {
-                "facts": visible_state(GameState.model_validate(save.state), npc),
+                "facts": visible_state(parse_state(save.state), npc),
+                "checkpoint_namespace": save.checkpoint_namespace,
+                "story_version": save.story_version,
                 "history": [e.data for e in reversed(events)],
+                "available_actions": [
+                    action.model_dump() for action in role_actions(parse_state(save.state), npc)
+                ],
             }
         )
 
@@ -235,6 +318,7 @@ class GameService:
             # Unreachable None: called only from the agent tool closure with the id of a
             # turn committed earlier in this request, and no route cascades a turn away.
             turn = cast(Turn, await db.get(Turn, turn_id))
+            await db.scalar(select(User).where(User.id == turn.user_id).with_for_update())
             save = await owned_save(db, turn.save_id, turn.user_id, True)
             # Stale or timed-out executions must never mutate the world.
             await db.refresh(turn)
@@ -245,7 +329,17 @@ class GameService:
             )
             if previous:
                 return cast(str, previous.data["text"])
-            state, text = apply_npc(GameState.model_validate(save.state), npc, operation)
+            before = parse_state(save.state)
+            if isinstance(before, GameStateV2):
+                from .intents import grounded
+
+                if not self.settings.automatic_intents_enabled or not grounded(
+                    turn.payload["text"], operation, npc, before.act
+                ):
+                    raise RuleError("本轮未明确请求此操作，请使用行动按钮。")
+                state, text = transition(before, operation, npc)
+            else:
+                state, text = apply_npc(before, npc, operation)
             save.state = state.model_dump(mode="json")
             save.version += 1
             audience = ["zhang"] if operation == "support_project" else sorted(NPCS)
@@ -255,7 +349,13 @@ class GameService:
                     turn_id=turn_id,
                     operation=operation,
                     audience=audience,
-                    data={"kind": "work", "text": text, "npc": npc, "act": state.act},
+                    data={
+                        "kind": "work",
+                        "text": text,
+                        "npc": npc,
+                        "act": state.act,
+                        "effects": effects(before, state, text),
+                    },
                 )
             )
             return text
@@ -284,6 +384,7 @@ class GameService:
         )
         async with self.sessions.begin() as db:
             turn = cast(Turn, await db.get(Turn, turn_id))
+            await db.scalar(select(User).where(User.id == turn.user_id).with_for_update())
             save = await owned_save(db, turn.save_id, turn.user_id, True)
             await db.refresh(turn)
             if turn.status != "running":
@@ -291,6 +392,9 @@ class GameService:
             turn.status = "failed" if error else "completed"
             turn.updated_at = utcnow()
             turn.usage = usage
+            job = await db.get(AIJob, turn.id)
+            if job:
+                await settle(db, job, self.settings, usage, error)
             if not error and text:
                 epilogue = bool(save.state["ending"])
                 db.add(
@@ -307,12 +411,62 @@ class GameService:
                         },
                     )
                 )
+            await db.flush()
+            state = parse_state(save.state)
+            flags = set(state.flags)
+            chapter_complete = save.story_version == 2 and (
+                (state.act == 1 and bool(flags & {"boundary", "confronted", "wang_contacted"}))
+                or (state.act == 2 and state.procurement == "approved")
+                or (
+                    state.act == 3
+                    and {"clarified", "delivered"} <= flags
+                    and bool(flags & {"sun_cut", "sun_observe"})
+                )
+            )
+            if chapter_complete and not await db.scalar(
+                select(ProductEvent.id)
+                .where(
+                    ProductEvent.name == "chapter_completed",
+                    ProductEvent.data["save"].astext == save.id,
+                    ProductEvent.data["act"].as_integer() == state.act,
+                )
+                .limit(1)
+            ):
+                db.add(
+                    ProductEvent(
+                        user_id=turn.user_id,
+                        name="chapter_completed",
+                        data={"save": save.id, "act": state.act},
+                    )
+                )
+            if (
+                turn.payload["action"] == "speak"
+                and turn.payload["npc"] == "li"
+                and state.act == 2
+                and "materials" not in flags
+            ):
+                from .intents import grounded
+
+                if grounded(turn.payload["text"], "approve_purchase", "li", 2):
+                    db.add(
+                        ProductEvent(
+                            user_id=turn.user_id,
+                            name="approval_stuck",
+                            data={"key": turn.request_id},
+                        )
+                    )
+            await self.capture_snapshot(db, save)
+            action_events = (await db.scalars(select(Event).where(Event.turn_id == turn.id))).all()
             turn.result = {
                 "turn_id": turn.id,
                 "status": turn.status,
                 "text": text,
                 "save": snapshot(save),
                 "retryable": error,
+                "effects": [
+                    effect for event in action_events for effect in event.data.get("effects", [])
+                ],
+                "proposal": await self.proposal_for(db, save),
                 "failure": TurnFailure(
                     code=failure or FailureCode.UNKNOWN,
                     message=failure_message(failure or FailureCode.UNKNOWN),
@@ -349,18 +503,199 @@ class GameService:
                 await db.scalars(
                     select(Event)
                     .where(Event.save_id == save_id)
-                    .order_by(Event.created_at, Event.id)
+                    .order_by(Event.created_at.desc(), Event.id.desc())
+                    .limit(50)
                 )
             ).all()
+            events = list(reversed(events))
             active = await db.scalar(
                 select(Turn).where(Turn.save_id == save_id, Turn.status == "running")
             )
             return PlayStateOut.model_validate(
                 {
                     "save": snapshot(save),
+                    "available_actions": available_actions(parse_state(save.state)),
+                    "proposal": await self.proposal_for(db, save),
+                    "ai": await self.ai_status(db, user_id),
                     "events": [{"id": event.id, **event.data} for event in events],
+                    "events_cursor": events[0].id if len(events) == 50 else None,
                     "active_turn": {"id": active.id, "request_id": active.request_id}
                     if active
                     else None,
                 }
             )
+
+    async def proposal_for(self, db: AsyncSession, save: Save) -> dict[str, Any] | None:
+        proposal = await db.scalar(
+            select(Proposal).where(
+                Proposal.save_id == save.id,
+                Proposal.status == "pending",
+                Proposal.version == save.version,
+            )
+        )
+        if not proposal:
+            return None
+        definition = CATALOG[proposal.action]
+        return {
+            "id": proposal.id,
+            "action": proposal.action,
+            "version": proposal.version,
+            "label": definition[0],
+            "effect": definition[4],
+        }
+
+    async def ai_status(self, db: AsyncSession, user_id: str) -> dict[str, Any]:
+        user = cast(User, await db.get(User, user_id))
+        since = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        count = (
+            await db.scalar(
+                select(func.count())
+                .select_from(AISpend)
+                .where(
+                    AISpend.user_id == user_id,
+                    *([] if user.identity_type == "guest" else [AISpend.created_at >= since]),
+                )
+            )
+            or 0
+        )
+        remaining = max(
+            0,
+            (
+                self.settings.guest_ai_limit
+                if user.identity_type == "guest"
+                else self.settings.daily_turn_limit
+            )
+            - count,
+        )
+        ready = self.settings.agent_mode == "mock" or bool(self.settings.deepseek_api_key)
+        if ready and self.settings.agent_mode != "mock" and self.settings.monthly_cost_cap_usd > 0:
+            ready = (await monthly_commitment(db)) + reservation(
+                self.settings, self.settings.max_model_calls
+            ) <= self.settings.monthly_cost_cap_usd
+        return {
+            "available": remaining > 0 and ready,
+            "remaining": remaining,
+            "reason": None if remaining > 0 and ready else "AI 暂不可用，行动按钮和存档继续可用。",
+        }
+
+    async def capture_snapshot(self, db: AsyncSession, save: Save) -> None:
+        if save.story_version != 2:
+            return
+        state = parse_state(save.state)
+        node = None
+        if state.act in {1, 2, 3}:
+            node = f"act_{state.act}"
+        if (
+            isinstance(state, GameStateV2)
+            and state.act == 2
+            and state.procurement == "approved"
+            and not state.partner_choice
+        ):
+            node = "before_partner"
+        if (
+            state.act == 3
+            and {"clarified", "delivered"} <= set(state.flags)
+            and not {"sun_cut", "sun_observe"} & set(state.flags)
+        ):
+            node = "before_sun"
+        if not node or await db.scalar(
+            select(SaveSnapshot.id).where(
+                SaveSnapshot.save_id == save.id, SaveSnapshot.node == node
+            )
+        ):
+            return
+        history = (
+            await db.scalars(
+                select(Event).where(Event.save_id == save.id).order_by(Event.created_at, Event.id)
+            )
+        ).all()
+        db.add(
+            SaveSnapshot(
+                save_id=save.id,
+                node=node,
+                state=save.state,
+                history=[
+                    {
+                        "id": e.id,
+                        "turn_key": e.turn_id or e.data.get("history_group"),
+                        "operation": e.operation,
+                        "audience": e.audience,
+                        "data": e.data,
+                    }
+                    for e in history
+                ],
+            )
+        )
+
+    async def player_intent(self, turn_id: str, npc: str, action: str) -> str:
+        from .intents import grounded, grounded_major
+
+        async with self.sessions.begin() as db:
+            turn = cast(Turn, await db.get(Turn, turn_id))
+            await db.scalar(select(User).where(User.id == turn.user_id).with_for_update())
+            save = await owned_save(db, turn.save_id, turn.user_id, True)
+            await db.refresh(turn)
+            if (
+                turn.status != "running"
+                or turn.payload["npc"] != npc
+                or not self.settings.automatic_intents_enabled
+            ):
+                raise RuleError("当前回合不能提交意图。")
+            previous = await db.scalar(
+                select(Event).where(Event.turn_id == turn_id, Event.operation == "player_intent")
+            )
+            if previous:
+                return str(previous.data["text"])
+            before = parse_state(save.state)
+            if isinstance(before, GameStateV2) and action in MAJOR:
+                if not grounded_major(turn.payload["text"], action):
+                    raise RuleError("这项重大选择需要你通过按钮确认。")
+                transition(before, action, npc)
+                old = await db.scalar(
+                    select(Proposal).where(
+                        Proposal.save_id == save.id, Proposal.status == "pending"
+                    )
+                )
+                if old:
+                    old.status = "expired"
+                    await db.flush()
+                db.add(
+                    Proposal(save_id=save.id, turn_id=turn_id, action=action, version=save.version)
+                )
+                text = "已提出候选行动，等待玩家确认；尚未执行。"
+                db.add(
+                    Event(
+                        save_id=save.id,
+                        turn_id=turn_id,
+                        operation="player_intent",
+                        audience=[npc],
+                        data={"kind": "work", "text": text, "npc": npc, "act": before.act},
+                    )
+                )
+                return text
+            if (
+                not isinstance(before, GameStateV2)
+                or action not in {"boundary", "report"}
+                or not grounded(turn.payload["text"], action, npc, before.act)
+            ):
+                raise RuleError("本轮表达不足以确认这一行动，请使用按钮。")
+            state, text = transition(before, action, npc)
+            save.state = state.model_dump(mode="json")
+            save.version += 1
+            db.add(
+                Event(
+                    save_id=save.id,
+                    turn_id=turn_id,
+                    operation="player_intent",
+                    audience=[npc],
+                    data={
+                        "kind": "work",
+                        "text": text,
+                        "npc": npc,
+                        "act": state.act,
+                        "action": action,
+                        "effects": effects(before, state, text),
+                    },
+                )
+            )
+            return text

@@ -11,6 +11,7 @@ from psycopg_pool import AsyncConnectionPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .config import Settings
+from .jobs import JobRunner
 from .metrics import Metrics
 from .runner import Epilogue, Reply, TurnRunner
 from .services import GameService
@@ -34,6 +35,7 @@ class Runtime:
     runner: TurnRunner
     metrics: Metrics
     oauth: OAuth
+    jobs: JobRunner
 
 
 def runtime_for(request: Request) -> Runtime:
