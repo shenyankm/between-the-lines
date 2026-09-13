@@ -27,7 +27,7 @@ from .routes.game import router as game_router
 from .routes.health import router as health_router
 from .runner import TurnRunner
 from .runtime import Dependencies, Runtime
-from .schemas import DialogueEvent, StatusEvent, TurnResult
+from .schemas import DialogueEvent, StatusEvent, StreamErrorEvent, TurnResult
 from .services import GameService
 from .storage import Database
 from .story import load_story
@@ -154,9 +154,9 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             origin = request.headers.get("origin")
             if origin and origin.rstrip("/") != settings.public_origin.rstrip("/"):
-                return error_response(403, "forbidden_origin", "不允许的请求来源。", request)
+                return error_response(403, "forbidden_origin", None, request)
             if request.headers.get("content-type", "").split(";")[0] != "application/json":
-                return error_response(415, "json_required", "需要 JSON 请求。", request)
+                return error_response(415, "json_required", None, request)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
@@ -173,14 +173,18 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
     def openapi() -> dict[str, Any]:
         schema = original_openapi()
         components = schema.setdefault("components", {}).setdefault("schemas", {})
-        for model in (StatusEvent, DialogueEvent, TurnResult):
+        for model in (StatusEvent, DialogueEvent, TurnResult, StreamErrorEvent):
             definition = model.model_json_schema(ref_template="#/components/schemas/{model}")
             components.update(definition.pop("$defs", {}))
             components[model.__name__] = definition
         response = schema["paths"]["/api/saves/{save_id}/turns"]["post"]["responses"]["200"]
         response["description"] = (
-            "SSE: status=StatusEvent, dialogue=DialogueEvent, done=TurnResult. Only committed dialogue is public."
+            "SSE: status=StatusEvent, dialogue=DialogueEvent, done=TurnResult, error=StreamErrorEvent (subscription failed; query the original request). Only committed dialogue is public."
         )
+        response["headers"] = {
+            "X-Request-Id": {"schema": {"type": "string"}},
+            "Cache-Control": {"schema": {"type": "string"}, "description": "no-store"},
+        }
         response["content"] = {"text/event-stream": {"schema": {"type": "string"}}}
         return schema
 

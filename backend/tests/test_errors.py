@@ -28,7 +28,7 @@ APP_DIR = Path(__file__).resolve().parent.parent / "app"
 # Every error body has exactly these keys. Asserting the set rather than the
 # presence of three keys is what stops a future field -- a traceback, a
 # dependency name, an echoed input -- from being added quietly.
-ENVELOPE_KEYS = {"code", "message", "request_id"}
+ENVELOPE_KEYS = {"code", "message", "request_id", "recovery"}
 
 
 @pytest.fixture
@@ -47,7 +47,9 @@ def body(response) -> dict[str, str]:
     """The envelope's inner object, after checking the outer shape."""
     payload = response.json()
     assert set(payload) == {"error"}, payload
-    assert set(payload["error"]) == ENVELOPE_KEYS, payload
+    assert (
+        ENVELOPE_KEYS <= set(payload["error"]) <= ENVELOPE_KEYS | {"details", "retry_after_seconds"}
+    ), payload
     # FastAPI's default is {"detail": ...}. If that key ever reappears, a client
     # branching on `error.code` silently stops working.
     assert "detail" not in payload
@@ -56,6 +58,8 @@ def body(response) -> dict[str, str]:
 
 def assert_envelope(response, status: int, code: str) -> dict[str, str]:
     assert response.status_code == status, response.text
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
     error = body(response)
     assert error["code"] == code
     assert error["message"]
@@ -341,3 +345,35 @@ def test_no_route_documents_fastapis_validation_shape(app):
     # The committed contract used to advertise HTTPValidationError on five routes,
     # a shape this server has never sent since the envelope handlers landed.
     assert "HTTPValidationError" not in json.dumps(app.openapi())
+
+
+@pytest.mark.parametrize("path", ["/api/saves/bad-id", f"/api/saves/{uuid4()}/turns/bad-id"])
+def test_uuid_paths_reject_invalid_identifiers(player, path):
+    error = assert_envelope(player.get(path), 422, "validation_failed")
+    assert error["details"][0]["code"] == "uuid_parsing"
+
+
+def test_validation_unknown_names_are_also_private(client):
+    response = client.post(
+        "/api/auth/dev", json={"private-key-secret": "private-value-secret", "name": " "}
+    )
+    error = assert_envelope(response, 422, "validation_failed")
+    assert "private-key-secret" not in response.text
+    assert "private-value-secret" not in response.text
+    assert all(set(issue) == {"field", "code", "message"} for issue in error["details"])
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "kwargs"),
+    [
+        ("get", "/api/config", {}),
+        ("get", "/api/auth/me", {}),
+        ("post", "/api/saves", {"content": "{}"}),
+        ("post", "/api/saves", {"json": {}, "headers": {"Origin": "https://foreign.example"}}),
+    ],
+)
+def test_all_response_paths_carry_no_store_and_correlation(client, method, path, kwargs):
+    response = getattr(client, method)(path, **kwargs)
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-request-id"]

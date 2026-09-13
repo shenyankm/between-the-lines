@@ -22,8 +22,9 @@ def test_complete_boundary_path():
     state, _ = apply_player(state, "next")
     state, _ = apply_player(state, "clarify")
     state, _ = apply_player(state, "deliver")
+    state, _ = apply_player(state, "cut_ties")
     state, _ = apply_player(state, "next")
-    assert state.ending == "保持职业关系和边界"
+    assert state.ending == "找回自我 · 只留工作往来"
     assert state.credit == 90
 
 

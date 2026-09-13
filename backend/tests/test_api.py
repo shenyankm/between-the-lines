@@ -50,15 +50,16 @@ def test_full_story_and_reload(client):
         ("next", "sun", ""),
         ("clarify", "sun", ""),
         ("deliver", "sun", ""),
+        ("cut_ties", "sun", ""),
         ("next", "sun", ""),
     ]:
         response, _ = turn(client, save, action, npc, text)
         assert response.status_code == 200, response.text
         assert '"status": "completed"' in response.text, response.text
-    assert save["state"]["ending"] == "保持职业关系和边界"
+    assert save["state"]["ending"] == "找回自我 · 只留工作往来"
     events = client.get(f"/api/saves/{save['id']}/events").json()
     assert any(e["kind"] == "work" for e in events)
-    assert any(e["kind"] == "epilogue" and "边界" in e["text"] for e in events)
+    assert any(e["kind"] == "epilogue" and "私人来往" in e["text"] for e in events)
     assert client.get(f"/api/saves/{save['id']}").json() == save
 
 
@@ -116,3 +117,56 @@ def test_failure_keeps_committed_action(app, client, monkeypatch):
     version = save["version"]
     client.post(f"/api/saves/{save['id']}/turns", json=payload)
     assert client.get(f"/api/saves/{save['id']}").json()["version"] == version
+
+
+def test_relationship_choice_idempotency_and_private_audiences(client, monkeypatch):
+    import json
+
+    from app import mock_llm
+
+    observed = []
+    original = mock_llm.handle_request
+
+    async def inspect(request):
+        observed.append(json.loads(request.content))
+        return await original(request)
+
+    monkeypatch.setattr(mock_llm, "handle_request", inspect)
+    save = create(client)
+    turn(client, save, "begin")
+    _, wang_payload = turn(client, save, "contact_wang")
+    client.post(f"/api/saves/{save['id']}/turns", json=wang_payload)
+    events = client.get(f"/api/saves/{save['id']}/events").json()
+    assert sum(e["kind"] == "personal" for e in events) == 1
+    assert next(e for e in events if e["kind"] == "personal")["text"].startswith("王叔的私人回复")
+    for action, npc, text in [
+        ("next", "sun", ""),
+        ("speak", "li", "还缺哪些材料"),
+        ("supplement", "sun", ""),
+        ("speak", "li", "请审核"),
+        ("next", "sun", ""),
+        ("clarify", "sun", ""),
+        ("deliver", "sun", ""),
+    ]:
+        assert turn(client, save, action, npc, text)[0].status_code == 200
+    assert turn(client, save, "next")[0].status_code == 422
+    _, selection = turn(client, save, "keep_distance", "li")  # Selected UI contact is irrelevant.
+    version = save["version"]
+    assert client.post(f"/api/saves/{save['id']}/turns", json=selection).status_code == 200
+    assert client.get(f"/api/saves/{save['id']}").json()["version"] == version
+    assert turn(client, save, "cut_ties")[0].status_code == 422
+    for npc in ("sun", "li", "zhang"):
+        assert turn(client, save, "speak", npc, "你好")[0].status_code == 200
+        request_text = json.dumps(observed[-1], ensure_ascii=False)
+        assert "王叔的私人回复" not in request_text
+        assert "谢川" not in request_text
+        assert "妈妈" not in request_text
+        assert ("sun_observe" in request_text) == (npc == "sun")
+        assert ("接下来观察彼此" in request_text) == (npc == "sun")
+    assert turn(client, save, "next")[0].status_code == 200
+    assert save["ending_summary"].startswith("游戏分支")
+    refreshed = client.get(f"/api/saves/{save['id']}/play-state").json()["save"]
+    assert refreshed["relationships"] == save["relationships"]
+    assert any(
+        r["id"] == "xie" and "前男友" in r["description"] for r in refreshed["relationships"]
+    )

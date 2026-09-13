@@ -10,8 +10,8 @@ from sqlalchemy.dialects.postgresql import insert
 
 from .db import LoginSession, User, new_id, utcnow
 from .errors import (
-    AUTH_MESSAGE,
     AUTH_RESPONSES,
+    BODY_RESPONSES,
     ERROR_RESPONSES,
     MUTATION_RESPONSES,
     ApiError,
@@ -19,11 +19,10 @@ from .errors import (
     envelope_response,
 )
 from .runtime import Runtime, runtime_for
-from .schemas import DevLogin, UserOut
+from .schemas import DevLogin, LogoutOut, UserOut
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger("btl.auth")
-OAUTH_NOT_READY_MESSAGE = "知乎登录尚未完成配置。"
 
 
 def digest(value: str) -> str:
@@ -40,7 +39,7 @@ async def current_user(request: Request) -> User:
             .where(LoginSession.token_hash == digest(token), LoginSession.expires_at > utcnow())
         )
     if not user:
-        raise ApiError(401, "not_authenticated", AUTH_MESSAGE)
+        raise ApiError(401, "not_authenticated")
     return user
 
 
@@ -56,7 +55,7 @@ async def issue_session(
         )
         user = await db.scalar(select(User).where(User.subject == subject))
         if user is None:
-            raise ApiError(401, "not_authenticated", AUTH_MESSAGE)
+            raise ApiError(401, "not_authenticated")
         db.add(
             LoginSession(
                 token_hash=digest(token), user_id=user.id, expires_at=utcnow() + timedelta(days=7)
@@ -83,6 +82,7 @@ async def issue_session(
     # routed and answered, not absent.
     responses={
         **MUTATION_RESPONSES,
+        **BODY_RESPONSES,
         422: envelope_response(codes(422, "validation_failed")),
         404: envelope_response(codes(404, "not_found")),
     },
@@ -90,7 +90,7 @@ async def issue_session(
 async def dev_login(body: DevLogin, request: Request, response: Response) -> dict[str, str]:
     runtime = runtime_for(request)
     if runtime.settings.environment == "production" or not runtime.settings.dev_login_enabled:
-        raise ApiError(404, "not_found", "接口不存在。")
+        raise ApiError(404, "not_found")
     # A fresh random identity per browser login, never a guessable name-as-password.
     return await issue_session(f"dev:{new_id()}", body.name, response, runtime)
 
@@ -100,7 +100,7 @@ async def me(user: User = Depends(current_user)) -> dict[str, str]:
     return {"id": user.id, "name": user.name}
 
 
-@router.post("/logout", responses=MUTATION_RESPONSES)
+@router.post("/logout", response_model=LogoutOut, responses=MUTATION_RESPONSES)
 async def logout(request: Request, response: Response) -> dict[str, bool]:
     runtime = runtime_for(request)
     async with runtime.sessions.begin() as db:
@@ -123,7 +123,7 @@ async def logout(request: Request, response: Response) -> dict[str, bool]:
 async def zhihu_login(request: Request) -> RedirectResponse:
     runtime = runtime_for(request)
     if not runtime.settings.oauth_ready:
-        raise ApiError(503, "oauth_not_configured", OAUTH_NOT_READY_MESSAGE)
+        raise ApiError(503, "oauth_not_configured")
     # authlib ships no stubs, so this await is Any; it resolves to a RedirectResponse.
     redirect: RedirectResponse = await runtime.oauth.zhihu.authorize_redirect(
         request, runtime.settings.public_origin.rstrip("/") + "/api/auth/zhihu/callback"
@@ -142,7 +142,7 @@ async def zhihu_login(request: Request) -> RedirectResponse:
 async def zhihu_callback(request: Request) -> RedirectResponse:
     runtime = runtime_for(request)
     if not runtime.settings.oauth_ready:
-        raise ApiError(503, "oauth_not_configured", OAUTH_NOT_READY_MESSAGE)
+        raise ApiError(503, "oauth_not_configured")
     try:
         token = await runtime.oauth.zhihu.authorize_access_token(request)
         reply = await runtime.oauth.zhihu.get(runtime.settings.zhihu_userinfo_url, token=token)
@@ -156,7 +156,7 @@ async def zhihu_callback(request: Request) -> RedirectResponse:
         # carry the authorization code or token it was processing, and both the log
         # and the response body are places a credential must not appear.
         logger.warning("oauth_failed", extra={"fields": {"kind": type(exc).__name__}})
-        raise ApiError(400, "oauth_failed", "知乎授权未完成，请重新登录。") from None
+        raise ApiError(400, "oauth_failed") from None
     response = RedirectResponse("/", status_code=303)
     await issue_session(
         f"zhihu:{subject}",

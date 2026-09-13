@@ -2,8 +2,10 @@
 
 import asyncio
 import json
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -20,8 +22,18 @@ from ..errors import (
     TURN_RESPONSES,
     ApiError,
 )
+from ..logging_setup import request_id as correlation_id
 from ..runtime import runtime_for
-from ..schemas import ConfigOut, GameEventOut, PlayStateOut, SaveOut, TurnInput, TurnOut, TurnResult
+from ..schemas import (
+    ConfigOut,
+    GameEventOut,
+    PlayStateOut,
+    SaveOut,
+    StreamErrorEvent,
+    TurnInput,
+    TurnOut,
+    TurnResult,
+)
 from ..services import owned_save, snapshot
 from ..story import StoryOut
 
@@ -45,7 +57,11 @@ async def story(request: Request) -> StoryOut:
     return runtime_for(request).story.public()
 
 
-@router.get("/api/saves", response_model=list[SaveOut], responses=AUTH_RESPONSES)
+@router.get(
+    "/api/saves",
+    response_model=list[SaveOut],
+    responses={**AUTH_RESPONSES, 409: SAVE_RESPONSES[409]},
+)
 async def saves(request: Request, user: User = Depends(current_user)) -> list[dict[str, Any]]:
     async with runtime_for(request).sessions() as db:
         items = (
@@ -69,23 +85,25 @@ async def create_save(request: Request, user: User = Depends(current_user)) -> d
 
 @router.get("/api/saves/{save_id}", response_model=SaveOut, responses=SAVE_RESPONSES)
 async def get_save(
-    save_id: str, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request: Request, user: User = Depends(current_user)
 ) -> dict[str, Any]:
     async with runtime_for(request).sessions() as db:
-        return snapshot(await owned_save(db, save_id, user.id))
+        return snapshot(await owned_save(db, str(save_id), user.id))
 
 
 @router.get(
     "/api/saves/{save_id}/events", response_model=list[GameEventOut], responses=SAVE_RESPONSES
 )
 async def events(
-    save_id: str, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request: Request, user: User = Depends(current_user)
 ) -> list[dict[str, Any]]:
     async with runtime_for(request).sessions() as db:
-        await owned_save(db, save_id, user.id)
+        await owned_save(db, str(save_id), user.id)
         items = (
             await db.scalars(
-                select(Event).where(Event.save_id == save_id).order_by(Event.created_at, Event.id)
+                select(Event)
+                .where(Event.save_id == str(save_id))
+                .order_by(Event.created_at, Event.id)
             )
         ).all()
     return [{"id": item.id, **item.data} for item in items]
@@ -97,15 +115,15 @@ async def events(
     responses=TURN_RESPONSES,
 )
 async def get_turn(
-    save_id: str, request_id: str, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request_id: UUID, request: Request, user: User = Depends(current_user)
 ) -> dict[str, Any]:
     async with runtime_for(request).sessions() as db:
-        await owned_save(db, save_id, user.id)
+        await owned_save(db, str(save_id), user.id)
         turn = await db.scalar(
-            select(Turn).where(Turn.save_id == save_id, Turn.request_id == request_id)
+            select(Turn).where(Turn.save_id == str(save_id), Turn.request_id == str(request_id))
         )
         if not turn:
-            raise ApiError(404, "turn_not_found", "回合不存在。")
+            raise ApiError(404, "turn_not_found")
         return {"id": turn.id, "status": turn.status, "result": turn.result, "usage": turn.usage}
 
 
@@ -113,9 +131,9 @@ async def get_turn(
     "/api/saves/{save_id}/play-state", response_model=PlayStateOut, responses=SAVE_RESPONSES
 )
 async def play_state(
-    save_id: str, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request: Request, user: User = Depends(current_user)
 ) -> PlayStateOut:
-    return await runtime_for(request).service.play_state(save_id, user.id)
+    return await runtime_for(request).service.play_state(str(save_id), user.id)
 
 
 def sse(event: str, data: object) -> str:
@@ -126,10 +144,10 @@ def sse(event: str, data: object) -> str:
     "/api/saves/{save_id}/turns", responses=SUBMIT_RESPONSES, response_class=StreamingResponse
 )
 async def submit(
-    save_id: str, body: TurnInput, request: Request, user: User = Depends(current_user)
+    save_id: UUID, body: TurnInput, request: Request, user: User = Depends(current_user)
 ) -> StreamingResponse:
     runtime = runtime_for(request)
-    turn_id, result = await runtime.runner.submit(save_id, user.id, body)
+    turn_id, result = await runtime.runner.submit(str(save_id), user.id, body)
 
     async def stream() -> AsyncIterator[str]:
         yield sse(
@@ -139,8 +157,23 @@ async def submit(
                 "text": "对方正在回复…" if body.action == "speak" else "正在保存行动…",
             },
         )
-        raw = await asyncio.shield(result)
-        final = TurnResult.model_validate(raw).model_dump(mode="json")
+        try:
+            raw = await asyncio.shield(result)
+            final = TurnResult.model_validate(raw).model_dump(mode="json")
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logging.getLogger("btl.stream").warning(
+                "subscription_failed",
+                extra={"fields": {"turn_id": turn_id, "code": "subscription_failed"}},
+            )
+            yield sse(
+                "error",
+                StreamErrorEvent(turn_id=turn_id, request_id=correlation_id.get()).model_dump(
+                    mode="json"
+                ),
+            )
+            return
         if final and final.get("status") == "completed" and final.get("text"):
             yield sse("dialogue", {"npc": body.npc, "text": final["text"]})
         yield sse("done", final)

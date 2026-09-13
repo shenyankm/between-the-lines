@@ -21,8 +21,9 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 
+from .error_catalog import CATALOG, ErrorCode
 from .logging_setup import request_id
-from .schemas import ErrorBody, ErrorEnvelope
+from .schemas import ErrorBody, ErrorEnvelope, FieldIssue
 
 logger = logging.getLogger("btl.errors")
 
@@ -30,10 +31,8 @@ logger = logging.getLogger("btl.errors")
 # quote them. `message` is prose for a human and is free to change, so a
 # description that copied one would be a second, weaker promise that stops
 # matching the response without anything failing.
-GENERIC_MESSAGE = "请求未完成，请稍后重试。"
-INTERNAL_MESSAGE = "服务器内部错误，请稍后重试。"
-VALIDATION_MESSAGE = "请求格式不正确。"
-AUTH_MESSAGE = "请先登录。"
+INTERNAL_MESSAGE = CATALOG[ErrorCode.INTERNAL_ERROR].message
+VALIDATION_MESSAGE = CATALOG[ErrorCode.VALIDATION_FAILED].message
 
 # The published error vocabulary: every code this API returns, keyed by the status
 # it arrives under. Load-bearing in both directions. `codes()` below renders the
@@ -41,30 +40,11 @@ AUTH_MESSAGE = "请先登录。"
 # application cannot start while documenting a code nothing raises; and
 # tests/test_errors.py walks every call site under app/ to fail if this table
 # names a code that is never raised.
-VOCABULARY: dict[int, tuple[str, ...]] = {
-    400: ("oauth_failed",),
-    401: ("not_authenticated",),
-    403: ("forbidden_origin",),
-    404: ("not_found", "save_not_found", "turn_not_found"),
-    409: (
-        "request_id_reused",
-        "turn_still_running",
-        "save_busy",
-        "version_conflict",
-        "unsupported_save_version",
-    ),
-    415: ("json_required",),
-    422: ("validation_failed", "empty_message", "rule_violation"),
-    429: ("daily_limit_reached", "concurrency_budget_exhausted"),
-    500: ("internal_error",),
-    503: ("oauth_not_configured", "model_unconfigured", "monthly_cost_cap_reached"),
-}
-
-# Derived in on_http_error from the status of an exception FastAPI raised itself:
-# its 404 for an unknown path and its 405 for a wrong method carry no code, so one
-# is built from the status. No call site names them, which is why they are listed
-# separately rather than left for the call-site walk to guess at inside an f-string.
 DERIVED_CODES: tuple[str, ...] = ("http_404", "http_405")
+VOCABULARY: dict[int, tuple[str, ...]] = {}
+for _code, _definition in CATALOG.items():
+    if _code not in DERIVED_CODES:
+        VOCABULARY[_definition.status] = (*VOCABULARY.get(_definition.status, ()), _code.value)
 
 # FastAPI documents a validation failure as its own HTTPValidationError `detail`
 # array. This API answers with the same envelope as every other error, so the
@@ -143,23 +123,31 @@ SAVE_RESPONSES: Responses = {
 }
 
 # One tier per route family rather than a shared turn tier: the lookup route
-# cannot answer 409, 429 or 503, and declaring them there would repeat, in
+# cannot answer 429 or 503, and declaring them there would repeat, in
 # miniature, the over-declaration a blanket app-wide override would cause.
 TURN_RESPONSES: Responses = {
     **ROUTE_RESPONSES,
     404: envelope_response(codes(404, "save_not_found", "turn_not_found")),
+    409: envelope_response(codes(409, "unsupported_save_version")),
 }
 
 # The composed tiers come first so the statuses this route narrows or adds win:
 # its 422 covers three codes, not only FastAPI's own.
+BODY_RESPONSES: Responses = {
+    400: envelope_response(codes(400, "request_body_invalid")),
+}
+
 SUBMIT_RESPONSES: Responses = {
+    **BODY_RESPONSES,
     **ROUTE_RESPONSES,
     **MUTATION_RESPONSES,
     404: envelope_response(codes(404, "save_not_found")),
     409: envelope_response(codes(409, *VOCABULARY[409])),
     422: envelope_response(codes(422, *VOCABULARY[422])),
     429: envelope_response(codes(429, *VOCABULARY[429]), _RETRY_AFTER_HEADER),
-    503: envelope_response(codes(503, "model_unconfigured", "monthly_cost_cap_reached")),
+    503: envelope_response(
+        codes(503, "model_unconfigured", "monthly_cost_cap_reached"), _RETRY_AFTER_HEADER
+    ),
 }
 
 
@@ -176,10 +164,13 @@ class ApiError(HTTPException):
         self,
         status_code: int,
         code: str,
-        message: str,
+        message: str | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> None:
-        super().__init__(status_code, message, headers)
+        definition = CATALOG[ErrorCode(code)]
+        if status_code != definition.status:
+            raise ValueError("Error status does not match catalog")
+        super().__init__(status_code, message or definition.message, headers)
         self.code = code
 
 
@@ -199,17 +190,13 @@ def _correlated(request: Request) -> Iterator[str]:
         request_id.reset(token)
 
 
-def _envelope(code: str, message: str, identifier: str) -> dict[str, object]:
-    body = ErrorBody(code=code, message=message, request_id=identifier)
-    return ErrorEnvelope(error=body).model_dump()
-
-
 def error_response(
     status_code: int,
     code: str,
-    message: str,
+    message: str | None,
     request: Request,
     headers: Mapping[str, str] | None = None,
+    details: list[FieldIssue] | None = None,
 ) -> JSONResponse:
     """Render the envelope without raising.
 
@@ -222,9 +209,40 @@ def error_response(
         # The header is stamped here and not only by RequestIdMiddleware because
         # ServerErrorMiddleware wraps that middleware: a 500 it renders is sent
         # straight to the client and never passes back through the hook that would
-        # have added it. A caller-supplied header wins, so nothing is overwritten.
-        rendered = {"x-request-id": identifier, **(headers or {})}
-        return JSONResponse(_envelope(code, message, identifier), status_code, rendered)
+        # have added it. Correlation and cache policy cannot be overridden by a caller.
+        rendered = {
+            **(headers or {}),
+            "x-request-id": identifier,
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "same-origin",
+        }
+        public_code = ErrorCode(code)
+        logger.info(
+            "request_rejected",
+            extra={
+                "fields": {
+                    "code": public_code.value,
+                    "status": status_code,
+                    "method": request.method,
+                    "route": getattr(request.scope.get("route"), "path", "unmatched"),
+                }
+            },
+        )
+        wait = rendered.get("Retry-After", "")
+        body = ErrorBody(
+            code=public_code,
+            message=message or CATALOG[public_code].message,
+            request_id=identifier,
+            recovery=CATALOG[public_code].recovery,
+            details=details,
+            retry_after_seconds=int(wait) if wait.isdigit() else None,
+        )
+        return JSONResponse(
+            ErrorEnvelope(error=body).model_dump(mode="json", exclude_none=True),
+            status_code,
+            rendered,
+        )
 
 
 def install(app: FastAPI) -> None:
@@ -233,25 +251,65 @@ def install(app: FastAPI) -> None:
         # FastAPI's own internals raise plain HTTPException -- 404 on an unknown
         # path, 405 on a bad method -- which carries no code, so a stable one is
         # derived from the status instead.
+        if exc.status_code == 400 and not isinstance(exc, ApiError):
+            return error_response(400, "request_body_invalid", None, request, exc.headers)
         code = getattr(exc, "code", None) or f"http_{exc.status_code}"
+        if code not in ErrorCode:
+            return error_response(500, "internal_error", INTERNAL_MESSAGE, request)
         detail = exc.detail
-        message = detail if isinstance(detail, str) and detail else GENERIC_MESSAGE
+        message = (
+            detail
+            if isinstance(exc, ApiError) and isinstance(detail, str)
+            else CATALOG[ErrorCode(code)].message
+        )
         return error_response(exc.status_code, code, message, request, exc.headers)
 
     @app.exception_handler(RequestValidationError)
     async def on_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
-        with _correlated(request):
-            # exc.errors() echoes back the submitted value, which for this API is
-            # a player's private message. Field names are safe to log; values are
-            # not, and neither belongs in the response.
-            invalid = sorted(
-                {".".join(str(part) for part in error["loc"]) for error in exc.errors()}
+        # Never reflect unknown field names: they are also attacker-controlled input.
+        public_fields = {
+            "body",
+            "path",
+            "query",
+            "request_id",
+            "save_id",
+            "version",
+            "npc",
+            "action",
+            "text",
+            "name",
+        }
+        messages = {
+            "missing": "缺少必填字段。",
+            "extra_forbidden": "请求包含不支持的字段。",
+            "string_too_long": "文字长度超出限制。",
+            "string_too_short": "文字不能为空。",
+            "uuid_parsing": "编号格式不正确。",
+            "int_type": "必须为整数。",
+            "greater_than_equal": "数值低于允许范围。",
+            "json_invalid": "JSON 格式不正确。",
+        }
+        issues = [
+            FieldIssue(
+                field=".".join(
+                    str(part) if str(part) in public_fields else "unknown" for part in error["loc"]
+                ),
+                code=error["type"],
+                message=messages.get(error["type"], "字段格式或内容不正确。"),
             )
+            for error in exc.errors()[:20]
+        ]
+        with _correlated(request):
             logger.warning(
                 "validation_failed",
-                extra={"fields": {"path": request.url.path, "invalid_fields": ",".join(invalid)}},
+                extra={
+                    "fields": {
+                        "path": getattr(request.scope.get("route"), "path", "unknown"),
+                        "invalid_fields": ",".join(sorted({issue.field for issue in issues})),
+                    }
+                },
             )
-        return error_response(422, "validation_failed", VALIDATION_MESSAGE, request)
+        return error_response(422, "validation_failed", VALIDATION_MESSAGE, request, details=issues)
 
     @app.exception_handler(Exception)
     async def on_unhandled(request: Request, exc: Exception) -> JSONResponse:

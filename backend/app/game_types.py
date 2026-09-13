@@ -16,6 +16,8 @@ Action = Literal[
     "report",
     "clarify",
     "deliver",
+    "cut_ties",
+    "keep_distance",
     "leave",
     "epilogue",
 ]

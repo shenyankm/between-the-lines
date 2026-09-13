@@ -1,4 +1,5 @@
 from .game_types import GameState, VisibleState
+from .story import load_story
 
 NPCS = {"sun", "li", "zhang"}
 
@@ -26,9 +27,25 @@ def apply_player(state: GameState, action: str) -> tuple[GameState, str]:
         if s.act == 0:
             raise RuleError("请先进入故事。")
         return s, ""
+    # Track authored transitions explicitly so an early departure cannot imply
+    # a later private event. Old completed saves returned above stay untouched.
+    flags.add("relationship_story")
+    if s.act >= 2:
+        flags.add("reflection")
+    if s.act >= 3:
+        flags.add("personal_resolved")
+    s.flags = sorted(flags)
     if action == "leave":
         s.act, s.ending = 4, "主动离开"
         return s, "你选择离开当前环境，为下一段职业生活留出空间。"
+    if action in {"cut_ties", "keep_distance"}:
+        if s.act != 3 or not {"clarified", "delivered"} <= flags:
+            raise RuleError("请先在第三幕完成澄清与实验结果交付，再决定私人关系。")
+        if flags & {"sun_cut", "sun_observe"}:
+            raise RuleError("关系选择已经记录，请继续故事。")
+        flags.add("sun_cut" if action == "cut_ties" else "sun_observe")
+        s.flags = sorted(flags)
+        return s, load_story().relationship_actions[action]
     rules: dict[str, tuple[int, str, int, int, int, str]] = {
         "begin": (0, "started", 0, 0, 0, "你决定先弄清发生了什么。"),
         "contact_wang": (1, "wang_contacted", 5, -5, 0, "你向王会计发送了祝福，说明遗憾未能到场。"),
@@ -49,19 +66,18 @@ def apply_player(state: GameState, action: str) -> tuple[GameState, str]:
     if action == "next":
         if s.act == 1 and flags.intersection({"wang_contacted", "boundary", "confronted"}):
             s.act = 2
+            flags.add("reflection")
         elif s.act == 2 and s.procurement == "approved":
             s.act = 3
+            flags.add("personal_resolved")
         elif s.act == 3 and {"clarified", "delivered"} <= flags:
+            if not flags & {"sun_cut", "sun_observe"}:
+                raise RuleError("请先选择如何处理与孙淼的私人关系。")
             s.act = 4
-            s.ending = (
-                "撕破脸"
-                if "confronted" in flags
-                else "保持职业关系和边界"
-                if "boundary" in flags
-                else "关系重新协商"
-            )
+            s.ending = "找回自我 · 只留工作往来" if "sun_cut" in flags else "保持距离 · 继续观察"
         else:
             raise RuleError("还有关键事项未完成，请查看工作系统。")
+        s.flags = sorted(flags)
         return s, ""
     if action not in rules:
         raise RuleError("未知操作。")
@@ -110,7 +126,7 @@ def visible_state(state: GameState, npc: str) -> VisibleState:
     if npc == "zhang":
         visible |= {"reported", "supported"}
     if npc == "sun":
-        visible.add("boundary")
+        visible |= {"boundary", "sun_cut", "sun_observe"}
     return {
         "act": state.act,
         "procurement": state.procurement,

@@ -11,9 +11,10 @@ from .config import Settings
 from .context import AgentContext, AgentTurn
 from .db import Event, Save, Turn, User, utcnow
 from .domain import NPCS, RuleError, apply_npc, apply_player, visible_state
+from .error_catalog import FailureCode, failure_message
 from .errors import ApiError
 from .game_types import GameState
-from .schemas import PlayStateOut, TurnInput
+from .schemas import PlayStateOut, SaveOut, TurnFailure, TurnInput
 from .story import load_story
 
 logger = logging.getLogger("btl.services")
@@ -50,12 +51,10 @@ async def month_to_date_cost(db: AsyncSession) -> float:
 
 def snapshot(save: Save) -> dict[str, Any]:
     if save.state_schema_version != 1:
-        raise ApiError(409, "unsupported_save_version", "该存档需要更新版本的程序。")
-    return {
-        "id": save.id,
-        "version": save.version,
-        "state": GameState.model_validate(save.state).model_dump(mode="json"),
-    }
+        raise ApiError(409, "unsupported_save_version")
+    return SaveOut(
+        id=save.id, version=save.version, state=GameState.model_validate(save.state)
+    ).model_dump(mode="json")
 
 
 async def owned_save(db: AsyncSession, save_id: str, user_id: str, lock: bool = False) -> Save:
@@ -64,9 +63,9 @@ async def owned_save(db: AsyncSession, save_id: str, user_id: str, lock: bool = 
     if not save:
         # One code for "not yours" and "not there" on purpose: distinguishing them
         # would let a caller enumerate save ids belonging to other players.
-        raise ApiError(404, "save_not_found", "存档不存在。")
+        raise ApiError(404, "save_not_found")
     if save.state_schema_version != 1:
-        raise ApiError(409, "unsupported_save_version", "该存档需要更新版本的程序。")
+        raise ApiError(409, "unsupported_save_version")
     return save
 
 
@@ -93,11 +92,11 @@ class GameService:
             payload = body.model_dump(mode="json")
             if existing:
                 if existing.payload != payload:
-                    raise ApiError(409, "request_id_reused", "请求编号已用于不同的操作。")
+                    raise ApiError(409, "request_id_reused")
                 if existing.status == "completed":
                     return existing
                 if existing.status == "running":
-                    raise ApiError(409, "turn_still_running", "该回合仍在处理，请稍后查询结果。")
+                    raise ApiError(409, "turn_still_running")
                 # A failed turn is retrieved with the old ID; explicit retries use a NEW ID
                 # and refreshed version, preventing old checkpoint tools from being replayed.
                 return existing
@@ -106,9 +105,9 @@ class GameService:
                 select(Turn).where(Turn.save_id == save_id, Turn.status == "running")
             )
             if active:
-                raise ApiError(409, "save_busy", "当前存档已有回合正在处理。")
+                raise ApiError(409, "save_busy")
             if save.version != body.version:
-                raise ApiError(409, "version_conflict", "进度已变化，请刷新后重试。")
+                raise ApiError(409, "version_conflict")
             now = utcnow()
             since = now.replace(hour=0, minute=0, second=0, microsecond=0)
             used = (
@@ -123,7 +122,7 @@ class GameService:
                 raise ApiError(
                     429,
                     "daily_limit_reached",
-                    "今日回合额度已用完。",
+                    None,
                     # The window is a UTC day, so the wait is exactly knowable. Leaving
                     # a client to guess is what turns a quota into a retry loop.
                     {
@@ -151,11 +150,11 @@ class GameService:
                     raise ApiError(
                         503,
                         "monthly_cost_cap_reached",
-                        "本月服务额度已用尽，请联系管理员。",
+                        None,
                         {"Retry-After": str(_seconds_until_next_utc_month(now))},
                     )
             if body.action == "speak" and not body.text.strip():
-                raise ApiError(422, "empty_message", "请输入要说的话。")
+                raise ApiError(422, "empty_message")
             try:
                 state, text = apply_player(GameState.model_validate(save.state), body.action)
             except RuleError as exc:
@@ -172,6 +171,8 @@ class GameService:
             audience = (
                 [body.npc]
                 if body.action == "speak"
+                else ["sun"]
+                if body.action in {"boundary", "cut_ties", "keep_distance"}
                 else ["zhang"]
                 if body.action == "report"
                 else []
@@ -193,6 +194,21 @@ class GameService:
                     },
                 )
             )
+            if body.action == "contact_wang":
+                db.add(
+                    Event(
+                        save_id=save_id,
+                        turn_id=turn.id,
+                        operation="wang_reply",
+                        audience=[],
+                        data={
+                            "kind": "personal",
+                            "text": self.story.wang_reply,
+                            "npc": body.npc,
+                            "act": state.act,
+                        },
+                    )
+                )
             return turn
 
     async def context_for(self, turn: AgentTurn) -> AgentContext:
@@ -245,7 +261,13 @@ class GameService:
             return text
 
     async def finish_turn(
-        self, turn_id: str, text: str | None, usage: dict[str, Any], error: bool = False
+        self,
+        turn_id: str,
+        text: str | None,
+        usage: dict[str, Any],
+        error: bool = False,
+        failure: FailureCode | None = None,
+        correlation_id: str | None = None,
     ) -> dict[str, Any] | None:
         usage["billing_complete"] = not error
         usage["cost_estimate_usd"] = (
@@ -291,6 +313,13 @@ class GameService:
                 "text": text,
                 "save": snapshot(save),
                 "retryable": error,
+                "failure": TurnFailure(
+                    code=failure or FailureCode.UNKNOWN,
+                    message=failure_message(failure or FailureCode.UNKNOWN),
+                    request_id=correlation_id,
+                ).model_dump(mode="json")
+                if error
+                else None,
             }
             return turn.result
 
@@ -305,7 +334,11 @@ class GameService:
             stale = [(turn.id, dict(turn.usage)) for turn in (await db.scalars(query)).all()]
         for turn_id, usage in stale:
             await self.finish_turn(
-                turn_id, "回合已中断。已保存的行动仍然有效，请刷新进度后继续。", usage, True
+                turn_id,
+                failure_message(FailureCode.INTERRUPTED),
+                usage,
+                True,
+                FailureCode.INTERRUPTED,
             )
 
     async def play_state(self, save_id: str, user_id: str) -> PlayStateOut:

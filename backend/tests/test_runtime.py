@@ -110,12 +110,14 @@ async def test_future_save_format_is_rejected_before_mutation(app):
 @pytest.mark.parametrize(
     "choice,ending,credit,stress,heat",
     [
-        ("boundary", "保持职业关系和边界", 90, 0, 0),
-        ("contact_wang", "关系重新协商", 90, 0, 0),
-        ("public_confront", "撕破脸", 80, 15, 25),
+        ("boundary", "找回自我 · 只留工作往来", 90, 0, 0),
+        ("contact_wang", "找回自我 · 只留工作往来", 90, 0, 0),
+        ("public_confront", "找回自我 · 只留工作往来", 80, 15, 25),
     ],
 )
-def test_all_regular_endings_keep_their_exact_rules(choice, ending, credit, stress, heat):
+def test_early_choices_keep_costs_but_do_not_override_final_choice(
+    choice, ending, credit, stress, heat
+):
     state = initial_state()
     for action in ("begin", choice, "next"):
         state, _ = apply_player(state, action)
@@ -123,7 +125,7 @@ def test_all_regular_endings_keep_their_exact_rules(choice, ending, credit, stre
     for action in ("supplement", "report"):
         state, _ = apply_player(state, action)
     state, _ = apply_npc(state, "li", "approve_purchase")
-    for action in ("next", "clarify", "deliver", "next"):
+    for action in ("next", "clarify", "deliver", "cut_ties", "next"):
         state, _ = apply_player(state, action)
     assert (state.ending, state.credit, state.stress, state.heat) == (ending, credit, stress, heat)
 
@@ -139,3 +141,65 @@ def test_public_story_has_all_assets_and_no_private_personas():
     if root.exists():
         assert all((root / asset.lstrip("/")).is_file() for asset in story.assets())
     assert len(story.acts) == 5
+
+
+async def test_structured_failure_preserves_facts_and_original_identity(app):
+    async def timeout(turn, checkpointer, usage):
+        raise TimeoutError("private provider details")
+        yield  # pragma: no cover
+
+    app.state.dependencies.reply = timeout
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        save = await player(c)
+        await c.post(f"/api/saves/{save['id']}/turns", json=payload(save))
+        save = (await c.get(f"/api/saves/{save['id']}")).json()
+        body = {**payload(save, "speak"), "text": "保存这次行动"}
+        response = await c.post(
+            f"/api/saves/{save['id']}/turns", json=body, headers={"X-Request-Id": "trace-failure"}
+        )
+        assert "private provider details" not in response.text
+        assert "event: done" in response.text
+        result = (await c.get(f"/api/saves/{save['id']}/turns/{body['request_id']}")).json()[
+            "result"
+        ]
+        assert result["failure"]["code"] == "turn_timeout"
+        assert result["failure"]["request_id"] == "trace-failure"
+        assert result["save"]["version"] > save["version"]
+        replay = await c.post(f"/api/saves/{save['id']}/turns", json=body)
+        assert '"turn_timeout"' in replay.text
+        async with app.state.runtime.sessions() as db:
+            turn = await db.get(Turn, result["turn_id"])
+            assert turn.payload["request_id"] == body["request_id"]
+            events = (await db.scalars(select(Event).where(Event.turn_id == turn.id))).all()
+            assert len(events) == 1 and events[0].operation == "player"
+
+
+async def test_persistence_failure_is_subscription_error_until_recovery(app, monkeypatch):
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        save = await player(c)
+        body = payload(save)
+        service = app.state.runtime.service
+        original = service.finish_turn
+
+        async def unavailable(*args, **kwargs):
+            raise RuntimeError("private database details")
+
+        monkeypatch.setattr(service, "finish_turn", unavailable)
+        response = await c.post(f"/api/saves/{save['id']}/turns", json=body)
+        assert "event: error" in response.text
+        assert (
+            "event: done" not in response.text and "private database details" not in response.text
+        )
+        lookup = (await c.get(f"/api/saves/{save['id']}/turns/{body['request_id']}")).json()
+        assert lookup["status"] == "running" and lookup["result"] is None
+        monkeypatch.setattr(service, "finish_turn", original)
+        await service.recover_stale_turns(all_running=True)
+        lookup = (await c.get(f"/api/saves/{save['id']}/turns/{body['request_id']}")).json()
+        assert lookup["result"]["failure"]["code"] == "turn_interrupted"
+        assert not app.state.runtime.runner.active

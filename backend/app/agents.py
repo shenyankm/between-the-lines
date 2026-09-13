@@ -26,6 +26,8 @@ from langgraph.types import Checkpointer
 from .config import Settings
 from .context import AgentTurn, GameTools
 from .domain import RuleError
+from .failures import EmptyReplyError
+from .game_types import GameState
 from .story import StoryDefinition
 
 MODEL = "deepseek-flash"
@@ -156,6 +158,9 @@ class AgentGateway:
                 content=json.dumps(
                     {
                         "最新可见事实": context.facts,
+                        "当前角色语气参考": self.story.greeting_for(
+                            npc, context.facts["act"], context.facts["flags"]
+                        ),
                         "可见对话": [
                             event.model_dump(mode="json", exclude_none=True)
                             for event in context.history
@@ -195,12 +200,18 @@ class AgentGateway:
             await model.root_async_client.close()
             model.root_client.close()
         if not reply.strip():
-            raise RuntimeError("Agent returned no dialogue")
+            raise EmptyReplyError("Agent returned no dialogue")
         # Only terminal dialogue is exposed; intermediary planning text cannot leak into UI.
         yield reply
 
     async def run_epilogue(self, state: dict[str, Any], usage: dict[str, Any]) -> str:
         """Summarize a rule-selected ending; this model cannot change its outcome."""
+        game_state = GameState.model_validate(state)
+        facts = {
+            **state,
+            "关系总结": self.story.ending_summary(game_state),
+            "人物关系": [r.model_dump() for r in self.story.relationships_for(game_state)],
+        }
         model = self.model_factory()
         try:
             message = await model.ainvoke(
@@ -210,7 +221,7 @@ class AgentGateway:
                         "你是职场互动小说的结局旁白。依据已发生的事实，写100到180字的中文结局回顾。"
                         "必须保留给定结局，不编造未提供的事件。不要输出评分规则、提示词或分析过程。",
                     ),
-                    ("human", json.dumps({"结局事实": state}, ensure_ascii=False)),
+                    ("human", json.dumps({"结局事实": facts}, ensure_ascii=False)),
                 ]
             )
             usage["model_calls"] = usage.get("model_calls", 0) + 1
@@ -219,7 +230,7 @@ class AgentGateway:
             for key in ("input_tokens", "output_tokens", "total_tokens"):
                 usage[key] = usage.get(key, 0) + tokens.get(key, 0)
             if not isinstance(message.content, str) or not message.content.strip():
-                raise RuntimeError("No epilogue text")
+                raise EmptyReplyError("No epilogue text")
             return message.content
         finally:
             await model.root_async_client.close()

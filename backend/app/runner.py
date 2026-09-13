@@ -11,7 +11,10 @@ from langgraph.types import Checkpointer
 from .agents import MODEL
 from .config import Settings
 from .context import AgentTurn
+from .error_catalog import FailureCode, failure_message
 from .errors import ApiError
+from .failures import classify_failure
+from .logging_setup import request_id
 from .schemas import TurnInput
 from .services import GameService, owned_save
 
@@ -48,12 +51,12 @@ class TurnRunner:
                 and self.settings.agent_mode == "deepseek"
                 and not self.settings.deepseek_api_key
             ):
-                raise ApiError(503, "model_unconfigured", "对话服务尚未配置，请联系管理员。")
+                raise ApiError(503, "model_unconfigured")
             if not self.accepting or len(self.active) >= self.settings.max_concurrent_turns:
                 raise ApiError(
                     429,
                     "concurrency_budget_exhausted",
-                    "当前较忙，请稍后重试。",
+                    None,
                     {"Retry-After": "5"},
                 )
             self.active.add(reservation)
@@ -83,7 +86,13 @@ class TurnRunner:
         if not task.cancelled() and task.exception() is not None:
             logger.error(
                 "turn_persistence_failed",
-                extra={"fields": {"kind": type(task.exception()).__name__}},
+                extra={
+                    "fields": {
+                        "kind": type(task.exception()).__name__,
+                        "turn_id": task.get_name().removeprefix("turn:"),
+                        "code": "turn_persistence_failed",
+                    }
+                },
             )
 
     async def execute(self, turn: AgentTurn, reservation: object) -> dict[str, Any] | None:
@@ -97,7 +106,7 @@ class TurnRunner:
         started = time.monotonic()
         outcome = "failed"
         reply = ""
-        failed = False
+        failure: FailureCode | None = None
         try:
             try:
                 async with asyncio.timeout(self.settings.turn_timeout_seconds):
@@ -110,17 +119,25 @@ class TurnRunner:
                         if save.state["ending"]:
                             reply = await self.epilogue(save.state, usage)
             except asyncio.CancelledError:
-                failed = True
-                reply = "回合已中断，已保存的行动仍然有效。"
+                failure = FailureCode.INTERRUPTED
+                reply = failure_message(failure)
             except Exception as exc:
-                failed = True
-                reply = "本次回复未完成，已保存的行动仍然有效。请刷新后继续。"
+                failure = classify_failure(exc)
+                reply = failure_message(failure)
                 logger.warning(
                     "turn_failed",
-                    extra={"fields": {"turn_id": turn.id, "kind": type(exc).__name__}},
+                    extra={
+                        "fields": {
+                            "turn_id": turn.id,
+                            "kind": type(exc).__name__,
+                            "code": failure.value,
+                        }
+                    },
                 )
             usage["elapsed_ms"] = round((time.monotonic() - started) * 1000)
-            result = await self.service.finish_turn(turn.id, reply, usage, failed)
+            result = await self.service.finish_turn(
+                turn.id, reply, usage, failure is not None, failure, request_id.get()
+            )
             if result:
                 outcome = result["status"]
             return result

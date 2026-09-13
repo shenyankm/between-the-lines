@@ -262,7 +262,7 @@ def test_validation_failure_logs_field_names_but_not_submitted_values(client, lo
     # `extra={"fields": {...}}` flattens into top-level keys, which is the point:
     # a pipeline filters on .invalid_fields directly rather than decoding a nested
     # object it has to know is there.
-    assert failures[0]["path"] == f"/api/saves/{save['id']}/turns"
+    assert failures[0]["path"] == "/api/saves/{save_id}/turns"
     assert failures[0]["invalid_fields"] == "body.text,body.version"
 
 
