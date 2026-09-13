@@ -1,4 +1,4 @@
-"""90 fixed actor/scenario/expression samples. Real API access requires --real.
+"""v3 four-NPC semantic smoke samples. Real API access requires --real.
 
 Never opens the product DB. Uses the same agent, rules, evidence and role filters
 with isolated in-memory checkpoints; reports rule, privacy and prose gates separately.
@@ -21,23 +21,29 @@ from app.agents import AgentGateway  # noqa: E402
 from app.budget import reservation  # noqa: E402
 from app.config import Settings  # noqa: E402
 from app.context import AgentContext, AgentTurn  # noqa: E402
-from app.domain import RuleError, initial_state, visible_state  # noqa: E402
-from app.game_types import GameStateV2  # noqa: E402
+from app.domain import RuleError, visible_state  # noqa: E402
+from app.game_types import initial_v3  # noqa: E402
 from app.intents import grounded  # noqa: E402
 from app.schemas import TurnInput  # noqa: E402
 from app.story import load_story  # noqa: E402
+from app.story_rules import CATALOG as V3_CATALOG  # noqa: E402
 
 
 class World:
     def __init__(self, sample):
         self.sample = sample
-        self.state = GameStateV2.model_validate(
-            {
-                **initial_state().model_dump(),
-                "act": sample["act"],
-                "flags": sample["flags"],
-            }
-        )
+        self.state = initial_v3()
+        path = ["begin"]
+        if sample["act"] >= 2:
+            path += ["next", "submit_purchase"]
+        if "materials" in sample["flags"]:
+            path += ["supplement"]
+        if "reported" in sample["flags"]:
+            path += ["report"]
+        if sample["act"] >= 3:
+            path += ["next"]
+        for action in path:
+            self.state, _ = transition(self.state, action, V3_CATALOG[action][2] or "sun", event_id=str(uuid4()))
         # Seed private and other-role history, then apply the same audience boundary
         # used by the DB adapter. The sentinel must never enter a workplace prompt.
         self.events = [{"audience": [sample["npc"]], "data": event} for event in sample["history"]]
@@ -63,7 +69,7 @@ class World:
             history=[
                 event["data"] for event in self.events if self.sample["npc"] in event["audience"]
             ],
-            story_version=2,
+            story_version=3,
             available_actions=role_actions(self.state, self.sample["npc"]),
             checkpoint_namespace=turn.id,
         )
@@ -93,14 +99,14 @@ async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--real", action="store_true")
     parser.add_argument("--budget-usd", type=float, default=2.0)
-    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/semantic-v2-mock.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/semantic-v3-mock.json")
     args = parser.parse_args()
     if not 0 < args.budget_usd <= 2:
         parser.error("Budget must be positive and at most 2 USD")
     settings = Settings(environment="test", agent_mode="deepseek" if args.real else "mock")
     if args.real and not settings.deepseek_api_key:
         parser.error("Real evaluation requires DEEPSEEK_API_KEY")
-    samples = json.loads((ROOT / "backend/evals/semantic-v2.json").read_text())
+    samples = json.loads((ROOT / "backend/evals/semantic-v3.json").read_text())
     results = []
     spent = 0.0
     held = 0.0
@@ -120,7 +126,7 @@ async def main():
         )
         try:
             async with asyncio.timeout(settings.turn_timeout_seconds):
-                async for chunk in AgentGateway(settings, world, load_story(2)).run_agent(
+                async for chunk in AgentGateway(settings, world, load_story(3)).run_agent(
                     turn, InMemorySaver(), usage
                 ):
                     reply += chunk
@@ -187,7 +193,7 @@ async def main():
         "unknown_reserved_usd": held,
         "correctness": correctness,
         "gates": gates,
-        "passed": len(results) == 90 and correctness >= 0.95 and not any(gates.values()),
+        "passed": len(results) == len(samples) and correctness >= 0.95 and not any(gates.values()),
         "quality_rubric": {
             "persona": "人工逐角色抽查至少三项，1-5 分：身份与语气一致性、回应本轮表达、非说教；各项至少 4",
             "reflection": "人工核对真实引用、实际与可能分离、替代表达的代价、无人格归因；逐项通过",

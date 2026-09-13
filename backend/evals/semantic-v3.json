@@ -1,0 +1,116 @@
+[
+  {
+    "id": "sun-0",
+    "npc": "sun",
+    "act": 1,
+    "text": "既然知道我可能会生气，为什么不直接问我？",
+    "flags": [],
+    "history": [],
+    "expected_action": "boundary"
+  },
+  {
+    "id": "sun-1",
+    "npc": "sun",
+    "act": 1,
+    "text": "我不喜欢这种玩笑。",
+    "flags": [],
+    "history": [],
+    "expected_action": "boundary"
+  },
+  {
+    "id": "sun-2",
+    "npc": "sun",
+    "act": 1,
+    "text": "她说“我不喜欢这种玩笑”。",
+    "flags": [],
+    "history": [],
+    "expected_action": null
+  },
+  {
+    "id": "li-0",
+    "npc": "li",
+    "act": 2,
+    "text": "请审核这份采购材料。",
+    "flags": [
+      "materials"
+    ],
+    "history": [],
+    "expected_action": "approve_purchase"
+  },
+  {
+    "id": "li-1",
+    "npc": "li",
+    "act": 2,
+    "text": "不要审核这份采购材料。",
+    "flags": [
+      "materials"
+    ],
+    "history": [],
+    "expected_action": null
+  },
+  {
+    "id": "li-2",
+    "npc": "li",
+    "act": 2,
+    "text": "还需要哪些材料？",
+    "flags": [],
+    "history": [],
+    "expected_action": "request_materials"
+  },
+  {
+    "id": "zhang-0",
+    "npc": "zhang",
+    "act": 2,
+    "text": "向你汇报项目延误风险。",
+    "flags": [],
+    "history": [],
+    "expected_action": "report"
+  },
+  {
+    "id": "zhang-1",
+    "npc": "zhang",
+    "act": 2,
+    "text": "请协调一下项目进度。",
+    "flags": [
+      "reported"
+    ],
+    "history": [],
+    "expected_action": "support_project"
+  },
+  {
+    "id": "zhang-2",
+    "npc": "zhang",
+    "act": 2,
+    "text": "如果我需要你协调呢？",
+    "flags": [],
+    "history": [],
+    "expected_action": null
+  },
+  {
+    "id": "wang-0",
+    "npc": "wang",
+    "act": 2,
+    "text": "退休以后还习惯吗？",
+    "flags": [],
+    "history": [],
+    "expected_action": null
+  },
+  {
+    "id": "wang-1",
+    "npc": "wang",
+    "act": 2,
+    "text": "这是我主动提供的报价和用途，能帮我理解流程吗？",
+    "flags": [],
+    "history": [],
+    "expected_action": null
+  },
+  {
+    "id": "wang-2",
+    "npc": "wang",
+    "act": 2,
+    "text": "请你最终批准这份采购申请。",
+    "flags": [],
+    "history": [],
+    "expected_action": null
+  }
+]
