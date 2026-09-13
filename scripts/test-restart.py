@@ -12,12 +12,18 @@ from uuid import uuid4
 import httpx
 
 root = Path(__file__).resolve().parents[1]
+test_database_url = os.environ.get(
+    "BTL_TEST_DATABASE_URL", "postgresql+asyncpg://btl:btl@localhost:54329/btl_test"
+)
+if not test_database_url.rsplit("/", 1)[-1].startswith(("btl_test", "btl_upgrade_test_")):
+    raise RuntimeError("Recovery drills require a dedicated test database")
 env = {
     **os.environ,
     "ENVIRONMENT": "test",
     "AGENT_MODE": "mock",
-    "DATABASE_URL": "postgresql+asyncpg://btl:btl@localhost:54329/btl_test",
-    "CHECKPOINT_URL": "postgresql://btl:btl@localhost:54329/btl_test",
+    "DATABASE_URL": test_database_url,
+    "STORY_V2_ENABLED": "false",
+    "CHECKPOINT_URL": test_database_url.replace("postgresql+asyncpg://", "postgresql://"),
 }
 child_code = """
 import asyncio, os

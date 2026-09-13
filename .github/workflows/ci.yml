@@ -93,6 +93,8 @@ jobs:
           python -m pytest -q --cov=app --cov-report=term-missing
           --cov-report=xml:../artifacts/coverage.xml
           --junitxml=../artifacts/pytest.xml
+      - name: Evaluate 90 fixed semantic samples without external model calls
+        run: python scripts/evaluate-semantics.py
       - name: Verify audit failure propagation
         run: python scripts/test-audit.py
       - name: Verify TCP disconnect recovery
@@ -143,6 +145,8 @@ jobs:
       # thresholds in vitest.config.ts; without it those floors gate nothing.
       - run: pnpm --dir frontend test:coverage
       - run: pnpm --dir frontend build
+      - name: Verify responsive assets and production payload budgets
+        run: python3 scripts/check-product-assets.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: web-dist

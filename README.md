@@ -6,7 +6,7 @@ React + FastAPI 的职场互动小说。孙淼、李姐、张工由独立 Deep A
 
 **Python 使用已有 Miniconda，不创建 `.venv` 或新的 Conda 环境。数据库使用 Docker PostgreSQL。**
 
-以下命令在项目根目录执行，`python` 应指向已激活的 Miniconda Python 3.12 或 3.13（本机为 `/Users/sheny/miniconda3/bin/python`）。
+以下命令在项目根目录执行，`python` 应指向已激活的 Miniconda Python 3.13（本机为 `/Users/sheny/miniconda3/bin/python`）。
 
 ```sh
 conda activate base
@@ -26,7 +26,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-打开 [http://localhost:5173](http://localhost:5173)，点击“开发环境试玩”。开发登录每次创建独立身份；刷新保留登录，退出后再登录不会找回之前的开发身份。正式用户由知乎身份稳定映射。
+打开 [http://localhost:5173](http://localhost:5173)，可点击“立即试玩 · 第一幕”；测试完整三幕可点击“开发环境试玩”。开发登录每次创建独立身份；刷新保留登录，退出后再登录不会找回之前的开发身份。正式用户由知乎身份稳定映射。
 
 模拟模式不是跳过 Agent：`ChatDeepSeek → HTTPX 模拟 DeepSeek SSE → Deep Agents 工具循环 → 领域服务 → PostgreSQL`，包括流式工具参数拼接、工具执行和检查点。模拟 Token 数是测试估算，费用为零，不代表真实模型的延迟、语义能力或费用。
 
@@ -42,17 +42,19 @@ CHECKPOINT_URL=postgresql://btl:btl@localhost:54329/btl
 PUBLIC_ORIGIN=http://localhost:5173
 ```
 
-未来真实联调改为 `AGENT_MODE=deepseek` 并配置 `DEEPSEEK_API_KEY`，重启后端。模型固定为 DeepSeek 官方 `deepseek-flash`，显式 `thinking.type=disabled`，不自动切换供应商。当前依照用户要求仅使用模拟返回。
+未来真实联调改为 `AGENT_MODE=deepseek` 并配置 `DEEPSEEK_API_KEY`，重启后端。模型固定为 DeepSeek 官方 `deepseek-flash`，显式 `thinking.type=disabled`，不自动切换供应商。日常开发默认 mock；新版的真实模型和 OAuth 验收须按发布手册单独执行。
 
 ## 已实现流程
 
 - 序幕、欢送会、采购审核、谣言澄清与结局；独立存档和跨设备云端进度。
 - 角色对话、手机联系人、朋友圈文本、采购材料和项目汇报、编辑锦囊、行动回顾。
-- 固定幕次前置条件、角色权限、重复请求幂等、乐观版本检查、单存档并发限制、每日用户额度。
+- 固定幕次前置条件、角色权限、重复请求幂等、乐观版本检查、单存档并发限制、每日 AI 任务额度；确定性剧情操作不消耗 AI 额度。
 - 角色可见事件过滤和独立检查点；失败回合保留已提交事实、不保存未完成对白。
 - 模型超时、调用与工具预算；仅展示最终对白，不暴露内部推理、工具参数或提示词。
 
-剧情与角色设定集中在 `backend/app/story.json`，规则位于 `backend/app/domain.py`。手机中的人物关系卡随进度更新；第三幕完成澄清与交付后，由玩家选择结束私人来往或保持距离继续观察。具体叙事、隐私与旧存档规则见 [人物关系与结局](docs/story-relationships.md)。编辑锦囊明确标为编辑建议，不伪装成实时知乎搜索结果。
+新故事使用 v2，已有故事保留 v1。新增自由表达行动意图、重大选择确认、伴侣关系分支、个人化复盘、关键节点独立重玩，以及经审核并附来源的观点卡。访客第一幕进度可通过知乎绑定继承；支持草稿保护、归档和三十天回收站。
+
+剧情与角色设定分别在 `backend/app/story.json`（v1）和 `backend/app/story-v2.json`（v2）；领域规则位于 `backend/app/domain.py`，v2 行动目录与后果位于 `backend/app/actions.py`。手机中的人物关系卡随进度更新；第三幕完成澄清与交付后，由玩家选择结束私人来往或保持距离继续观察。具体叙事、隐私与旧存档规则见 [人物关系与结局](docs/story-relationships.md)。编辑锦囊明确标为编辑建议，不伪装成实时知乎搜索结果。
 
 ## 验证
 
@@ -148,3 +150,5 @@ uv pip install --python "$(command -v python)" --require-hashes -r backend/requi
 GitHub Actions 自动执行后端测试、接口契约同步、前端检查和构建、Docker 集成、桌面/手机端到端测试及备份恢复。测试使用模拟 LLM，不需要真实密钥。工作流与本地复现方法见 [CI 说明](docs/ci.md)。分支保护可使用汇总检查 `CI required`。
 
 单故事重构的模块边界、事务、SSE 契约和恢复状态机见 [架构说明](docs/architecture.md)。`make contract-generate` 用于显式生成，`make contract` 与 `make lock-check` 只检查、不修改文件。
+
+产品升级实现、运维命令与发布门禁见 [v2 发布手册](docs/product-v2-release.md)。
