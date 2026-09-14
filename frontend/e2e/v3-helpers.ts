@@ -20,31 +20,31 @@ export async function readScene(page: Page) {
   ) {
     const next = page.getByRole("button").filter({ hasText: "点击继续 →" });
     await expect(next).toBeVisible();
-    const saved = page.waitForResponse(
-      (r) => r.url().endsWith("/reading") && r.request().method() === "POST",
-    );
-    await next.click();
-    expect((await saved).ok()).toBe(true);
+    // A response can arrive before React renders the next line. Wait for that
+    // line before clicking, and match the exact progress write we are advancing.
+    await expect(next).toContainText(p.performance![index]!.text);
+    const [saved] = await Promise.all([
+      page.waitForResponse((r) => {
+        if (!r.url().endsWith("/reading") || r.request().method() !== "POST")
+          return false;
+        const body = r.request().postDataJSON() as {
+          key: string;
+          position: number;
+        };
+        return body.key === node && body.position === index + 1;
+      }),
+      next.click(),
+    ]);
+    expect(saved.ok()).toBe(true);
   }
   await expect(
     page.getByRole("button").filter({ hasText: "点击继续 →" }),
   ).toHaveCount(0);
 }
 export async function start(page: Page, guest = false) {
-  await page.addInitScript(() => {
-    window.matchMedia = () => ({
-      matches: true,
-      addEventListener() {},
-      removeEventListener() {},
-      addListener() {},
-      removeListener() {},
-      dispatchEvent() {
-        return true;
-      },
-      media: "",
-      onchange: null,
-    });
-  });
+  // Apply reduced motion to both CSS and JavaScript without changing unrelated
+  // viewport/interaction media queries used by the UI component library.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await page
     .getByRole("button", { name: guest ? "立即试玩 · 第一幕" : "开发环境试玩" })
