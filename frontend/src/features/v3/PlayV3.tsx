@@ -842,6 +842,7 @@ export function PlayV3({
           )}
           {panel === "work" && (
             <Work
+              draftIdentity={{ userId, saveId: save.id }}
               state={state}
               options={play.available_actions ?? []}
               act={act}

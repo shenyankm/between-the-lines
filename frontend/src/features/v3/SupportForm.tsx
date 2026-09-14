@@ -1,4 +1,9 @@
 import { Form, TextArea, Button } from "@heroui/react";
+import {
+  useFormDraft,
+  FormDraftNotice,
+  type DraftIdentity,
+} from "./useFormDraft";
 import { useState } from "react";
 import {
   Actions,
@@ -13,16 +18,26 @@ export function SupportForm({
   options,
   act,
   busy,
+  draftIdentity,
 }: {
   state: StateV3;
   options: Option[];
   act: Act;
   busy: boolean;
+  draftIdentity?: DraftIdentity;
 }) {
-  const [kind, setKind] = useState<"leave" | "help">("leave");
-  const [reason, setReason] = useState("");
-  const [plan, setPlan] = useState("");
   const current = state.support_requests?.at(-1);
+  const selection = useFormDraft(draftIdentity, "support-selection", {
+    kind: current?.kind ?? "leave",
+  });
+  const kind = selection.value.kind === "help" ? "help" : "leave";
+  const fields = useFormDraft(draftIdentity, `support:${kind}`, {
+    reason: current?.kind === kind ? current.reason : "",
+    plan: current?.kind === kind ? current.plan : "",
+  });
+  const reason = fields.value.reason ?? "",
+    plan = fields.value.plan ?? "";
+  const [errors, setErrors] = useState({ reason: false, plan: false });
   const processing = !!current?.submitted && !current.completion;
   const disabledReason = processing
     ? "申请已提交，等待处理完成。"
@@ -30,10 +45,23 @@ export function SupportForm({
   return (
     <section aria-label="请假与求助申请">
       <h3>请假与求助</h3>
+      <FormDraftNotice
+        storageIssue={fields.storageIssue || selection.storageIssue}
+      />
+      <Button
+        variant="secondary"
+        isDisabled={processing}
+        onClick={() => fields.update({ reason: "", plan: "" })}
+      >
+        清空本类申请输入
+      </Button>
       <Form
         onSubmit={(event) => {
           event.preventDefault();
           if (disabledReason) return;
+          const invalid = { reason: !reason.trim(), plan: !plan.trim() };
+          setErrors(invalid);
+          if (invalid.reason || invalid.plan) return;
           act("draft_support", "sun", {
             params: { support_kind: kind, reason, plan },
           });
@@ -44,9 +72,7 @@ export function SupportForm({
           <select
             value={kind}
             disabled={processing}
-            onChange={(event) =>
-              setKind(event.target.value as "leave" | "help")
-            }
+            onChange={(event) => selection.update({ kind: event.target.value })}
           >
             <option value="leave">请假休息</option>
             <option value="help">请求协作支持</option>
@@ -59,9 +85,18 @@ export function SupportForm({
             maxLength={1000}
             value={reason}
             disabled={processing}
-            onChange={(event) => setReason(event.target.value)}
+            onChange={(event) => fields.update({ reason: event.target.value })}
+            aria-invalid={errors.reason}
+            aria-describedby={
+              errors.reason ? "support-reason-error" : undefined
+            }
           />
         </label>
+        {errors.reason && (
+          <p id="support-reason-error" role="alert">
+            请填写原因，不能只输入空格。
+          </p>
+        )}
         <label>
           交接或分工安排
           <TextArea
@@ -69,9 +104,16 @@ export function SupportForm({
             maxLength={1000}
             value={plan}
             disabled={processing}
-            onChange={(event) => setPlan(event.target.value)}
+            onChange={(event) => fields.update({ plan: event.target.value })}
+            aria-invalid={errors.plan}
+            aria-describedby={errors.plan ? "support-plan-error" : undefined}
           />
         </label>
+        {errors.plan && (
+          <p id="support-plan-error" role="alert">
+            请填写交接或分工安排。
+          </p>
+        )}
         <Button
           variant="primary"
           type="submit"
