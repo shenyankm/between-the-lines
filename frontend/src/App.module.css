@@ -22,7 +22,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 18px;
+  font-weight: 400;
   letter-spacing: 3px;
   color: #d7bd94;
 }
@@ -1259,4 +1261,90 @@
 }
 .home .homeContent {
   text-shadow: 0 1px 12px #10203366;
+}
+
+.homeAccount {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.home .accountAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #263e54;
+  color: #ead5aa;
+  border: 1px solid #d7bd9480;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.accountAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.accountAvatar:focus-visible {
+  outline: 2px solid #eec65d;
+  outline-offset: 3px;
+}
+
+.home .accountAvatar {
+  min-width: 44px;
+  min-height: 44px;
+  box-shadow: 0 2px 10px #0003;
+  transition:
+    background 150ms,
+    border-color 150ms;
+}
+.home .accountAvatar:hover,
+.home .accountAvatar[data-pressed] {
+  background: #36516a;
+  border-color: #edc364;
+}
+.accountPopover {
+  z-index: 100;
+  width: 180px;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border: 1px solid #71839966;
+  border-radius: 14px;
+  background: #152638;
+  color: #edf1f6;
+  box-shadow: 0 12px 36px #0006;
+}
+.accountMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  outline: none;
+  padding: 0;
+}
+.accountMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: 14px;
+  line-height: 24px;
+  cursor: pointer;
+  outline: none;
+  color: #edf1f6;
+}
+.accountMenuItem svg {
+  color: #d7bd94;
+  flex-shrink: 0;
+}
+.accountMenuItem:hover,
+.accountMenuItem[data-focused] {
+  background: #2b435b;
+}
+.accountMenuItem + .accountMenuItem {
+  border-top: 1px solid #71839933;
 }

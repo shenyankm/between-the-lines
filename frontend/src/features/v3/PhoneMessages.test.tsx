@@ -21,7 +21,6 @@ const base = {
   hasMore: true,
   loadingMore: false,
   loadMore: vi.fn(),
-  scene: story.acts[1]!,
   group: false,
 };
 it("preserves the reading anchor on prepend and offers new messages without stealing scroll", () => {

@@ -4077,6 +4077,16 @@
       },
       "PlayStateOut": {
         "properties": {
+          "phone_choice_evidence": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Phone Choice Evidence"
+          },
           "performance": {
             "items": {
               "$ref": "#/components/schemas/SceneLine"
@@ -5329,6 +5339,17 @@
       },
       "UserOut": {
         "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "id": {
             "type": "string",
             "title": "Id"

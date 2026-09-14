@@ -364,3 +364,34 @@ def test_existing_multiple_response_flags_are_preserved_but_cannot_add_another()
     with pytest.raises(RuleError, match="这次回应已经作出"):
         transition_v3(state, "join_farewell")
     assert state.model_dump() == before
+
+
+@pytest.mark.parametrize("revision", [2, 3])
+def test_act_three_follows_document_dialogue_order(revision):
+    from app.story import load_story
+
+    state = initial_v3()
+    state.content_revision = revision
+    state.act = 3
+    state.node = "act_3"
+    story = load_story(3, revision)
+    before = state.model_dump()
+    lines = story.performance_for(state)
+    assert [line.speaker for line in lines] == [
+        "narrator",
+        "group",
+        "zhang",
+        "player",
+        "zhang",
+    ]
+    assert "采购单的事情还没有完全结束" in lines[0].text
+    assert "听说周菱菱准备跳槽了" in lines[1].text
+    assert "最近项目进度需要重新确认" in lines[2].text
+    assert "项目" in lines[3].text and "去留" in lines[3].text
+    assert "项目节点和交付记录整理给我" in lines[4].text
+    assert [choice.action for choice in story.acts[3].choices] == [
+        "clarify",
+        "report",
+        "trace_rumor",
+    ]
+    assert state.model_dump() == before

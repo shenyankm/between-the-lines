@@ -1,6 +1,12 @@
-import { Button, Card } from "@heroui/react";
+import { Button, Card, Dropdown } from "@heroui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Bookmark, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bookmark,
+  ChevronRight,
+  LogOut,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ErrorNotice } from "../ErrorNotice";
@@ -15,6 +21,19 @@ import { saveMetrics, saveTitle } from "./savePresentation";
 export function Home() {
   const navigate = useNavigate(),
     client = useQueryClient();
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [logoutError, setLogoutError] = useState<unknown>(null);
+  const logoutDialog = useRef<HTMLDialogElement>(null);
+  const accountTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!confirmLogout) return;
+    const dialog = logoutDialog.current;
+    const trigger = accountTrigger.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    dialog?.querySelector<HTMLElement>("#logout-title")?.focus();
+    return () => trigger?.focus();
+  }, [confirmLogout]);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [error, setError] = useState<unknown>(null),
     [busy, setBusy] = useState(false);
   const config = useQuery({
@@ -103,8 +122,66 @@ export function Home() {
       setBusy(false);
     }
   }
+  async function logout() {
+    if (busy || !user.data) return;
+    setBusy(true);
+    setLogoutError(null);
+    try {
+      await gameApi.logout();
+      clearIdentityDrafts(user.data.id);
+      await client.cancelQueries();
+      setConfirmLogout(false);
+      client.clear();
+      await client.invalidateQueries({ queryKey: ["user"] });
+    } catch (e) {
+      setLogoutError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <main className={s.home}>
+      {confirmLogout && (
+        <dialog
+          ref={logoutDialog}
+          className={s.confirm}
+          role="alertdialog"
+          aria-labelledby="logout-title"
+          aria-describedby="logout-description"
+          onCancel={(event) => {
+            event.preventDefault();
+            if (!busy) setConfirmLogout(false);
+          }}
+        >
+          <header className={s.confirmHeader}>
+            <h2 id="logout-title" tabIndex={-1}>
+              退出登录？
+            </h2>
+          </header>
+          <div className={s.confirmBody}>
+            <p id="logout-description">
+              退出后需要重新登录。故事进度会保留，未提交的输入草稿将被清除。
+            </p>
+            <ErrorNotice error={logoutError} />
+          </div>
+          <footer className={s.confirmActions}>
+            <Button
+              variant="secondary"
+              isDisabled={busy}
+              onClick={() => setConfirmLogout(false)}
+            >
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              isDisabled={busy}
+              onClick={() => void logout()}
+            >
+              {busy ? "正在退出…" : "确认退出"}
+            </Button>
+          </footer>
+        </dialog>
+      )}
       <nav className={s.topbar}>
         <span className={s.brand}>
           <img
@@ -116,7 +193,61 @@ export function Home() {
           />
           章外回声
         </span>
-        <span className={s.muted}>互动职场小说 · 第一季</span>
+        <div className={s.homeAccount}>
+          <span className={s.muted}>互动职场小说 · 第一季</span>
+          {user.data && !user.error && (
+            <Dropdown>
+              <Dropdown.Trigger
+                ref={accountTrigger}
+                className={s.accountAvatar}
+                aria-label="用户菜单"
+                isDisabled={busy}
+              >
+                {user.data.avatar_url && !avatarFailed ? (
+                  <img
+                    src={user.data.avatar_url}
+                    alt="用户头像"
+                    referrerPolicy="no-referrer"
+                    onError={() => setAvatarFailed(true)}
+                  />
+                ) : (
+                  <span aria-hidden="true">
+                    {user.data.name.slice(0, 1) || "我"}
+                  </span>
+                )}
+              </Dropdown.Trigger>
+              <Dropdown.Popover
+                placement="bottom end"
+                offset={10}
+                className={s.accountPopover}
+              >
+                <Dropdown.Menu aria-label="账户操作" className={s.accountMenu}>
+                  <Dropdown.Item
+                    className={s.accountMenuItem}
+                    textValue="我的存档"
+                    id="saves"
+                    onAction={() => void navigate("/saves")}
+                  >
+                    <Bookmark size={17} aria-hidden="true" />
+                    <span>我的存档</span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    className={s.accountMenuItem}
+                    textValue="退出登录"
+                    id="logout"
+                    onAction={() => {
+                      setLogoutError(null);
+                      setConfirmLogout(true);
+                    }}
+                  >
+                    <LogOut size={17} aria-hidden="true" />
+                    <span>退出登录</span>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
+          )}
+        </div>
       </nav>
       <div className={s.homeContent}>
         <div className={s.overline}>一段关于关系与边界的故事</div>
@@ -128,11 +259,6 @@ export function Home() {
           有些话没有说出口，
           <br />
           却悄悄改变了你的位置。
-        </p>
-        <p className={s.description}>
-          成为研发专员周菱菱，在对话、流言与工作之间，
-          <br className={s.desktop} />
-          找到属于自己的回应。
         </p>
         {user.data && !user.error && !user.data.can_play ? (
           <LoginRequired user={user.data} />
@@ -152,9 +278,6 @@ export function Home() {
                 <Bookmark size={17} />
               </Link>
             )}
-            <Link className={s.textButton} to="/saves">
-              查看全部存档
-            </Link>
           </div>
         ) : (
           <div className={s.homeActions}>

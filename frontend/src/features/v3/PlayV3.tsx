@@ -1,8 +1,15 @@
-import { Smartphone, BriefcaseBusiness, Sparkles } from "lucide-react";
+import {
+  Smartphone,
+  BriefcaseBusiness,
+  Sparkles,
+  X,
+  ArrowLeft,
+} from "lucide-react";
 import { Form, TextArea, Button } from "@heroui/react";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -13,11 +20,10 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { isEvent } from "../../contracts";
 import type { GameEvent } from "../../types";
 import { Link, useNavigate } from "react-router";
-import { api, gameApi } from "../../api";
+import { api } from "../../api";
 import type { Action, Npc, PlayState, Story, TurnInput } from "../../types";
 import { playKey, useTurnController } from "../game/useTurnController";
 import {
-  clearIdentityDrafts,
   readDraft,
   writeDraft,
   readFormDraft,
@@ -65,26 +71,6 @@ export function PlayV3({
   const backdropPressed = useRef(false);
   const client = useQueryClient();
   const navigate = useNavigate();
-  const [logoutError, setLogoutError] = useState<unknown>(null);
-  const [loggingOut, setLoggingOut] = useState(false);
-  async function logout() {
-    if (loggingOut) return false;
-    setLoggingOut(true);
-    setLogoutError(null);
-    try {
-      await gameApi.logout();
-      clearIdentityDrafts(userId);
-      await client.cancelQueries();
-      client.clear();
-      void navigate("/");
-      return true;
-    } catch (error) {
-      setLogoutError(error);
-      return false;
-    } finally {
-      setLoggingOut(false);
-    }
-  }
   const save = play.save,
     state = save.state as StateV3;
   const reading = useFormDraft(
@@ -100,8 +86,38 @@ export function PlayV3({
     : 35;
   const [composingNode, setComposingNode] = useState<string | null>(null);
   const [requireMentions, setRequireMentions] = useState(false);
-  const [panel, setPanel] = useState<Panel>(null),
-    [contact, setContact] = useState<Npc | "group" | null>(null);
+  const [, refreshPanel] = useState(0);
+  const panelState = readFormDraft(userId, save.id, "panel-navigation");
+  const panel: Panel =
+    !state.ending &&
+    ["phone", "work", "relations", "discussion", "history"].includes(
+      panelState?.panel ?? "",
+    )
+      ? (panelState!.panel as Panel)
+      : null;
+  const contact: Npc | "group" | null =
+    panel === "phone" &&
+    [...contacts, "group"].includes(panelState?.contact ?? "")
+      ? (panelState!.contact as Npc | "group")
+      : null;
+  const updatePanel = useCallback(
+    (patch: Record<string, string>) => {
+      writeFormDraft(userId, save.id, "panel-navigation", {
+        ...readFormDraft(userId, save.id, "panel-navigation"),
+        ...patch,
+      });
+      refreshPanel((value) => value + 1);
+    },
+    [userId, save.id],
+  );
+  const setPanel = useCallback(
+    (value: Panel) => updatePanel({ panel: value ?? "", contact: "" }),
+    [updatePanel],
+  );
+  const setContact = useCallback(
+    (value: Npc | "group" | null) => updatePanel({ contact: value ?? "" }),
+    [updatePanel],
+  );
   const [reduced, setReduced] = useState(
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
@@ -126,6 +142,56 @@ export function PlayV3({
   const [readError, setReadError] = useState("");
   const [savingReading, setSavingReading] = useState(false);
   const panelDialog = useRef<HTMLDialogElement>(null);
+  const discussionTrigger = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    if (panel !== "discussion") return;
+    const dialog = panelDialog.current;
+    const trigger = discussionTrigger.current;
+    if (!dialog || !trigger) return;
+    const position = () => {
+      const anchor = trigger.getBoundingClientRect();
+      const width = Math.min(384, window.innerWidth - 24);
+      const beside = anchor.left >= width + 24;
+      const top = beside
+        ? Math.max(12, Math.min(anchor.top, window.innerHeight - 332))
+        : anchor.bottom + 12 < window.innerHeight / 2
+          ? anchor.bottom + 12
+          : 12;
+      dialog.style.left = `${beside ? anchor.left - width - 12 : Math.max(12, Math.min(anchor.left, window.innerWidth - width - 12))}px`;
+      dialog.style.top = `${top}px`;
+      dialog.style.maxHeight = `${window.innerHeight - top - 12}px`;
+    };
+    position();
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+    const dismiss = (event: globalThis.PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !dialog.contains(event.target) &&
+        !trigger.contains(event.target)
+      )
+        setPanel(null);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPanel(null);
+        trigger.focus();
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+      dialog.style.removeProperty("left");
+      dialog.style.removeProperty("top");
+      dialog.style.removeProperty("max-height");
+      if (dialog.contains(document.activeElement)) trigger.focus();
+    };
+  }, [panel, setPanel]);
   useEffect(() => {
     const viewport = window.visualViewport;
     const dialog = panelDialog.current;
@@ -147,11 +213,13 @@ export function PlayV3({
 
   useEffect(() => {
     const element = panelDialog.current;
-    if (panel && element && !element.open) {
-      element.showModal();
+    if (!element) return;
+    if (panel) {
+      if (element.open) element.close();
+      if (panel === "discussion") element.show();
+      else element.showModal();
       element.querySelector<HTMLElement>("#story-panel-title")?.focus();
-    }
-    if (!panel && element?.open) element.close();
+    } else if (element.open) element.close();
   }, [panel]);
   const confirmation = useRef<HTMLDialogElement>(null);
   const confirmationOrigin = useRef<HTMLElement | null>(null);
@@ -166,11 +234,9 @@ export function PlayV3({
         confirmationOrigin.current.focus();
     };
   }, [proposalId]);
-  const [leaving, setLeaving] = useState<"home" | "logout" | null>(null);
+  const [leaving, setLeaving] = useState<"home" | null>(null);
   const leaveDialog = useRef<HTMLDialogElement>(null);
   const leaveOrigin = useRef<HTMLElement | null>(null);
-  // One native dialog backs both account actions: the title takes focus and the
-  // footer buttons carry the decision.
   useEffect(() => {
     const dialog = leaveDialog.current;
     if (!dialog || !leaving) return;
@@ -181,11 +247,11 @@ export function PlayV3({
       if (leaveOrigin.current?.isConnected) leaveOrigin.current.focus();
     };
   }, [leaving]);
-  async function confirmLeave() {
+  function confirmLeave() {
     if (leaving === "home") {
       setLeaving(null);
       void navigate("/");
-    } else if (leaving === "logout" && (await logout())) setLeaving(null);
+    }
   }
   const [, refresh] = useState(0);
   const channel =
@@ -392,7 +458,7 @@ export function PlayV3({
         });
       }}
     >
-      <div className={s.recipient}>
+      <div className={dm ? s.sr : s.recipient}>
         <p id={dm ? "dm-recipient" : "scene-recipient"}>
           {dm
             ? contact === "group"
@@ -424,6 +490,24 @@ export function PlayV3({
         maxLength={1500}
         value={draft.text}
         rows={dm ? 2 : undefined}
+        onKeyDown={(e) => {
+          if (
+            !dm ||
+            e.key !== "Enter" ||
+            e.shiftKey ||
+            e.ctrlKey ||
+            e.altKey ||
+            e.metaKey ||
+            e.nativeEvent.isComposing ||
+            e.nativeEvent.keyCode === 229
+          )
+            return;
+          e.preventDefault();
+          if (e.repeat) return;
+          e.currentTarget.form
+            ?.querySelector<HTMLButtonElement>('button[type="submit"]')
+            ?.click();
+        }}
         onChange={(e) => {
           setInput(e.target.value);
           if (dm) {
@@ -486,6 +570,17 @@ export function PlayV3({
       "close_story",
     ].includes(a.action),
   );
+  const rumorChoices = ["clarify", "report", "trace_rumor"];
+  const selectedRumorChoice =
+    state.act === 3
+      ? (state.flags
+          .find((flag) => flag.startsWith("rumor_choice:"))
+          ?.split(":")[1] ??
+        play.available_actions?.find(
+          (a) => rumorChoices.includes(a.action) && a.completed,
+        )?.action ??
+        Object.keys(play.phone_choice_evidence ?? {})[0])
+      : undefined;
   const authoredChoices = scene.choices.flatMap((choice) => {
     const option = choice.entry
       ? {
@@ -503,6 +598,27 @@ export function PlayV3({
       ? [
           {
             ...option,
+            completed:
+              state.act === 3 && rumorChoices.includes(choice.action)
+                ? selectedRumorChoice === choice.action
+                : option.completed,
+            enabled:
+              state.act === 3 &&
+              rumorChoices.includes(choice.action) &&
+              selectedRumorChoice
+                ? false
+                : option.enabled,
+            reason:
+              state.act === 3 &&
+              rumorChoices.includes(choice.action) &&
+              selectedRumorChoice !== undefined &&
+              selectedRumorChoice !== choice.action
+                ? "本幕已选择其他应对方式"
+                : option.reason,
+            selectedFromPhone:
+              state.act === 3 &&
+              selectedRumorChoice === choice.action &&
+              !!play.phone_choice_evidence?.[choice.action]?.length,
             label: choice.label,
             target: choice.target ?? option.target,
           },
@@ -535,14 +651,6 @@ export function PlayV3({
       )}
       {controller.status && <p role="status">{controller.status}</p>}
       <ErrorNotice error={controller.issue} message={controller.error} />
-      {!leaving && (
-        <ErrorNotice
-          error={logoutError}
-          onRetry={() => void logout()}
-          retryLabel="重试退出"
-          disabled={loggingOut}
-        />
-      )}
       {controller.pending && (
         <Button
           variant="secondary"
@@ -591,12 +699,25 @@ export function PlayV3({
             {scene.time} · {scene.location}
           </small>
         </div>
-        <div className={s.metricPanel}>
-          {controller.saved && !controller.pending && !controller.error && (
-            <small className={s.savedHint} role="status">
-              已保存
-            </small>
-          )}
+        <div className={`${s.metricPanel} ${s.navigationMetrics}`}>
+          <Button
+            variant="secondary"
+            className={s.homeButton}
+            isDisabled={
+              !state.ending &&
+              (controller.busy || !!controller.pending || savingReading)
+            }
+            onClick={() =>
+              state.ending ? void navigate("/") : setLeaving("home")
+            }
+            aria-description={
+              !state.ending && (controller.busy || controller.pending)
+                ? "当前回合处理完成后可返回首页"
+                : undefined
+            }
+          >
+            返回首页
+          </Button>
           <div className={s.metrics}>
             {[
               ["舆论温度", state.heat],
@@ -738,81 +859,53 @@ export function PlayV3({
         </section>
       )}
       {state.ending && !panel && !play.proposal && !interlude && feedback}
-      <nav className={s.toolbar} aria-label="故事工具与账户">
-        <div className={s.storyTools}>
-          {(
-            [
-              ["phone", "我的手机"],
-              ["work", "工作系统"],
-              ["relations", "关系图"],
-              ["discussion", "知乎众议"],
-            ] as const
-          ).map(([id, label]) => (
-            <Button
-              variant="secondary"
-              key={id}
-              data-panel={id}
-              onClick={() => {
-                setRequireMentions(false);
-                setPanel(id);
-                setContact(null);
-                if (id === "work") void mark("work", workRecordCount);
-              }}
-            >
-              <span>
-                {label}
-                {id === "work" && workRecordCount > (positions.work ?? 0)
-                  ? " · 未读"
-                  : id === "work" && state.work?.purchase === "returned"
-                    ? " · 待处理"
-                    : ""}
-              </span>
-              {id === "phone" ? (
-                <Smartphone size={18} aria-hidden="true" />
-              ) : id === "work" ? (
-                <BriefcaseBusiness size={18} aria-hidden="true" />
-              ) : id === "relations" ? (
-                <span aria-hidden="true">⌘</span>
-              ) : (
-                <Sparkles size={18} aria-hidden="true" />
-              )}
-            </Button>
-          ))}
-          <Button
-            variant="secondary"
-            data-panel="history"
-            onClick={() => setPanel("history")}
-          >
-            完整记录
-          </Button>
-        </div>
-        <div className={s.accountTools}>
-          <Button
-            variant="secondary"
-            isDisabled={
-              controller.busy ||
-              !!controller.pending ||
-              savingReading ||
-              loggingOut
-            }
-            onClick={() => setLeaving("home")}
-            aria-description={
-              controller.busy || controller.pending
-                ? "当前回合处理完成后可返回首页"
-                : undefined
-            }
-          >
-            返回首页
-          </Button>
-          <Button
-            variant="secondary"
-            isDisabled={loggingOut}
-            onClick={() => setLeaving("logout")}
-          >
-            退出登录
-          </Button>
-        </div>
-      </nav>
+      {!state.ending && (
+        <nav className={s.toolbar} aria-label="故事工具与账户">
+          <div className={s.storyTools}>
+            {(
+              [
+                ["phone", "我的手机"],
+                ["work", "工作系统"],
+                ["relations", "关系图"],
+                ["discussion", "知乎众议"],
+              ] as const
+            ).map(([id, label]) => (
+              <Button
+                variant="secondary"
+                key={id}
+                data-panel={id}
+                ref={id === "discussion" ? discussionTrigger : undefined}
+                aria-expanded={id === "discussion" ? panel === id : undefined}
+                aria-controls={id === "discussion" ? "story-panel" : undefined}
+                onClick={() => {
+                  setRequireMentions(false);
+                  setPanel(id === "discussion" && panel === id ? null : id);
+                  setContact(null);
+                  if (id === "work") void mark("work", workRecordCount);
+                }}
+              >
+                <span>
+                  {label}
+                  {id === "work" && workRecordCount > (positions.work ?? 0)
+                    ? " · 未读"
+                    : id === "work" && state.work?.purchase === "returned"
+                      ? " · 待处理"
+                      : ""}
+                </span>
+                {id === "phone" ? (
+                  <Smartphone size={18} aria-hidden="true" />
+                ) : id === "work" ? (
+                  <BriefcaseBusiness size={18} aria-hidden="true" />
+                ) : id === "relations" ? (
+                  <span aria-hidden="true">⌘</span>
+                ) : (
+                  <Sparkles size={18} aria-hidden="true" />
+                )}
+              </Button>
+            ))}
+          </div>
+        </nav>
+      )}
       {play.proposal && (
         <dialog
           ref={confirmation}
@@ -888,54 +981,26 @@ export function PlayV3({
           aria-labelledby="leave-title"
           onCancel={(event) => {
             event.preventDefault();
-            if (!loggingOut) setLeaving(null);
+            setLeaving(null);
           }}
         >
           <header className={s.confirmHeader}>
             <h2 id="leave-title" tabIndex={-1}>
-              {leaving === "home" ? "返回首页" : "退出登录"}
+              返回首页
             </h2>
           </header>
           <div className={s.confirmBody}>
-            {leaving === "home" ? (
-              <p>
-                将回到首页，可以随时继续这段故事；
-                <br />
-                已填写的输入会保留。
-              </p>
-            ) : (
-              <p>
-                退出后需要重新登录才能继续；
-                <br />
-                未提交的输入草稿会被清除，故事进度仍保留在存档中。
-              </p>
-            )}
-            {leaving === "logout" && (
-              <ErrorNotice
-                error={logoutError}
-                onRetry={() => void logout()}
-                retryLabel="重试退出"
-                disabled={loggingOut}
-              />
-            )}
+            <p>
+              将回到首页，可以随时继续这段故事；
+              <br />
+              已填写的输入会保留。
+            </p>
           </div>
           <footer className={s.confirmActions}>
-            <Button
-              variant="secondary"
-              isDisabled={loggingOut}
-              onClick={() => void confirmLeave()}
-            >
-              {leaving === "home"
-                ? "确认返回"
-                : loggingOut
-                  ? "正在退出…"
-                  : "确认退出"}
+            <Button variant="secondary" onClick={() => void confirmLeave()}>
+              确认返回
             </Button>
-            <Button
-              variant="secondary"
-              isDisabled={loggingOut}
-              onClick={() => setLeaving(null)}
-            >
+            <Button variant="secondary" onClick={() => setLeaving(null)}>
               取消
             </Button>
           </footer>
@@ -954,6 +1019,7 @@ export function PlayV3({
       )}
       <dialog
         ref={panelDialog}
+        id="story-panel"
         className={`${s.drawer} ${panel === "phone" ? s.phoneDrawer : panel === "work" ? s.workDrawer : panel === "discussion" ? s.discussionDrawer : ""}`}
         aria-labelledby="story-panel-title"
         onCancel={() => setPanel(null)}
@@ -968,10 +1034,11 @@ export function PlayV3({
           {panel === "phone" && contact && (
             <Button
               variant="ghost"
+              className={s.panelBack}
               aria-label="返回会话列表"
               onClick={() => setContact(null)}
             >
-              ← 会话列表
+              <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
             </Button>
           )}
           <h2 id="story-panel-title" tabIndex={-1}>
@@ -995,14 +1062,16 @@ export function PlayV3({
               <span className={s.workUser}>周菱菱</span>
             </>
           )}
-          <Button
-            variant="secondary"
-            className={s.panelClose}
-            aria-label="关闭面板"
-            onClick={() => setPanel(null)}
-          >
-            关闭 ×
-          </Button>
+          {!(panel === "phone" && contact) && (
+            <Button
+              variant="secondary"
+              className={s.panelClose}
+              aria-label="关闭面板"
+              onClick={() => setPanel(null)}
+            >
+              <X size={20} strokeWidth={1.8} aria-hidden="true" />
+            </Button>
+          )}
         </header>
         {panel && !play.proposal && !interlude && feedback}
         <div
@@ -1022,7 +1091,6 @@ export function PlayV3({
                     hasMore={conversation.hasNextPage}
                     loadingMore={conversation.isFetchingNextPage}
                     loadMore={() => void conversation.fetchNextPage()}
-                    scene={story.acts[state.act]!}
                     group={contact === "group"}
                   />
                   <div className={s.phoneFooter}>
@@ -1050,10 +1118,18 @@ export function PlayV3({
                         e.channel === (n === "group" ? "group" : "dm") &&
                         (n === "group" || e.npc === n),
                     );
-                    const unread =
-                      play.contacts?.[n]?.unread ??
-                      messages.length >
-                        (positions[n === "group" ? "group" : `dm_${n}`] ?? 0);
+                    const readingKey = n === "group" ? "group" : `dm_${n}`;
+                    const messageCount =
+                      play.contacts?.[n]?.count ?? messages.length;
+                    const unreadCount = Math.max(
+                      0,
+                      messageCount -
+                        Math.max(
+                          positions[readingKey] ?? 0,
+                          play.reading?.[readingKey] ?? 0,
+                        ),
+                    );
+                    const unread = unreadCount > 0;
                     return (
                       <Button
                         variant="secondary"
@@ -1063,10 +1139,7 @@ export function PlayV3({
                         data-group={n === "group"}
                         onClick={() => {
                           setContact(n);
-                          void mark(
-                            n === "group" ? "group" : `dm_${n}`,
-                            play.contacts?.[n]?.count ?? messages.length,
-                          );
+                          void mark(readingKey, messageCount);
                         }}
                       >
                         {n === "group" ? (
@@ -1074,14 +1147,15 @@ export function PlayV3({
                             群
                           </span>
                         ) : (
-                          <img
-                            className={s.avatar}
-                            src={imageSource(
-                              story.npcs[n]?.portrait ?? "",
-                              256,
-                            )}
-                            alt=""
-                          />
+                          <span className={s.avatar} aria-hidden="true">
+                            <img
+                              src={imageSource(
+                                story.npcs[n]?.portrait ?? "",
+                                256,
+                              )}
+                              alt=""
+                            />
+                          </span>
                         )}
                         <span className={s.contactText}>
                           <strong>
@@ -1097,13 +1171,7 @@ export function PlayV3({
                         </span>
                         {unread && (
                           <span className={s.unread} aria-hidden="true">
-                            {Math.max(
-                              0,
-                              (play.contacts?.[n]?.count ?? messages.length) -
-                                (positions[
-                                  n === "group" ? "group" : `dm_${n}`
-                                ] ?? 0),
-                            ) || ""}
+                            {unreadCount}
                           </span>
                         )}
                       </Button>

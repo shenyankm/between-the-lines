@@ -13,7 +13,6 @@ export function PhoneMessages({
   hasMore,
   loadingMore,
   loadMore,
-  scene,
   group,
 }: {
   story: Story;
@@ -24,7 +23,6 @@ export function PhoneMessages({
   hasMore: boolean;
   loadingMore: boolean;
   loadMore: () => void;
-  scene: Story["acts"][number];
   group: boolean;
 }) {
   const scroll = useRef<HTMLDivElement>(null);
@@ -83,10 +81,6 @@ export function PhoneMessages({
         )}
         {!loading && !error && !events.length && (
           <div className={s.emptyConversation}>
-            <aside className={s.sceneHint}>
-              <strong>当前情景 · {scene.title}</strong>
-              <p>{scene.intro}</p>
-            </aside>
             <p>暂无聊天记录</p>
             <small>发送消息，开始这次交谈。</small>
             {group && <small>群内只发布已核实的工作事实。</small>}
@@ -105,11 +99,9 @@ export function PhoneMessages({
               data-side={system ? "system" : incoming ? "incoming" : "outgoing"}
             >
               {incoming && !system && person && (
-                <img
-                  className={s.avatar}
-                  src={imageSource(person.portrait, 256)}
-                  alt=""
-                />
+                <span className={s.avatar} aria-hidden="true">
+                  <img src={imageSource(person.portrait, 256)} alt="" />
+                </span>
               )}
               <div className={s.messageBubble}>
                 <strong>

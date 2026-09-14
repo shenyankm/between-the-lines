@@ -34,6 +34,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     subject: Mapped[str] = mapped_column(String(255), unique=True)
     name: Mapped[str] = mapped_column(String(100))
+    avatar_url: Mapped[str | None] = mapped_column(String(2048))
     identity_type: Mapped[str] = mapped_column(
         String(16), default="member", server_default="member"
     )

@@ -212,9 +212,11 @@ def transition(
 
 def available_actions(state: GameState) -> list[AvailableAction]:
     if isinstance(state, GameStateV3):
+        from .phone_choices import RUMOR_CHOICES, selected_rumor_choice
         from .story_rules import CATALOG as V3_CATALOG
         from .story_rules import action_effect, requires_confirmation
 
+        selected = selected_rumor_choice(state.flags) if state.act == 3 else None
         result: list[AvailableAction] = []
         if state.ending:
             return result
@@ -244,7 +246,8 @@ def available_actions(state: GameState) -> list[AvailableAction]:
                     target=target,
                     enabled=not reason,
                     completed=bool(
-                        flag
+                        (action not in RUMOR_CHOICES or state.act != 3 or action == selected)
+                        and flag
                         and (
                             f"{flag}:act_{state.act}"
                             if action

@@ -16,6 +16,7 @@ from .game_types import (
     Submission,
     SupportApplication,
 )
+from .phone_choices import RUMOR_CHOICES, selected_rumor_choice
 
 # label, acts, target, completion fact, explanation (shared catalogue shape)
 CATALOG = {
@@ -292,6 +293,12 @@ def transition_v3(
         and {"appeased:act_1", "boundary:act_1", "farewell_requested"}.intersection(s.flags)
     ):
         raise RuleError("这次回应已经作出，请继续当前剧情，不能改选其他回答。")
+    if s.act == 3 and action in RUMOR_CHOICES:
+        selected = selected_rumor_choice(s.flags)
+        if selected and selected != action:
+            raise RuleError("本幕已选择另一种应对方式，不能改选；仍可继续手机对话。")
+        if not selected:
+            s.flags.append(f"rumor_choice:{action}")
     result_key = f"{flag}:act_{s.act}" if repeatable else flag
     if result_key and result_key in s.flags:
         raise RuleError("这项结果已经记录，不会重复计分。")

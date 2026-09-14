@@ -1,10 +1,9 @@
 import { Button } from "@heroui/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { LoginRequired } from "../LoginRequired";
 import { PlayV3 } from "../v3/PlayV3";
-import { LogOut } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { ErrorNotice } from "../../ErrorNotice";
 import { gameApi } from "../../api";
 import s from "../../App.module.css";
@@ -12,7 +11,7 @@ import { SceneInterlude } from "../../SceneInterlude";
 import { useUI } from "../../store";
 import type { Action, Npc, TurnInput } from "../../types";
 
-import { clearIdentityDrafts, readDraft, writeDraft } from "./drafts";
+import { readDraft, writeDraft } from "./drafts";
 import { imageSource } from "../../images";
 import { ProductPanel } from "./ProductPanel";
 import { EventHistory } from "./EventHistory";
@@ -27,9 +26,7 @@ function LegacyPlaySession({
   userId: string;
   guest?: boolean;
 }) {
-  const { id = "" } = useParams(),
-    navigate = useNavigate(),
-    client = useQueryClient();
+  const { id = "" } = useParams();
   const { npc, panel, selectNpc, setPanel } = useUI();
   const [guestGate, setGuestGate] = useState(false);
   const config = useQuery({
@@ -125,24 +122,6 @@ function LegacyPlaySession({
     storyQuery.data,
     saveQuery.data?.state.act,
   ]);
-  const [logoutError, setLogoutError] = useState<unknown>(null);
-  const [loggingOut, setLoggingOut] = useState(false);
-  async function logout() {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    setLogoutError(null);
-    try {
-      await gameApi.logout();
-      clearIdentityDrafts(userId);
-      await client.cancelQueries();
-      client.clear();
-      void navigate("/");
-    } catch (error) {
-      setLogoutError(error);
-    } finally {
-      setLoggingOut(false);
-    }
-  }
   async function act(
     action: Action,
     text = "",
@@ -376,21 +355,6 @@ function LegacyPlaySession({
         relationships={save.relationships}
         availableActions={playQuery.data?.available_actions}
       />
-      <ErrorNotice
-        error={logoutError}
-        onRetry={() => void logout()}
-        retryLabel="重试退出"
-        disabled={loggingOut}
-      />
-      <Button
-        variant="secondary"
-        isDisabled={loggingOut}
-        className={s.logout}
-        aria-label="退出登录"
-        onClick={() => void logout()}
-      >
-        <LogOut size={14} />
-      </Button>
     </main>
   );
 }

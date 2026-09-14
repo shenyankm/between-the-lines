@@ -32,7 +32,7 @@ export function Actions({
   act,
   busy,
 }: {
-  options: Option[];
+  options: (Option & { selectedFromPhone?: boolean })[];
   act: Act;
   busy: boolean;
 }) {
@@ -47,9 +47,12 @@ export function Actions({
           aria-description={a.reason || a.effect}
           onClick={() => act(a.action, a.target ?? "sun")}
         >
-          {a.completed ? "✓ " : ""}
+          {a.completed || a.selectedFromPhone ? "✓ " : ""}
           {a.label}
-          {!a.enabled && !a.completed && <small>{a.reason}</small>}
+          {a.selectedFromPhone && <small>已通过手机消息选择</small>}
+          {!a.enabled && !a.completed && !a.selectedFromPhone && (
+            <small>{a.reason}</small>
+          )}
         </Button>
       ))}
     </div>

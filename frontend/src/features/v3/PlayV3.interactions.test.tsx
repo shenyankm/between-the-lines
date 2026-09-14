@@ -197,7 +197,7 @@ it("keeps scene, private and group drafts separate and clears only the matching 
     }),
   );
   expect(readDraft("test-user", p.save.id, "sun", "dm:sun").text).toBe("");
-  fireEvent.click(screen.getByText("← 会话列表"));
+  fireEvent.click(screen.getByRole("button", { name: "返回会话列表" }));
   fireEvent.click(screen.getByRole("button", { name: /研发部工作群 · 未读/ }));
   expect(await screen.findByText("群内只发布已核实的工作事实。")).toBeTruthy();
   fireEvent.change(within(dm).getByLabelText("自由表达"), {
@@ -215,6 +215,7 @@ it("keeps scene, private and group drafts separate and clears only the matching 
     ctrl.completed?.({ action: "speak", text: "核查记录", channel: "group" }),
   );
   expect(readDraft("test-user", p.save.id, "sun", "group:group").text).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: "返回会话列表" }));
   fireEvent.click(screen.getByLabelText("关闭面板"));
   expect(screen.getByLabelText<HTMLTextAreaElement>("自由表达").value).toBe(
     "现场草稿",
@@ -330,6 +331,7 @@ it("opens authored phone and work entries without pretending an action occurred"
   expect(screen.queryByText("尚未解锁")).toBeNull();
   fireEvent.click(screen.getByText("打开王会计"));
   expect(screen.getByRole("heading", { name: "王会计" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "返回会话列表" }));
   fireEvent.click(screen.getByLabelText("关闭面板"));
   fireEvent.click(screen.getByText("打开采购"));
   expect(screen.getByLabelText("实验用途")).toBeTruthy();
@@ -519,41 +521,17 @@ it("routes public clarification through a confirmation card in the group channel
     proposed_action: "clarify",
   });
 });
-it("keeps logout errors local and clears only this identity's drafts after retry", async () => {
-  let fail = true;
-  server.use(
-    http.post("/api/auth/logout", () =>
-      fail
-        ? new HttpResponse(null, { status: 400 })
-        : HttpResponse.json({ ok: true }),
-    ),
-  );
-  const p = play();
-  mount(p);
-  fireEvent.change(screen.getByLabelText("自由表达"), {
-    target: { value: "待保留" },
-  });
-  writeDraft(
-    "another-user",
-    "save-1",
-    "sun",
-    { text: "他人草稿", act: 1 },
-    "scene:sun",
-  );
-  fireEvent.click(screen.getByText("退出登录"));
-  fireEvent.click(screen.getByText("确认退出"));
-  await screen.findByText("重试退出");
-  expect(readDraft("test-user", "save-1", "sun", "scene:sun").text).toBe(
-    "待保留",
-  );
-  fail = false;
-  fireEvent.click(screen.getByText("重试退出"));
-  await waitFor(() =>
-    expect(readDraft("test-user", "save-1", "sun", "scene:sun").text).toBe(""),
-  );
-  expect(readDraft("another-user", "save-1", "sun", "scene:sun").text).toBe(
-    "他人草稿",
-  );
+it("does not show logout while playing", () => {
+  mount(play());
+  expect(
+    screen.getByRole("button", { name: "返回首页" }).closest("header"),
+  ).not.toBeNull();
+  expect(
+    within(screen.getByRole("navigation")).queryByRole("button", {
+      name: "返回首页",
+    }),
+  ).toBeNull();
+  expect(screen.queryByRole("button", { name: "退出登录" })).toBeNull();
 });
 it("copies a discussion card into the scene draft without telling any character", async () => {
   server.use(
@@ -607,7 +585,7 @@ it("paginates older messages using the first event cursor", async () => {
   expect(seen).toEqual(["", "event-0"]);
 });
 
-it("opens relationship evidence and historical cards without altering story facts", async () => {
+it("opens relationship evidence without altering story facts", () => {
   server.use(
     http.get("/api/saves/save-1/jobs", () =>
       HttpResponse.json([
@@ -649,12 +627,7 @@ it("opens relationship evidence and historical cards without altering story fact
   fireEvent.click(screen.getByRole("button", { name: "关系图" }));
   expect(screen.getByText("选择一个人物，查看当前关系及其依据。")).toBeTruthy();
   fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: true }));
-  fireEvent.click(screen.getByText("完整记录"));
-  fireEvent.click(await screen.findByText("带入草稿（可编辑）"));
-  expect(screen.getByLabelText<HTMLTextAreaElement>("自由表达").value).toBe(
-    "先问清具体要求",
-  );
-  expect(ctrl.submit).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: "完整记录" })).toBeNull();
 });
 it("uses the persisted ending instead of an active scene", async () => {
   server.use(
@@ -682,6 +655,11 @@ it("uses the persisted ending instead of an active scene", async () => {
   mount(p);
   await screen.findByText("已保存的结局正文");
   expect(screen.queryByLabelText("自由表达")).toBeNull();
+  expect(
+    screen.queryByRole("navigation", { name: "故事工具与账户" }),
+  ).toBeNull();
+  expect(screen.getByRole("button", { name: "返回首页" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "我的手机" })).toBeNull();
 });
 
 it.each(["busy", "pending"] as const)(
@@ -791,6 +769,7 @@ it("moves turn errors and recovery into the open panel without duplicating feedb
   expect(
     within(panel).getByLabelText<HTMLTextAreaElement>("自由表达").value,
   ).toBe("私聊保留");
+  fireEvent.click(within(panel).getByRole("button", { name: "返回会话列表" }));
   fireEvent.click(within(panel).getByRole("button", { name: "关闭面板" }));
   expect(screen.getAllByRole("alert")).toHaveLength(1);
   expect(screen.getByLabelText<HTMLTextAreaElement>("自由表达").value).toBe(
@@ -861,6 +840,7 @@ it("keeps the scene compact after editing without letting private input change i
     within(screen.getByRole("dialog")).getByLabelText("自由表达"),
   );
   expect(root.dataset.composing).toBe("false");
+  fireEvent.click(screen.getByRole("button", { name: "返回会话列表" }));
   fireEvent.click(screen.getByLabelText("关闭面板"));
   const input = screen.getByLabelText("自由表达");
   fireEvent.focus(input);
@@ -872,14 +852,15 @@ it("keeps the scene compact after editing without letting private input change i
   );
 });
 
-it("shows contextual empty conversations without greeting messages or submitting a turn", async () => {
+it("shows minimal empty conversations without greeting messages or submitting a turn", async () => {
   server.use(http.get("/api/saves/:id/events", () => HttpResponse.json([])));
   mount();
   fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
   fireEvent.click(screen.getByRole("button", { name: "张工" }));
   const dialog = screen.getByRole("dialog");
   expect(await within(dialog).findByText("暂无聊天记录")).toBeTruthy();
-  expect(within(dialog).getByText(/当前情景.*第一幕/)).toBeTruthy();
+  expect(within(dialog).queryByText(/当前情景/)).toBeNull();
+  expect(within(dialog).queryByRole("button", { name: "关闭面板" })).toBeNull();
   expect(within(dialog).queryByText(/坐吧，项目最近怎么样/)).toBeNull();
   expect(ctrl.submit).not.toHaveBeenCalled();
 });
@@ -933,17 +914,14 @@ it("keeps completed receipts only in full history and shows a compact save hint"
   mount(p);
   expect(screen.queryByText("最近一轮 · 已保存记录")).toBeNull();
   expect(screen.queryByText(ctrl.savedStatus)).toBeNull();
-  expect(screen.getByText("已保存")).toBeTruthy();
+  expect(screen.queryByText("已保存")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
   const dialog = screen.getByRole("dialog");
   expect(within(dialog).queryByText("最近一轮 · 已保存记录")).toBeNull();
   expect(within(dialog).queryByText(ctrl.savedStatus)).toBeNull();
   expect(within(dialog).getByLabelText("操作反馈").textContent).toBe("");
   fireEvent.click(within(dialog).getByRole("button", { name: "关闭面板" }));
-  fireEvent.click(screen.getByRole("button", { name: "完整记录" }));
-  expect(
-    within(screen.getByRole("dialog")).getByText("最近一轮 · 已保存记录"),
-  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "完整记录" })).toBeNull();
 });
 
 it.each(["appeased:act_1", "boundary:act_1", "farewell_requested"])(
@@ -990,7 +968,7 @@ it.each([6, 7])(
     p.reading = { prologue: reading };
     p.performance = authored.scenes.prologue;
     p.available_actions = [option("begin")];
-    const view = mount(p, authored as Story);
+    const view = mount(p, { ...authored, scenes: {} } as Story);
     fireEvent.click(screen.getByRole("button", { name: /点击显示全文/ }));
     const enter = screen.getByRole("button", { name: /进入故事/ });
     fireEvent.click(enter);
@@ -1065,4 +1043,198 @@ it("clears only the matching successful supplement draft", () => {
     "更新的草稿",
   );
   view.unmount();
+});
+
+it("restores the open phone and contact on remount, and remembers explicit dismissal", () => {
+  let view = mount();
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  view.unmount();
+  view = mount();
+  expect(
+    within(screen.getByRole("dialog")).getByRole("heading", { name: "通讯" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "孙淼" }));
+  view.unmount();
+  view = mount();
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).getByRole("heading", { name: "孙淼" })).toBeTruthy();
+  fireEvent.click(within(dialog).getByRole("button", { name: "返回会话列表" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "关闭面板" }));
+  view.unmount();
+  mount();
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("isolates panel navigation by save and ignores invalid stored navigation", () => {
+  const p = play();
+  const view = mount(p);
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  const other = { ...p, save: { ...p.save, id: "another-save" } };
+  view.rerenderPlay(other);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  view.rerenderPlay(p);
+  expect(
+    within(screen.getByRole("dialog")).getByRole("heading", { name: "通讯" }),
+  ).toBeTruthy();
+  writeFormDraft("test-user", "another-save", "panel-navigation", {
+    panel: "invalid",
+    contact: "invalid",
+  });
+  view.rerenderPlay(other);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  writeFormDraft("test-user", "another-save", "panel-navigation", {
+    panel: "phone",
+    contact: "invalid",
+  });
+  view.rerenderPlay(other);
+  expect(
+    within(screen.getByRole("dialog")).getByRole("heading", { name: "通讯" }),
+  ).toBeTruthy();
+});
+
+it("sends phone messages with Enter, preserving Shift+Enter and IME confirmation", () => {
+  const p = play();
+  mount(p);
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: "孙淼" }));
+  const input = within(screen.getByRole("dialog")).getByLabelText("自由表达");
+  fireEvent.change(input, { target: { value: "没关系的" } });
+  expect(fireEvent.keyDown(input, { key: "Enter", shiftKey: true })).toBe(true);
+  fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+  fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
+  fireEvent.keyDown(input, { key: "Enter", repeat: true });
+  expect(ctrl.submit).not.toHaveBeenCalled();
+  expect(fireEvent.keyDown(input, { key: "Enter" })).toBe(false);
+  expect(ctrl.submit).toHaveBeenCalledExactlyOnceWith(
+    p.save,
+    "speak",
+    "没关系的",
+    "sun",
+    expect.objectContaining({ channel: "dm", target: "sun" }),
+  );
+});
+
+it("does not bypass disabled sending with Enter, and supports group messages without AI", () => {
+  const p = play();
+  const view = mount(p);
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: "孙淼" }));
+  const input = within(screen.getByRole("dialog")).getByLabelText("自由表达");
+  fireEvent.change(input, { target: { value: "   " } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  fireEvent.change(input, { target: { value: "核查事实" } });
+  ctrl.busy = true;
+  view.rerenderPlay(p);
+  fireEvent.keyDown(input, { key: "Enter" });
+  ctrl.busy = false;
+  view.rerenderPlay({ ...p, ai: { available: false, reason: "offline" } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(ctrl.submit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "返回会话列表" }));
+  fireEvent.click(screen.getByRole("button", { name: "研发部工作群" }));
+  const groupInput = within(screen.getByRole("dialog")).getByLabelText(
+    "自由表达",
+  );
+  fireEvent.change(groupInput, { target: { value: "核查事实" } });
+  fireEvent.keyDown(groupInput, { key: "Enter" });
+  expect(ctrl.submit).toHaveBeenCalledExactlyOnceWith(
+    p.save,
+    "speak",
+    "核查事实",
+    "sun",
+    expect.objectContaining({ channel: "group", target: "group" }),
+  );
+});
+
+it("clears stale unread markers after saving reading and shows newly arrived messages", async () => {
+  const p = play();
+  p.contacts = {
+    sun: { count: 3, preview: "采购的事在系统里说吧", unread: true },
+  };
+  const view = mount(p);
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: "孙淼 · 未读" }));
+  fireEvent.click(screen.getByRole("button", { name: "返回会话列表" }));
+  expect(await screen.findByRole("button", { name: "孙淼" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "孙淼 · 未读" })).toBeNull();
+  view.rerenderPlay({
+    ...p,
+    contacts: { sun: { ...p.contacts.sun!, count: 4 } },
+  });
+  expect(screen.getByRole("button", { name: "孙淼 · 未读" })).toBeTruthy();
+});
+
+it("keeps unread markers when saving reading fails", async () => {
+  server.use(
+    http.post(
+      "/api/saves/save-1/reading",
+      () => new HttpResponse(null, { status: 500 }),
+    ),
+  );
+  const p = play();
+  p.contacts = { sun: { count: 1, preview: "新消息", unread: true } };
+  mount(p);
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: "孙淼 · 未读" }));
+  expect(await screen.findByText("阅读位置尚未保存，请重试。")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "返回会话列表" }));
+  expect(screen.getByRole("button", { name: "孙淼 · 未读" })).toBeTruthy();
+});
+
+it("marks authored choices using phone evidence without declaring business completion", () => {
+  const p = play();
+  p.save.state = { ...p.save.state, act: 3, node: "act_3" };
+  p.available_actions = [
+    option("clarify"),
+    option("report"),
+    option("trace_rumor"),
+  ];
+  p.phone_choice_evidence = { report: ["sent-project-message"] };
+  mount(p, { ...authored, scenes: {} } as Story);
+  const report = screen.getByRole("button", { name: /只向张工同步项目事实/ });
+  expect(report.textContent).toContain("✓");
+  expect(report.textContent).toContain("已通过手机消息选择");
+  for (const label of [/只向张工同步项目事实/, /联系李姐/, /直接在群里/]) {
+    const button = screen.getByRole("button", { name: label });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(button);
+  }
+  expect(
+    screen.getByRole("button", { name: /联系李姐/ }).textContent,
+  ).not.toContain("✓");
+  expect(
+    screen.getByRole("button", { name: /直接在群里/ }).textContent,
+  ).not.toContain("✓");
+  expect(ctrl.submit).not.toHaveBeenCalled();
+});
+
+it("finishes all act-three dialogue before offering the three choices", async () => {
+  writeFormDraft("test-user", "save-1", "reading-preferences", { speed: "0" });
+  const p = play();
+  p.save.state = { ...p.save.state, act: 3, node: "act_3" };
+  p.available_actions = [
+    option("clarify"),
+    option("report"),
+    option("trace_rumor"),
+  ];
+  const lines = (authored as Story).scenes!.act_3!;
+  mount(p, authored as Story);
+  for (const line of lines) {
+    await screen.findByText(line.text, {
+      exact: false,
+      normalizer: (value) => value,
+    });
+    expect(
+      screen.queryByRole("button", { name: /直接在群里澄清谣言/ }),
+    ).toBeNull();
+    fireEvent.click(screen.getByText("点击继续 →"));
+  }
+  expect(
+    await screen.findByRole("button", { name: /直接在群里澄清谣言/ }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: /只向张工同步项目事实/ }),
+  ).toBeTruthy();
+  expect(screen.getByRole("button", { name: /联系李姐/ })).toBeTruthy();
+  expect(ctrl.submit).not.toHaveBeenCalled();
 });

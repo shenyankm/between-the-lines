@@ -539,31 +539,9 @@ describe("Play: scene rendering", () => {
   });
 });
 
-it("keeps the player in the game when logout fails and handles the retry", async () => {
-  server.use(
-    http.get("/api/config", () =>
-      HttpResponse.json({
-        dev_login: true,
-        zhihu_login: false,
-        agent_mode: "mock",
-        model_ready: true,
-      }),
-    ),
-    http.get("/api/saves", () => HttpResponse.json([])),
-    ...playHandlers({ save: save() }),
-    http.post("/api/auth/logout", () =>
-      HttpResponse.json(apiError("退出失败"), { status: 500 }),
-    ),
-  );
+it("does not show logout while playing", async () => {
+  server.use(...playHandlers({ save: save() }));
   renderPlay();
-  fireEvent.click(await screen.findByRole("button", { name: "退出登录" }));
-  expect(await screen.findByText("退出失败")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "退出登录" })).toBeTruthy();
-  server.use(
-    http.post("/api/auth/logout", () => HttpResponse.json({ ok: true })),
-  );
-  fireEvent.click(screen.getByRole("button", { name: "重试退出" }));
-  await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "退出登录" })).toBeNull(),
-  );
+  await screen.findByRole("main");
+  expect(screen.queryByRole("button", { name: "退出登录" })).toBeNull();
 });

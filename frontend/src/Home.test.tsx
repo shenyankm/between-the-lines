@@ -172,7 +172,7 @@ it.each([true, false])(
     await waitFor(() =>
       expect(sessionStorage.getItem("trial_identity")).toBe("guest"),
     );
-    await screen.findByText("查看全部存档");
+    await screen.findByRole("button", { name: "用户菜单" });
     await waitFor(() => expect(creates).toBe(existing ? 0 : 1));
   },
 );
@@ -279,7 +279,7 @@ it("binding completion clears only the guest cache and refreshes inherited saves
     ),
   );
   mount();
-  await screen.findByText("查看全部存档");
+  await screen.findByRole("button", { name: "用户菜单" });
   await waitFor(() =>
     expect(sessionStorage.getItem("trial_identity")).toBeNull(),
   );
@@ -365,4 +365,71 @@ it("presents versioned save facts and readable ending labels without rewriting t
     "故事已结束",
   );
   expect(saveTitle(save())).toBe("第 1 幕");
+});
+
+it("logs out from the home header and preserves identity on failure", async () => {
+  setup();
+  let loggedOut = false;
+  let fail = true;
+  let attempts = 0;
+  server.use(
+    http.get("/api/auth/me", () =>
+      loggedOut
+        ? HttpResponse.json(
+            apiError("请先登录", { code: "not_authenticated" }),
+            { status: 401 },
+          )
+        : HttpResponse.json({ id: "u", name: "玩家", can_play: true }),
+    ),
+    http.post("/api/auth/logout", () => {
+      attempts++;
+      if (fail) return HttpResponse.json(apiError("退出失败"), { status: 500 });
+      loggedOut = true;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+  mount();
+  const trigger = await screen.findByRole("button", { name: "用户菜单" });
+  expect(trigger.closest("nav")).not.toBeNull();
+  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "退出登录" }));
+  expect(screen.getByRole("alertdialog", { name: "退出登录？" })).toBeTruthy();
+  expect(attempts).toBe(0);
+  fireEvent.click(screen.getByRole("button", { name: "取消" }));
+  expect(attempts).toBe(0);
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "退出登录" }));
+  fireEvent.click(screen.getByRole("button", { name: "确认退出" }));
+  expect(await screen.findByText("退出失败")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "用户菜单" })).toBeTruthy();
+  fail = false;
+  fireEvent.click(screen.getByRole("button", { name: "确认退出" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "用户菜单" })).toBeNull(),
+  );
+});
+
+it("shows the real avatar and both account menu entries", async () => {
+  setup();
+  server.use(
+    http.get("/api/auth/me", () =>
+      HttpResponse.json({
+        id: "u",
+        name: "玩家",
+        can_play: true,
+        avatar_url: "https://pic1.zhimg.com/avatar.jpg",
+      }),
+    ),
+  );
+  mount();
+  const avatar = await screen.findByRole("img", { name: "用户头像" });
+  expect(avatar.getAttribute("src")).toBe("https://pic1.zhimg.com/avatar.jpg");
+  fireEvent.click(screen.getByRole("button", { name: "用户菜单" }));
+  expect(
+    await screen.findByRole("menuitem", { name: "我的存档" }),
+  ).toBeTruthy();
+  expect(screen.getByRole("menuitem", { name: "退出登录" })).toBeTruthy();
+  fireEvent.error(avatar);
+  expect(screen.queryByRole("img", { name: "用户头像" })).toBeNull();
 });

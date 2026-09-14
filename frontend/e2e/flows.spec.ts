@@ -146,7 +146,8 @@ test("independent saves, continuation, logout and another identity do not mix", 
   await page.getByRole("button", { name: "退出登录", exact: true }).click();
   await page.getByRole("button", { name: "确认退出", exact: true }).click();
   await page.getByRole("button", { name: "开发环境试玩" }).click();
-  await page.getByRole("link", { name: "查看全部存档" }).click();
+  await page.getByRole("button", { name: "用户菜单" }).click();
+  await page.getByRole("menuitem", { name: "我的存档" }).click();
   await expect(page.getByText("还没有故事，从第一句话开始。")).toBeVisible();
   await page.goto(first);
   await expect(page.getByRole("alert")).toContainText("存档不存在");

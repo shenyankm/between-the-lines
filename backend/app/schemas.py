@@ -116,6 +116,7 @@ class SaveOut(BaseModel):
 
 
 class UserOut(BaseModel):
+    avatar_url: str | None = None
     id: str
     name: str
     can_play: bool
@@ -220,6 +221,7 @@ class ContactOut(BaseModel):
 
 
 class PlayStateOut(BaseModel):
+    phone_choice_evidence: dict[str, list[str]] = Field(default_factory=dict)
     performance: list[SceneLine] = Field(default_factory=list)
     performance_version: int | None = None
     contacts: dict[str, ContactOut] = Field(default_factory=dict)

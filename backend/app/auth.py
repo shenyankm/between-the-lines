@@ -3,6 +3,7 @@ import logging
 import secrets
 from datetime import timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
@@ -54,7 +55,7 @@ async def current_user(request: Request) -> User:
 
 
 async def issue_session(
-    subject: str, name: str, response: Response, runtime: Runtime
+    subject: str, name: str, response: Response, runtime: Runtime, avatar_url: str | None = None
 ) -> dict[str, Any]:
     token = secrets.token_urlsafe(32)
     async with runtime.sessions.begin() as db:
@@ -66,6 +67,8 @@ async def issue_session(
         user = await db.scalar(select(User).where(User.subject == subject))
         if user is None:
             raise ApiError(401, "not_authenticated")
+        if subject.startswith("zhihu:"):
+            user.avatar_url = avatar_url
         db.add(
             LoginSession(
                 token_hash=digest(token), user_id=user.id, expires_at=utcnow() + timedelta(days=7)
@@ -131,6 +134,7 @@ async def me(request: Request, user: User = Depends(current_user)) -> dict[str, 
     return {
         "id": user.id,
         "name": user.name,
+        "avatar_url": user.avatar_url,
         "identity_type": user.identity_type,
         "can_play": can_play(user, runtime),
         "guest_expires_at": user.guest_expires_at,
@@ -223,6 +227,7 @@ async def zhihu_callback(request: Request) -> RedirectResponse:
         str(profile.get(runtime.settings.zhihu_name_field, "玩家")),
         response,
         runtime,
+        avatar_url=profile_avatar(profile.get(runtime.settings.zhihu_avatar_field)),
     )
     async with runtime.sessions.begin() as db:
         binding = await db.scalar(
@@ -278,3 +283,21 @@ async def guest_login(request: Request, response: Response) -> dict[str, Any]:
         "identity_type": "guest",
         "guest_expires_at": user.guest_expires_at,
     }
+
+
+def profile_avatar(value: Any) -> str | None:
+    if not isinstance(value, str) or len(value) > 2048:
+        return None
+    try:
+        url = urlsplit(value)
+        host = url.hostname or ""
+        if (
+            url.scheme == "https"
+            and (host == "zhimg.com" or host.endswith(".zhimg.com"))
+            and not url.username
+            and not url.password
+        ):
+            return value
+    except ValueError:
+        pass
+    return None

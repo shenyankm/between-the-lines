@@ -191,3 +191,27 @@ async def test_provider_business_error_never_creates_an_identity(monkeypatch):
     )
     with pytest.raises(oauth.OAuthProfileRejected):
         await oauth.exchange(settings(), "fixture-code")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "http://pic.zhimg.com/a.jpg",
+        "https://zhimg.com.evil.test/a",
+        "https://user:pass@pic.zhimg.com/a",
+        "data:image/png;base64,a",
+    ],
+)
+def test_profile_avatar_rejects_untrusted_sources(value):
+    from app.auth import profile_avatar
+
+    assert profile_avatar(value) is None
+
+
+def test_profile_avatar_keeps_authorized_provider_image():
+    from app.auth import profile_avatar
+
+    url = "https://pic1.zhimg.com/user-avatar.jpg"
+    assert profile_avatar(url) == url

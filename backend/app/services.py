@@ -123,6 +123,13 @@ class GameService:
                 raise ApiError(422, "empty_message")
             try:
                 before = parse_state(save.state)
+                if isinstance(before, GameStateV3) and before.act == 3:
+                    from .phone_choices import selected_rumor_choice
+
+                    if not selected_rumor_choice(before.flags):
+                        evidence = await self.phone_choice_evidence(db, save)
+                        if evidence:
+                            before.flags.append(f"rumor_choice:{next(iter(evidence))}")
                 event_id = new_id()
                 from .story_rules import MAJOR as V3_MAJOR
                 from .story_rules import requires_confirmation
@@ -454,6 +461,22 @@ class GameService:
                 )
             await db.flush()
             state = parse_state(save.state)
+            if (
+                not error
+                and isinstance(state, GameStateV3)
+                and state.act == 3
+                and turn.payload["action"] == "speak"
+            ):
+                from .phone_choices import phone_choice, selected_rumor_choice
+
+                choice = phone_choice(
+                    turn.payload["text"],
+                    turn.payload.get("channel") or "scene",
+                    turn.payload["npc"],
+                )
+                if choice and not selected_rumor_choice(state.flags):
+                    state.flags.append(f"rumor_choice:{choice}")
+                    save.state = state.model_dump(mode="json")
             flags = set(state.flags)
             chapter_complete = save.story_version == 2 and (
                 (state.act == 1 and bool(flags & {"boundary", "confronted", "wang_contacted"}))
@@ -536,6 +559,40 @@ class GameService:
                 FailureCode.INTERRUPTED,
             )
 
+    async def phone_choice_evidence(self, db: AsyncSession, save: Save) -> dict[str, list[str]]:
+        phone_choice_evidence: dict[str, list[str]] = {}
+        if save.story_version == 3 and save.state.get("act") == 3:
+            from .phone_choices import phone_choice
+
+            phone_messages = (
+                await db.scalars(
+                    select(Event)
+                    .join(Turn, Event.turn_id == Turn.id)
+                    .where(
+                        Event.save_id == save.id,
+                        Event.data["act"].astext == "3",
+                        Event.data["kind"].astext == "player",
+                        Event.data["action"].astext == "speak",
+                        Event.data["channel"].astext.in_(["dm", "group"]),
+                        Turn.status == "completed",
+                    )
+                    .order_by(Event.created_at, Event.id)
+                )
+            ).all()
+            from .phone_choices import selected_rumor_choice
+
+            selected = selected_rumor_choice(save.state.get("flags", []))
+            for message in phone_messages:
+                choice = phone_choice(
+                    message.data["text"],
+                    message.data["channel"],
+                    message.data["npc"],
+                )
+                if choice and (not selected or choice == selected):
+                    selected = choice
+                    phone_choice_evidence.setdefault(choice, []).append(message.id)
+        return phone_choice_evidence
+
     async def play_state(self, save_id: str, user_id: str) -> PlayStateOut:
         async with self.sessions.begin() as db:
             await db.execute(sql_text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
@@ -578,6 +635,7 @@ class GameService:
                 }
                 for key, preview, count in conversations
             }
+            phone_choice_evidence = await self.phone_choice_evidence(db, save)
             return PlayStateOut.model_validate(
                 {
                     "save": snapshot(save),
@@ -590,6 +648,7 @@ class GameService:
                     ).performance_for(parse_state(save.state)),
                     "reading": save.reading,
                     "contacts": contacts,
+                    "phone_choice_evidence": phone_choice_evidence,
                     "proposal": await self.proposal_for(db, save),
                     "ai": self.ai_status(),
                     "events": [{"id": event.id, **event.data} for event in events],

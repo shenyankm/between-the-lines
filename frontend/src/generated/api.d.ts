@@ -984,6 +984,10 @@ export interface components {
         };
         /** PlayStateOut */
         PlayStateOut: {
+            /** Phone Choice Evidence */
+            phone_choice_evidence?: {
+                [key: string]: string[];
+            };
             /** Performance */
             performance?: components["schemas"]["SceneLine"][];
             /** Performance Version */
@@ -1394,6 +1398,8 @@ export interface components {
         };
         /** UserOut */
         UserOut: {
+            /** Avatar Url */
+            avatar_url?: string | null;
             /** Id */
             id: string;
             /** Name */

@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     zhihu_scope: str = ""
     zhihu_subject_field: str = "id"
     zhihu_name_field: str = "name"
+    zhihu_avatar_field: str = "avatar_url"
 
     @model_validator(mode="after")
     def production_guards(self) -> Self:
