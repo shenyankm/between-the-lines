@@ -151,3 +151,31 @@ it("honors slow and instant reading preferences while reduced motion wins", () =
   expect(screen.getByText(lines[0]!.text)).toBeTruthy();
   expect(vi.getTimerCount()).toBe(0);
 });
+
+it("uses supplied V3 portraits while preserving legacy character assets", async () => {
+  const current = (await import("../../testing/story-v3.json"))
+    .default as typeof story;
+  const view = render(
+    <Portraits story={current} speaker="sun" portraits={["player", "sun"]} />,
+  );
+  expect(
+    [...view.container.querySelectorAll("img")]
+      .map((image) => image.src)
+      .join(" "),
+  ).toMatch(/player-v3-.*sun-v3-/);
+  for (const [npc, asset] of [
+    ["li", "li-v3"],
+    ["wang", "wang-v3"],
+    ["zhang", "zhang-male"],
+  ]) {
+    view.rerender(
+      <Portraits story={current} speaker={npc!} portraits={[npc!]} />,
+    );
+    expect(view.container.querySelector("img")!.src).toContain(asset);
+  }
+  view.rerender(
+    <Portraits story={story} speaker="zhang" portraits={["zhang"]} />,
+  );
+  expect(view.container.querySelector("img")!.src).toContain("/assets/zhang-");
+  expect(view.container.querySelector("img")!.src).not.toContain("zhang-male");
+});

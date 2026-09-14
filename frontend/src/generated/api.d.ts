@@ -506,6 +506,10 @@ export interface components {
             purpose?: string | null;
             /** Evidence */
             evidence?: ("quote" | "purpose" | "urgency")[] | null;
+            /** Supplement Note */
+            supplement_note?: string | null;
+            /** Mentions */
+            mentions?: ("sun" | "li" | "zhang")[] | null;
             /** Purchase Kind */
             purchase_kind?: ("standard" | "urgent") | null;
             /** Support Kind */
@@ -751,6 +755,10 @@ export interface components {
         };
         /** GameEventOut */
         GameEventOut: {
+            /** Material Version */
+            material_version?: number | null;
+            /** Submission Event Id */
+            submission_event_id?: string | null;
             /** Effects */
             effects?: {
                 [key: string]: unknown;
@@ -1223,6 +1231,13 @@ export interface components {
         };
         /** Submission */
         Submission: {
+            /**
+             * Supplement Note
+             * @default
+             */
+            supplement_note: string;
+            /** Mentions */
+            mentions?: ("sun" | "li" | "zhang")[];
             /**
              * Kind
              * @default standard

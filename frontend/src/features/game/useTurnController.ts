@@ -501,6 +501,9 @@ export function useTurnController(
   }, [recover]);
   return {
     ...view,
+    saved:
+      view.savedStatus === completedStatus ||
+      view.savedStatus === refreshingStatus,
     aiBlocked,
     blocked: view.blocked || paused.current || Date.now() < notBefore.current,
     busy: view.phase === "submitting" || view.phase === "recovering",

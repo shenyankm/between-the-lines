@@ -113,6 +113,8 @@ class Fact(BaseModel):
 
 
 class Submission(BaseModel):
+    supplement_note: str = ""
+    mentions: list[Literal["sun", "li", "zhang"]] = Field(default_factory=list)
     kind: Literal["standard", "urgent"] = "standard"
     event_id: str
     version: int

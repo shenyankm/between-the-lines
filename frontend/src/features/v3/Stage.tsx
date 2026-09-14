@@ -17,12 +17,16 @@ export function Script({
   reduced,
   speed = 35,
   advance,
+  continueLabel = "点击继续 →",
+  disabled = false,
 }: {
   lines: NonNullable<Story["scenes"]>[string];
   position: number;
   reduced: boolean;
   speed?: number;
   advance: () => void;
+  continueLabel?: string;
+  disabled?: boolean;
 }) {
   const line = lines[position];
   const [count, setCount] = useState(0);
@@ -40,12 +44,10 @@ export function Script({
     <Button
       variant="secondary"
       className={s.script}
+      isDisabled={disabled}
       onClick={() => {
         if (!full) setCount(line.text.length);
-        else {
-          setCount(0);
-          advance();
-        }
+        else advance();
       }}
     >
       <strong data-side={speakerSide(line.speaker)}>
@@ -70,7 +72,7 @@ export function Script({
           </span>
         )}
       </span>
-      <small>{full ? "点击继续 →" : "点击显示全文"}</small>
+      <small>{full ? continueLabel : "点击显示全文"}</small>
     </Button>
   );
 }
@@ -79,11 +81,13 @@ export function Portraits({
   speaker,
   player = true,
   portraits,
+  width = 512,
 }: {
   story: Story;
   speaker: string;
   player?: boolean;
   portraits?: string[];
+  width?: number;
 }) {
   const shown =
     portraits?.find((p) => !p.startsWith("player")) ??
@@ -91,17 +95,23 @@ export function Portraits({
   const person = story.npcs[shown.replace("-coat", "") as keyof Story["npcs"]];
   const playerAsset = portraits?.includes("player-coat")
     ? "/assets/player-coat.png"
-    : "/assets/player.png";
+    : story.npcs.sun.portrait === "/assets/sun-v3.png"
+      ? "/assets/player-v3.png"
+      : "/assets/player.png";
   const npcAsset =
     shown === "sun-coat" ? "/assets/sun-coat.png" : person?.portrait;
   return (
     <div className={s.portraits} aria-hidden="true">
       {player &&
         (!portraits || portraits.some((p) => p.startsWith("player"))) && (
-          <img className={s.left} src={imageSource(playerAsset, 512)} alt="" />
+          <img
+            className={s.left}
+            src={imageSource(playerAsset, width)}
+            alt=""
+          />
         )}
       {person && npcAsset && (
-        <img className={s.right} src={imageSource(npcAsset, 512)} alt="" />
+        <img className={s.right} src={imageSource(npcAsset, width)} alt="" />
       )}
     </div>
   );

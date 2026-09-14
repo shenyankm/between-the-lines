@@ -2624,6 +2624,38 @@
             ],
             "title": "Evidence"
           },
+          "supplement_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplement Note"
+          },
+          "mentions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "sun",
+                    "li",
+                    "zhang"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mentions"
+          },
           "purchase_kind": {
             "anyOf": [
               {
@@ -3392,6 +3424,28 @@
       },
       "GameEventOut": {
         "properties": {
+          "material_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Version"
+          },
+          "submission_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Event Id"
+          },
           "effects": {
             "items": {
               "additionalProperties": true,
@@ -4286,7 +4340,7 @@
         "properties": {
           "key": {
             "type": "string",
-            "pattern": "^(prologue|act_[123](_follow_up|_invitation|_farewell)?|dm_(sun|li|zhang|wang)|group|work)$",
+            "pattern": "^(prologue|act_[123](_follow_up|_invitation|_farewell|_appease|_boundary)?|dm_(sun|li|zhang|wang)|group|work)$",
             "title": "Key"
           },
           "position": {
@@ -4727,6 +4781,23 @@
       },
       "Submission": {
         "properties": {
+          "supplement_note": {
+            "default": "",
+            "title": "Supplement Note",
+            "type": "string"
+          },
+          "mentions": {
+            "items": {
+              "enum": [
+                "sun",
+                "li",
+                "zhang"
+              ],
+              "type": "string"
+            },
+            "title": "Mentions",
+            "type": "array"
+          },
           "kind": {
             "default": "standard",
             "enum": [

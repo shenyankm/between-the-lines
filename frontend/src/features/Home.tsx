@@ -114,7 +114,7 @@ export function Home() {
             height={40}
             alt=""
           />
-          章外回声 · Between the Lines
+          章外回声
         </span>
         <span className={s.muted}>互动职场小说 · 第一季</span>
       </nav>

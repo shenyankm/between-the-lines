@@ -25,6 +25,19 @@ class ActionParameters(BaseModel):
     evidence: list[Literal["quote", "purpose", "urgency"]] | None = Field(
         default=None, max_length=3
     )
+    supplement_note: str | None = Field(default=None, max_length=1000)
+    mentions: list[Literal["sun", "li", "zhang"]] | None = Field(default=None, max_length=3)
+
+    @field_validator("supplement_note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        return value.strip() if value is not None else None
+
+    @field_validator("mentions")
+    @classmethod
+    def normalize_mentions(cls, value: list[str] | None) -> list[str] | None:
+        return sorted(set(value)) if value is not None else None
+
     purchase_kind: Literal["standard", "urgent"] | None = None
     support_kind: Literal["leave", "help"] | None = None
     plan: str | None = Field(default=None, min_length=1, max_length=1000)
@@ -47,6 +60,17 @@ class TurnInput(BaseModel):
     proposal_id: UUID | None = None
     discussion_id: UUID | None = None
     perspective_id: str | None = Field(default=None, max_length=40)
+
+    @model_validator(mode="after")
+    def validate_supplement_fields(self) -> "TurnInput":
+        if self.params and (
+            self.params.supplement_note is not None or self.params.mentions is not None
+        ):
+            if self.action != "supplement":
+                raise ValueError("补充说明和通知人员仅适用于补充材料")
+            if self.params.mentions and not self.params.supplement_note:
+                raise ValueError("通知相关人员时请填写补充说明")
+        return self
 
     def canonical_payload(self) -> dict[str, Any]:
         value = self.model_dump(mode="json")
@@ -153,6 +177,8 @@ class TurnResult(BaseModel):
 
 
 class GameEventData(BaseModel):
+    material_version: int | None = None
+    submission_event_id: str | None = None
     effects: list[dict[str, Any]] = Field(default_factory=list)
     kind: Literal["player", "npc", "work", "epilogue", "personal", "narrative"]
     text: str

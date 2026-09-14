@@ -285,6 +285,13 @@ def transition_v3(
         "request_help",
         "report",
     }
+    if (
+        s.content_revision >= 2
+        and s.act == 1
+        and action in {"appease", "boundary", "join_farewell"}
+        and {"appeased:act_1", "boundary:act_1", "farewell_requested"}.intersection(s.flags)
+    ):
+        raise RuleError("这次回应已经作出，请继续当前剧情，不能改选其他回答。")
     result_key = f"{flag}:act_{s.act}" if repeatable else flag
     if result_key and result_key in s.flags:
         raise RuleError("这项结果已经记录，不会重复计分。")
@@ -395,6 +402,8 @@ def transition_v3(
                     purpose=s.work.submissions[-1].purpose,
                     evidence=sorted(set(evidence)),
                     status="resubmitted",
+                    supplement_note=params.get("supplement_note", ""),
+                    mentions=sorted(set(params.get("mentions", []))),
                 )
             )
             s.work.purchase = "review"
@@ -737,6 +746,8 @@ def transition_v3(
         )
         if repeatable:
             s.flags.append(result_key)
+    if s.content_revision >= 2 and s.act == 1 and action in {"appease", "boundary"}:
+        s.node = f"act_1_{action}"
     if s.heat >= 70 and "company_review" not in w:
         record("company_review", "公司介入核查现有记录；信用高低不能代替证据")
     s.quiet_turns = 0

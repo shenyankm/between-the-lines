@@ -69,6 +69,7 @@ it("requires both essential attachments and preserves the submitted application"
           purchase: "returned",
           submissions: [
             {
+              supplement_note: "",
               kind: "standard",
               version: 1,
               purpose: "原申请",
@@ -78,6 +79,7 @@ it("requires both essential attachments and preserves the submitted application"
               feedback: "缺少说明",
             },
             {
+              supplement_note: "",
               kind: "standard",
               version: 2,
               purpose: "补充",
@@ -389,4 +391,114 @@ it("rejects whitespace fields locally while retaining input for correction", () 
   );
   expect(screen.getByText("请填写交接或分工安排。")).toBeTruthy();
   expect(submit).not.toHaveBeenCalled();
+});
+
+it("restores the purchase purpose after closing without submitting it", () => {
+  const submit = vi.fn();
+  const props = {
+    state,
+    options: [option("submit_purchase")],
+    act: submit,
+    busy: false,
+    draftIdentity: { userId: "purchase-draft", saveId: "purchase-save" },
+  };
+  const view = render(<Work {...props} />);
+  fireEvent.change(screen.getByLabelText("实验用途"), {
+    target: { value: "下一批实验用途" },
+  });
+  view.unmount();
+  render(<Work {...props} />);
+  expect(
+    screen.getByRole<HTMLTextAreaElement>("textbox", { name: "实验用途" })
+      .value,
+  ).toBe("下一批实验用途");
+  expect(submit).not.toHaveBeenCalled();
+  expect(screen.getByLabelText<HTMLInputElement>("数量").value).toBe("未登记");
+});
+
+it("requires a note and recipients for the scene entry and restores the whole draft", () => {
+  const act = vi.fn();
+  const props = {
+    state: {
+      ...state,
+      act: 2,
+      work: {
+        purchase: "returned" as const,
+        facts: {},
+        reviews: [],
+        submissions: [
+          {
+            kind: "standard" as const,
+            version: 1,
+            event_id: "first",
+            purpose: "实验",
+            evidence: [],
+            status: "returned" as const,
+            feedback: "",
+            supplement_note: "",
+          },
+        ],
+      },
+    },
+    options: [option("supplement")],
+    act,
+    busy: false,
+    requireMentions: true,
+    draftIdentity: { userId: "mentions-test", saveId: "draft-save" },
+  };
+  const v = render(<Work {...props} />);
+  const submit = () =>
+    screen.getByRole<HTMLButtonElement>("button", {
+      name: "提交所选材料与说明",
+    });
+  fireEvent.click(screen.getByLabelText("报价单"));
+  fireEvent.click(screen.getByLabelText("用途说明"));
+  expect(submit().disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("补充说明"), {
+    target: { value: "请按模板核对" },
+  });
+  expect(submit().disabled).toBe(true);
+  fireEvent.click(screen.getByLabelText(/李姐 · 财务审核/));
+  fireEvent.click(screen.getByLabelText(/张工 · 研发负责人/));
+  expect(submit().disabled).toBe(false);
+  fireEvent.click(submit());
+  expect(act).toHaveBeenCalledWith("supplement", "sun", {
+    params: {
+      evidence: ["quote", "purpose"],
+      supplement_note: "请按模板核对",
+      mentions: ["li", "zhang"],
+    },
+  });
+  v.unmount();
+  const restored = render(<Work {...props} />);
+  expect(screen.getByLabelText<HTMLTextAreaElement>("补充说明").value).toBe(
+    "请按模板核对",
+  );
+  expect(screen.getByLabelText<HTMLInputElement>("报价单").checked).toBe(true);
+  expect(
+    screen.getByLabelText<HTMLInputElement>(/张工 · 研发负责人/).checked,
+  ).toBe(true);
+  restored.rerender(<Work {...props} busy />);
+  expect(submit().disabled).toBe(true);
+  restored.rerender(
+    <Work
+      {...props}
+      state={{
+        ...props.state,
+        work: {
+          ...props.state.work,
+          submissions: [
+            {
+              ...props.state.work.submissions[0]!,
+              version: 2,
+              supplement_note: "已保存说明",
+              mentions: ["li", "zhang"],
+            },
+          ],
+        },
+      }}
+    />,
+  );
+  expect(screen.getByText("补充说明：已保存说明")).toBeTruthy();
+  expect(screen.getByText("已通知：李姐、张工")).toBeTruthy();
 });

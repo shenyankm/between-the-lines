@@ -272,7 +272,7 @@ async def submit(
 
 class ReadingInput(BaseModel):
     key: str = Field(
-        pattern=r"^(prologue|act_[123](_follow_up|_invitation|_farewell)?|dm_(sun|li|zhang|wang)|group|work)$"
+        pattern=r"^(prologue|act_[123](_follow_up|_invitation|_farewell|_appease|_boundary)?|dm_(sun|li|zhang|wang)|group|work)$"
     )
     position: int = Field(ge=0, le=1000000)
 

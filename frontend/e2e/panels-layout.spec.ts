@@ -23,7 +23,7 @@ test("five panels retain keyboard focus and readable content", async ({
       .toBe(true);
     const rect = await panel.boundingBox();
     expect(
-      Math.abs(rect!.x + rect!.width - page.viewportSize()!.width),
+      Math.abs(rect!.x + rect!.width / 2 - page.viewportSize()!.width / 2),
     ).toBeLessThan(2);
     if (name === "工作系统" || name === "关系图") {
       await page.screenshot({

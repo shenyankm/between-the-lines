@@ -18,8 +18,8 @@
       ]
     },
     {
-      "title": "第一幕 · 缺席的欢送会",
-      "chapter_title": "缺席的欢送会",
+      "title": "第一幕 · 欢送会事件",
+      "chapter_title": "欢送会事件",
       "location": "茶水间",
       "time": "周五 · 12:15",
       "intro": "你听见孙淼和李姐讨论王会计的欢送会。是否参加、如何回应，现在由你自己决定。",
@@ -43,12 +43,12 @@
       ]
     },
     {
-      "title": "第二幕 · 被卡住的采购单",
-      "chapter_title": "被卡住的采购单",
-      "location": "办公室",
+      "title": "第二幕 · 私人恶意进入流程",
+      "chapter_title": "私人恶意进入流程",
+      "location": "会议室",
       "time": "周二 · 10:30",
       "intro": "昨日提交的采购申请停在孙淼处。先查看原始材料与退回意见，再决定如何处理。",
-      "background": "/assets/office-morning.png",
+      "background": "/assets/meeting-room-act2.png",
       "choices": [
         {
           "label": "私聊孙淼，先把关系维持住。",
@@ -107,14 +107,14 @@
     "sun": {
       "name": "孙淼",
       "role": "财务出纳 · 同期同事",
-      "portrait": "/assets/sun.png",
+      "portrait": "/assets/sun-v3.png",
       "color": "#688999",
       "greeting": "“菱菱，你不会又生气了吧？我只是随口一说。”"
     },
     "li": {
       "name": "李姐",
       "role": "财务会计",
-      "portrait": "/assets/li.png",
+      "portrait": "/assets/li-v3.png",
       "color": "#998363",
       "greeting": "“有什么事情，我们一项一项说。”"
     },
@@ -128,7 +128,7 @@
     "wang": {
       "name": "王会计",
       "role": "退休财务前辈",
-      "portrait": "/assets/wang.png",
+      "portrait": "/assets/wang-v3.png",
       "color": "#a09a85",
       "greeting": "退休以后，还是愿意听你说说。材料你愿意提供，我可以帮你理解流程；最终审核要找李姐。"
     }
@@ -193,7 +193,7 @@
         "id": "inner",
         "speaker": "inner",
         "text": "我根本没想和她争。\n可为什么每次都是这样？先说一句难听的话，再马上补一句“开玩笑”。\n如果我不高兴，就是我太敏感；如果我反驳，就是我开不起玩笑。\n我明明什么都没做，却还要花时间想，是不是自己真的哪里不对。",
-        "portraits": ["player-coat"]
+        "portraits": []
       }
     ],
     "act_1": [
@@ -338,6 +338,42 @@
         "portraits": ["player"],
         "location": "公司食堂",
         "background": "/assets/cafeteria-noon.png"
+      }
+    ],
+    "act_1_appease": [
+      {
+        "id": "act-1-appease-response",
+        "speaker": "sun",
+        "text": "那我们接着聊。王会计的欢送会，还有些安排要确认。",
+        "portraits": ["player", "sun"],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      },
+      {
+        "id": "act-1-appease-after",
+        "speaker": "narrator",
+        "text": "你暂时没有继续争辩，把注意力移回手头的事。未说出口的困扰仍然存在。",
+        "portraits": ["player"],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      }
+    ],
+    "act_1_boundary": [
+      {
+        "id": "act-1-boundary-response",
+        "speaker": "sun",
+        "text": "好，下次我会先问你。",
+        "portraits": ["player", "sun"],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
+      },
+      {
+        "id": "act-1-boundary-after",
+        "speaker": "narrator",
+        "text": "你已经说清了自己的边界。这次谈话告一段落，她以后是否尊重你的选择，还要看实际行动。",
+        "portraits": ["player"],
+        "location": "茶水间",
+        "background": "/assets/tea-room.png"
       }
     ]
   },

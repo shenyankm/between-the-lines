@@ -44,7 +44,7 @@ export function Discussion({
           </Button>
         </p>
       )}
-      <p>{prose(result?.label)}</p>
+      <p className={s.discussionTopic}>{prose(result?.label)}</p>
       {query.data?.status === "running" && <p role="status">正在整理来源…</p>}
       {["failed", "unknown"].includes(query.data?.status ?? "") && (
         <p role="status">本次观点整理未完成，可以继续故事，稍后再查看。</p>
@@ -54,9 +54,10 @@ export function Discussion({
       )}
       {objects(result?.cards).map((card, i) => (
         <article className={s.notice} key={i}>
+          <small>观点 {i + 1}</small>
           <h3>{prose(card.view)}</h3>
           <p>适用情境：{prose(card.situation)}</p>
-          <p>{prose(card.expression)}</p>
+          <blockquote>{prose(card.expression)}</blockquote>
           <p>可能代价：{prose(card.possible_cost)}</p>
           {objects(card.sources).map((source, j) => {
             let valid = false;

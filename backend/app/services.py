@@ -252,6 +252,40 @@ class GameService:
                 if body.channel == "dm"
                 else ["sun", "li", "zhang"]
             )
+            if body.action == "supplement" and isinstance(state, GameStateV3):
+                submission = state.work.submissions[-1]
+                if submission.mentions:
+                    material_names = {
+                        "quote": "报价单",
+                        "purpose": "用途说明",
+                        "urgency": "加急依据",
+                    }
+                    notification = (
+                        f"采购材料第 {submission.version} 版已提交。"
+                        f"附件：{'、'.join(material_names[e] for e in submission.evidence)}。\n"
+                        f"补充说明：{submission.supplement_note}"
+                    )
+                    db.add(
+                        Event(
+                            save_id=save_id,
+                            turn_id=turn.id,
+                            operation="supplement_notification",
+                            audience=submission.mentions,
+                            data={
+                                "speaker": "system",
+                                "channel": "work",
+                                "kind": "work",
+                                "npc": body.npc,
+                                "audience": submission.mentions,
+                                "text": notification,
+                                "scene": state.node,
+                                "act": state.act,
+                                "action": "supplement",
+                                "material_version": submission.version,
+                                "submission_event_id": event_id,
+                            },
+                        )
+                    )
             db.add(
                 Event(
                     id=event_id,

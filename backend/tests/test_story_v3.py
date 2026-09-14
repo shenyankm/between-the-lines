@@ -326,3 +326,41 @@ def test_early_exit_does_not_invent_future_work_conflicts():
     assert state.outcome.unresolved == []
     assert any("手续仍待后续办理" in item for item in state.outcome.achievements)
     assert not any("谣言" in item for item in state.outcome.achievements)
+
+
+@pytest.mark.parametrize("revision", [2, 3])
+@pytest.mark.parametrize("choice", ["appease", "boundary", "join_farewell"])
+def test_first_response_is_exclusive_and_advances_scene(revision, choice):
+    from app.actions import available_actions
+    from app.story import load_story
+
+    state = play("begin")
+    state.content_revision = revision
+    chosen, _ = transition_v3(state, choice, event_id="first-response")
+    assert chosen.node != state.node
+    assert load_story(3, revision).performance_for(chosen)
+    before = chosen.model_dump()
+    for other in ("appease", "boundary", "join_farewell"):
+        with pytest.raises(RuleError, match="这次回应已经作出"):
+            transition_v3(chosen, other)
+    assert chosen.model_dump() == before
+    assert not any(
+        a.enabled
+        for a in available_actions(chosen)
+        if a.action in {"appease", "boundary", "join_farewell"}
+    )
+    continued, _ = transition_v3(chosen, "next")
+    assert continued.act == 2
+    if choice == "join_farewell":
+        attending, _ = transition_v3(chosen, "attend_farewell")
+        assert attending.node == "act_1_farewell"
+
+
+def test_existing_multiple_response_flags_are_preserved_but_cannot_add_another():
+    state = play("begin", "appease")
+    state.node = "act_1"
+    state.flags.append("boundary:act_1")
+    before = state.model_dump()
+    with pytest.raises(RuleError, match="这次回应已经作出"):
+        transition_v3(state, "join_farewell")
+    assert state.model_dump() == before

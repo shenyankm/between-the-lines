@@ -15,6 +15,10 @@ assets = ROOT / "frontend/public/assets"
 manifest = {}
 for source in sorted(assets.glob("*.png")):
     character = source.stem in {
+        "sun-v3",
+        "li-v3",
+        "wang-v3",
+        "player-v3",
         "sun",
         "li",
         "zhang",

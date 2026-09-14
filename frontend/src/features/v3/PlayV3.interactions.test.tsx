@@ -13,7 +13,12 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../../testing/server";
 import { save, sunReply } from "../../testing/fixtures";
 import type { PlayState, Story, TurnInput } from "../../types";
-import { readDraft, writeDraft, writeFormDraft } from "../game/drafts";
+import {
+  readDraft,
+  readFormDraft,
+  writeDraft,
+  writeFormDraft,
+} from "../game/drafts";
 import { PlayV3 } from "./PlayV3";
 import type { Option, StateV3 } from "./Work";
 import authored from "../../testing/story-v3.json";
@@ -24,6 +29,9 @@ const ctrl = vi.hoisted(() => ({
   blocked: false,
   aiBlocked: false,
   pending: null as string | null,
+  saved: false,
+  savedStatus: undefined as string | undefined,
+  savedEffects: undefined as string[] | undefined,
   status: "",
   error: "",
   completed: undefined as ((input: Partial<TurnInput>) => void) | undefined,
@@ -91,7 +99,11 @@ function mount(p = play(), s = story()) {
       </QueryClientProvider>
     </MemoryRouter>
   );
-  return render(wrap(p));
+  const rendered = render(wrap(p));
+  return {
+    ...rendered,
+    rerenderPlay: (next: PlayState) => rendered.rerender(wrap(next)),
+  };
   // Each test uses ordinary rerender when testing a new server state.
 }
 // Kept outside render helpers so no application hook is replaced other than the turn transport.
@@ -103,6 +115,8 @@ beforeEach(() => {
     aiBlocked: false,
     pending: null,
     status: "",
+    savedStatus: undefined,
+    savedEffects: undefined,
     error: "",
   });
   ctrl.submit.mockReset();
@@ -184,7 +198,7 @@ it("keeps scene, private and group drafts separate and clears only the matching 
   );
   expect(readDraft("test-user", p.save.id, "sun", "dm:sun").text).toBe("");
   fireEvent.click(screen.getByText("← 会话列表"));
-  fireEvent.click(screen.getByRole("button", { name: /项目工作群 · 未读/ }));
+  fireEvent.click(screen.getByRole("button", { name: /研发部工作群 · 未读/ }));
   expect(await screen.findByText("群内只发布已核实的工作事实。")).toBeTruthy();
   fireEvent.change(within(dm).getByLabelText("自由表达"), {
     target: { value: "核查记录" },
@@ -497,7 +511,7 @@ it("routes public clarification through a confirmation card in the group channel
   ];
   mount(p);
   fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
-  fireEvent.click(screen.getByRole("button", { name: /项目工作群/ }));
+  fireEvent.click(screen.getByRole("button", { name: /研发部工作群/ }));
   fireEvent.click(screen.getByText("clarify"));
   expect(ctrl.submit.mock.lastCall?.[4]).toEqual({
     channel: "group",
@@ -587,7 +601,7 @@ it("paginates older messages using the first event cursor", async () => {
   );
   mount();
   fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
-  fireEvent.click(screen.getByRole("button", { name: /孙淼.*打开会话/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^孙淼/ }));
   fireEvent.click(await screen.findByText("加载更早消息"));
   await screen.findByText("最早记录", { exact: false });
   expect(seen).toEqual(["", "event-0"]);
@@ -842,7 +856,7 @@ it("keeps the scene compact after editing without letting private input change i
   const root = view.container.querySelector("main")!;
   expect(root.dataset.composing).toBe("false");
   fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
-  fireEvent.click(screen.getByRole("button", { name: "孙淼打开会话" }));
+  fireEvent.click(screen.getByRole("button", { name: "孙淼" }));
   fireEvent.focus(
     within(screen.getByRole("dialog")).getByLabelText("自由表达"),
   );
@@ -856,4 +870,199 @@ it("keeps the scene compact after editing without letting private input change i
   expect(screen.getByLabelText<HTMLTextAreaElement>("自由表达").value).toBe(
     "保留输入",
   );
+});
+
+it("shows contextual empty conversations without greeting messages or submitting a turn", async () => {
+  server.use(http.get("/api/saves/:id/events", () => HttpResponse.json([])));
+  mount();
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: "张工" }));
+  const dialog = screen.getByRole("dialog");
+  expect(await within(dialog).findByText("暂无聊天记录")).toBeTruthy();
+  expect(within(dialog).getByText(/当前情景.*第一幕/)).toBeTruthy();
+  expect(within(dialog).queryByText(/坐吧，项目最近怎么样/)).toBeNull();
+  expect(ctrl.submit).not.toHaveBeenCalled();
+});
+
+it("retains the authored final clothing and empty stage after reading and phone navigation", () => {
+  const p = play();
+  p.performance = [
+    {
+      id: "coat-end",
+      speaker: "inner",
+      text: "我需要想一想。",
+      portraits: ["player-coat"],
+    },
+  ];
+  p.performance_version = p.save.version;
+  p.reading = { act_1: 1 };
+  const view = mount(p);
+  const portraits = () => view.container.querySelector('[class*="portraits"]')!;
+  expect(portraits().querySelectorAll("img")).toHaveLength(1);
+  expect(portraits().querySelector("img")!.src).toContain("player-coat-");
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: "李姐" }));
+  expect(portraits().querySelectorAll("img")).toHaveLength(1);
+  expect(portraits().querySelector("img")!.src).toContain("player-coat-");
+  view.rerenderPlay({
+    ...p,
+    performance: [{ ...p.performance[0]!, portraits: [] }],
+  });
+  expect(portraits().querySelectorAll("img")).toHaveLength(0);
+});
+
+it("keeps completed receipts only in full history and shows a compact save hint", () => {
+  server.use(
+    http.get("/api/saves/save-1/jobs", () => HttpResponse.json([])),
+    http.get("/api/saves/save-1/snapshots", () => HttpResponse.json([])),
+  );
+  ctrl.saved = true;
+  ctrl.savedStatus = "回合已完成，进度已保存。";
+  ctrl.savedEffects = ["已保存之后的故事。"];
+  const p = play();
+  p.events = [
+    {
+      ...sunReply,
+      id: "input",
+      kind: "player",
+      speaker: "player",
+      action: "begin",
+      channel: "scene",
+    },
+  ];
+  mount(p);
+  expect(screen.queryByText("最近一轮 · 已保存记录")).toBeNull();
+  expect(screen.queryByText(ctrl.savedStatus)).toBeNull();
+  expect(screen.getByText("已保存")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).queryByText("最近一轮 · 已保存记录")).toBeNull();
+  expect(within(dialog).queryByText(ctrl.savedStatus)).toBeNull();
+  expect(within(dialog).getByLabelText("操作反馈").textContent).toBe("");
+  fireEvent.click(within(dialog).getByRole("button", { name: "关闭面板" }));
+  fireEvent.click(screen.getByRole("button", { name: "完整记录" }));
+  expect(
+    within(screen.getByRole("dialog")).getByText("最近一轮 · 已保存记录"),
+  ).toBeTruthy();
+});
+
+it.each(["appeased:act_1", "boundary:act_1", "farewell_requested"])(
+  "hides the opening choices after persisted response %s",
+  (flag) => {
+    const p = play();
+    const s = story();
+    s.acts[1]!.choices = authored.acts[1]!
+      .choices as Story["acts"][number]["choices"];
+    p.available_actions = [
+      option("appease"),
+      option("boundary"),
+      option("join_farewell"),
+      option("next"),
+    ];
+    const view = mount(p, s);
+    expect(
+      screen.getByRole("button", { name: "没事，你们继续聊。" }),
+    ).toBeTruthy();
+    const chosen = {
+      ...p,
+      save: {
+        ...p.save,
+        version: p.save.version + 1,
+        state: { ...p.save.state, flags: [...p.save.state.flags, flag] },
+      },
+    };
+    view.rerenderPlay(chosen);
+    for (const choice of s.acts[1]!.choices) {
+      expect(screen.queryByRole("button", { name: choice.label })).toBeNull();
+    }
+    expect(
+      screen.getByRole("button", { name: "带着当前进度进入下一幕 →" }),
+    ).toBeTruthy();
+  },
+);
+
+it.each([6, 7])(
+  "enters act one directly from the final prologue line at reading position %i",
+  (reading) => {
+    const p = play();
+    p.save.state = { ...state(), act: 0, node: "prologue" };
+    p.save.scene_intro = "不应再次显示的序幕介绍";
+    p.reading = { prologue: reading };
+    p.performance = authored.scenes.prologue;
+    p.available_actions = [option("begin")];
+    const view = mount(p, authored as Story);
+    fireEvent.click(screen.getByRole("button", { name: /点击显示全文/ }));
+    const enter = screen.getByRole("button", { name: /进入故事/ });
+    fireEvent.click(enter);
+    expect(ctrl.submit).toHaveBeenCalledExactlyOnceWith(
+      p.save,
+      "begin",
+      "",
+      "sun",
+      expect.objectContaining({ channel: "scene", target: "sun" }),
+    );
+    expect(screen.queryByText(p.save.scene_intro)).toBeNull();
+    expect(screen.getByText("进入故事")).toBeTruthy();
+    ctrl.busy = true;
+    view.rerenderPlay(p);
+    expect(enter.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(enter);
+    expect(ctrl.submit).toHaveBeenCalledTimes(1);
+    ctrl.busy = false;
+    ctrl.error = "请求失败，请重试。";
+    view.rerenderPlay(p);
+    expect(screen.getByText("进入故事")).toBeTruthy();
+    expect(screen.queryByText(p.save.scene_intro)).toBeNull();
+    ctrl.error = "";
+    const next = play();
+    next.save.version = p.save.version + 1;
+    next.performance = authored.scenes.act_1;
+    view.rerenderPlay(next);
+    expect(screen.queryByText("进入故事")).toBeNull();
+    expect(screen.getByText("旁白")).toBeTruthy();
+    expect(view.container.querySelector("main")?.dataset.prologue).toBe(
+      "false",
+    );
+  },
+);
+
+it("clears only the matching successful supplement draft", () => {
+  const p = play();
+  const fields = {
+    note: "补充说明",
+    mentions: "li,zhang",
+    evidence: "quote,purpose",
+    kind: "standard",
+  };
+  writeFormDraft("test-user", p.save.id, "supplement", fields);
+  const view = mount(p);
+  act(() =>
+    ctrl.completed?.({
+      action: "supplement",
+      params: {
+        supplement_note: "补充说明",
+        mentions: ["li", "zhang"],
+        evidence: ["quote", "purpose"],
+      },
+    }),
+  );
+  expect(readFormDraft("test-user", p.save.id, "supplement")?.note).toBe("");
+  writeFormDraft("test-user", p.save.id, "supplement", {
+    ...fields,
+    note: "更新的草稿",
+  });
+  act(() =>
+    ctrl.completed?.({
+      action: "supplement",
+      params: {
+        supplement_note: "补充说明",
+        mentions: ["li", "zhang"],
+        evidence: ["quote", "purpose"],
+      },
+    }),
+  );
+  expect(readFormDraft("test-user", p.save.id, "supplement")?.note).toBe(
+    "更新的草稿",
+  );
+  view.unmount();
 });

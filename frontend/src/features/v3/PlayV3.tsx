@@ -1,3 +1,4 @@
+import { Smartphone, BriefcaseBusiness, Sparkles } from "lucide-react";
 import { Form, TextArea, Button } from "@heroui/react";
 import {
   useCallback,
@@ -5,6 +6,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent,
 } from "react";
 
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,11 +16,19 @@ import { Link, useNavigate } from "react-router";
 import { api, gameApi } from "../../api";
 import type { Action, Npc, PlayState, Story, TurnInput } from "../../types";
 import { playKey, useTurnController } from "../game/useTurnController";
-import { clearIdentityDrafts, readDraft, writeDraft } from "../game/drafts";
+import {
+  clearIdentityDrafts,
+  readDraft,
+  writeDraft,
+  readFormDraft,
+  writeFormDraft,
+} from "../game/drafts";
 import { ProductPanel } from "../game/ProductPanel";
 import { EventHistory } from "../game/EventHistory";
 import { SceneInterlude } from "../../SceneInterlude";
 import { imageSource } from "../../images";
+import { MetricDelta } from "./MetricDelta";
+import { PhoneMessages } from "./PhoneMessages";
 import { Portraits, Script, speakerSide } from "./Stage";
 import { Actions, Work, type StateV3 } from "./Work";
 import { followUpChoices } from "./followUp";
@@ -33,7 +43,16 @@ import s from "./V3.module.css";
 import { ErrorNotice } from "../../ErrorNotice";
 
 type Panel = "phone" | "work" | "relations" | "discussion" | "history" | null;
-const contacts: Npc[] = ["sun", "li", "zhang", "wang"];
+function outsidePanel(event: PointerEvent<HTMLDialogElement>) {
+  const r = event.currentTarget.getBoundingClientRect();
+  return (
+    event.clientX < r.left ||
+    event.clientX > r.right ||
+    event.clientY < r.top ||
+    event.clientY > r.bottom
+  );
+}
+const contacts: Npc[] = ["sun", "wang", "li", "zhang"];
 export function PlayV3({
   userId,
   play,
@@ -43,6 +62,7 @@ export function PlayV3({
   play: PlayState;
   story: Story;
 }) {
+  const backdropPressed = useRef(false);
   const client = useQueryClient();
   const navigate = useNavigate();
   const [logoutError, setLogoutError] = useState<unknown>(null);
@@ -79,6 +99,7 @@ export function PlayV3({
     ? Number(reading.value.speed)
     : 35;
   const [composingNode, setComposingNode] = useState<string | null>(null);
+  const [requireMentions, setRequireMentions] = useState(false);
   const [panel, setPanel] = useState<Panel>(null),
     [contact, setContact] = useState<Npc | "group" | null>(null);
   const [reduced, setReduced] = useState(
@@ -106,8 +127,30 @@ export function PlayV3({
   const [savingReading, setSavingReading] = useState(false);
   const panelDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
+    const viewport = window.visualViewport;
+    const dialog = panelDialog.current;
+    if (panel !== "phone" || !viewport || !dialog) return;
+    const resize = () => {
+      dialog.style.setProperty("--phone-height", `${viewport.height}px`);
+      dialog.style.setProperty("--phone-top", `${viewport.offsetTop}px`);
+    };
+    resize();
+    viewport.addEventListener("resize", resize);
+    viewport.addEventListener("scroll", resize);
+    return () => {
+      viewport.removeEventListener("resize", resize);
+      viewport.removeEventListener("scroll", resize);
+      dialog.style.removeProperty("--phone-height");
+      dialog.style.removeProperty("--phone-top");
+    };
+  }, [panel]);
+
+  useEffect(() => {
     const element = panelDialog.current;
-    if (panel && !element?.open) element?.showModal();
+    if (panel && element && !element.open) {
+      element.showModal();
+      element.querySelector<HTMLElement>("#story-panel-title")?.focus();
+    }
     if (!panel && element?.open) element.close();
   }, [panel]);
   const confirmation = useRef<HTMLDialogElement>(null);
@@ -167,6 +210,25 @@ export function PlayV3({
   };
   const clear = useCallback(
     (input: Partial<TurnInput>) => {
+      if (input.action === "supplement") {
+        const old = readFormDraft(userId, save.id, "supplement") ?? {};
+        const params = input.params;
+        if (
+          (old.note ?? "").trim() === (params?.supplement_note ?? "") &&
+          (old.mentions ?? "").split(",").filter(Boolean).sort().join(",") ===
+            [...(params?.mentions ?? [])].sort().join(",") &&
+          (old.evidence ?? "").split(",").filter(Boolean).sort().join(",") ===
+            [...(params?.evidence ?? [])].sort().join(",")
+        ) {
+          writeFormDraft(userId, save.id, "supplement", {
+            note: "",
+            mentions: "",
+            evidence: "",
+            kind: old.kind ?? "standard",
+          });
+          refresh((n) => n + 1);
+        }
+      }
       if (input.action !== "speak") return;
       const npc = input.npc ?? "sun";
       const key = `${input.channel ?? "scene"}:${input.channel === "group" ? "group" : input.channel === "dm" ? npc : "sun"}`;
@@ -264,9 +326,19 @@ export function PlayV3({
     (play.performance_version ?? play.save.version) === save.version;
   const lines =
     play.performance ?? story.scenes?.[state.node ?? "prologue"] ?? [];
-  const position = positions[state.node ?? "prologue"] ?? 0;
+  const readPosition = positions[state.node ?? "prologue"] ?? 0;
+  // Older saves may already have read the final prologue line. Keep the entry
+  // action on that line until the server commits the transition to act one.
+  const position =
+    state.act === 0 && lines.length
+      ? Math.min(readPosition, lines.length - 1)
+      : readPosition;
+  const enterStory = state.act === 0 && position === lines.length - 1;
   const scripted = performanceReady && position < lines.length;
   const currentLine = scripted ? lines[position] : lines.at(-1);
+  const identity =
+    state.act === 0 && scripted && currentLine?.id === "identity";
+  const monologue = state.act === 0 && scripted && currentLine?.id === "inner";
   const scene = {
     ...story.acts[state.act]!,
     ...(currentLine?.location ? { location: currentLine.location } : {}),
@@ -291,6 +363,8 @@ export function PlayV3({
       ].includes(latest.action ?? ""))
       ? (lines.at(-1) ?? latest)
       : latest;
+  const workRecordCount =
+    (state.work?.submissions?.length ?? 0) + (state.work?.reviews?.length ?? 0);
   const names = {
     sun: "孙淼",
     li: "李姐",
@@ -303,7 +377,7 @@ export function PlayV3({
   };
   const composer = (dm = false) => (
     <Form
-      className={s.composer}
+      className={`${s.composer} ${dm ? s.phoneComposer : ""}`}
       onSubmit={(e) => {
         e.preventDefault();
         void controller.submit(save, "speak", draft.text, target, {
@@ -322,7 +396,7 @@ export function PlayV3({
         <p id={dm ? "dm-recipient" : "scene-recipient"}>
           {dm
             ? contact === "group"
-              ? "工作群 · 项目工作群"
+              ? "工作群 · 研发部工作群"
               : `私聊 · ${names[target]}`
             : "现场 · 对孙淼说"}
         </p>
@@ -349,7 +423,14 @@ export function PlayV3({
         aria-describedby={dm ? "dm-recipient" : "scene-recipient"}
         maxLength={1500}
         value={draft.text}
-        onChange={(e) => setInput(e.target.value)}
+        rows={dm ? 2 : undefined}
+        onChange={(e) => {
+          setInput(e.target.value);
+          if (dm) {
+            e.target.style.height = "auto";
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
+          }
+        }}
         placeholder={
           dm
             ? contact === "group"
@@ -374,6 +455,11 @@ export function PlayV3({
   const conversation = useInfiniteQuery({
     queryKey: ["conversation", userId, save.id, contact, save.version],
     enabled: panel === "phone" && !!contact,
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[2] === save.id &&
+      previousQuery.queryKey[3] === contact
+        ? previous
+        : undefined,
     initialPageParam: "",
     getNextPageParam: (last: GameEvent[]) =>
       last.length === 100 ? last[0]?.id : undefined,
@@ -430,24 +516,22 @@ export function PlayV3({
         ? sceneOptions.filter((a) => a.action === "attend_farewell")
         : state.node === "act_1_farewell"
           ? sceneOptions.filter((a) => a.action === "contact_wang")
-          : authoredChoices.length
-            ? authoredChoices
-            : sceneOptions.filter((a) => a.enabled).slice(0, 3);
+          : state.act === 1 &&
+              state.flags.some((flag) =>
+                [
+                  "appeased:act_1",
+                  "boundary:act_1",
+                  "farewell_requested",
+                ].includes(flag),
+              )
+            ? []
+            : authoredChoices.length
+              ? authoredChoices
+              : sceneOptions.filter((a) => a.enabled).slice(0, 3);
   const feedback = (
     <div className={s.status} aria-label="操作反馈">
-      <ActionReceipt
-        play={play}
-        openActions={() => setPanel("work")}
-        act={act}
-        compact={!!panel}
-      />
-      {controller.savedStatus && <p role="status">{controller.savedStatus}</p>}
-      {!!controller.savedEffects?.length && (
-        <ul aria-label="本轮已保存结果">
-          {controller.savedEffects.map((text, index) => (
-            <li key={index}>{text}</li>
-          ))}
-        </ul>
+      {controller.savedStatus && !controller.saved && (
+        <p role="status">{controller.savedStatus}</p>
       )}
       {controller.status && <p role="status">{controller.status}</p>}
       <ErrorNotice error={controller.issue} message={controller.error} />
@@ -485,11 +569,17 @@ export function PlayV3({
   return (
     <main
       className={s.root}
+      data-identity={identity}
+      data-monologue={monologue}
+      data-prologue={state.act === 0 && scripted}
       data-composing={composingNode === (state.node ?? "prologue")}
       style={
         {
           "--story-text-size": `${textSize}px`,
-          backgroundImage: `linear-gradient(180deg,rgba(9,20,20,.3),rgba(9,20,20,.5)),url(${imageSource(scene.background, 1280)})`,
+          backgroundImage:
+            state.act === 0
+              ? `url(${imageSource("/assets/company-exterior.png", 1672)})`
+              : `linear-gradient(180deg,rgba(9,20,32,.12),rgba(9,20,32,.4)),url(${imageSource(scene.background, 1280)})`,
         } as CSSProperties
       }
     >
@@ -502,6 +592,11 @@ export function PlayV3({
           </small>
         </div>
         <div className={s.metricPanel}>
+          {controller.saved && !controller.pending && !controller.error && (
+            <small className={s.savedHint} role="status">
+              已保存
+            </small>
+          )}
           <div className={s.metrics}>
             {[
               ["舆论温度", state.heat],
@@ -511,7 +606,14 @@ export function PlayV3({
             ].map(([label, value]) => (
               <div key={label}>
                 <span>{label}</span>
-                <strong>{value}</strong>
+                <strong>
+                  {value}
+                  <MetricDelta
+                    key={save.id}
+                    version={save.version}
+                    value={Number(value)}
+                  />
+                </strong>
                 <meter
                   min={0}
                   max={100}
@@ -528,14 +630,11 @@ export function PlayV3({
       {!state.ending && (
         <Portraits
           story={story}
-          speaker={
-            scripted
-              ? lines[position]!.speaker
-              : "npc" in (last ?? {})
-                ? (last as { npc: string }).npc
-                : "sun"
+          speaker={currentLine?.speaker ?? "narrator"}
+          portraits={
+            identity ? ["player-coat"] : (currentLine?.portraits ?? [])
           }
-          portraits={scripted ? lines[position]!.portraits : undefined}
+          width={state.act === 0 ? 1024 : 512}
           player
         />
       )}
@@ -553,7 +652,12 @@ export function PlayV3({
               position={position}
               reduced={reduced}
               speed={textSpeed}
-              advance={() => void mark(state.node ?? "prologue", position + 1)}
+              continueLabel={enterStory ? "进入故事" : undefined}
+              disabled={busy || savingReading}
+              advance={() => {
+                if (enterStory) act("begin");
+                else void mark(state.node ?? "prologue", position + 1);
+              }}
             />
           ) : (
             <>
@@ -571,8 +675,13 @@ export function PlayV3({
                   if (entry === "phone") {
                     setPanel("phone");
                     setContact(npc ?? "sun");
-                  } else if (entry === "work") setPanel("work");
-                  else act(action, npc);
+                  } else if (entry === "work") {
+                    setRequireMentions(
+                      state.act === 2 && action === "supplement",
+                    );
+                    setPanel("work");
+                    void mark("work", workRecordCount);
+                  } else act(action, npc);
                 }}
                 busy={busy}
               />
@@ -625,9 +734,10 @@ export function PlayV3({
           {state.quiet_turns >= 3 && (
             <p>这几轮没有新增进展。可以查看工作事项、表达边界，或继续故事。</p>
           )}
+          {!panel && !play.proposal && !interlude && feedback}
         </section>
       )}
-      {!panel && !play.proposal && !interlude && feedback}
+      {state.ending && !panel && !play.proposal && !interlude && feedback}
       <nav className={s.toolbar} aria-label="故事工具与账户">
         <div className={s.storyTools}>
           {(
@@ -643,14 +753,29 @@ export function PlayV3({
               key={id}
               data-panel={id}
               onClick={() => {
+                setRequireMentions(false);
                 setPanel(id);
                 setContact(null);
+                if (id === "work") void mark("work", workRecordCount);
               }}
             >
-              {label}
-              {id === "work" && state.work?.purchase === "returned"
-                ? " · 待处理"
-                : ""}
+              <span>
+                {label}
+                {id === "work" && workRecordCount > (positions.work ?? 0)
+                  ? " · 未读"
+                  : id === "work" && state.work?.purchase === "returned"
+                    ? " · 待处理"
+                    : ""}
+              </span>
+              {id === "phone" ? (
+                <Smartphone size={18} aria-hidden="true" />
+              ) : id === "work" ? (
+                <BriefcaseBusiness size={18} aria-hidden="true" />
+              ) : id === "relations" ? (
+                <span aria-hidden="true">⌘</span>
+              ) : (
+                <Sparkles size={18} aria-hidden="true" />
+              )}
             </Button>
           ))}
           <Button
@@ -829,15 +954,34 @@ export function PlayV3({
       )}
       <dialog
         ref={panelDialog}
-        className={s.drawer}
+        className={`${s.drawer} ${panel === "phone" ? s.phoneDrawer : panel === "work" ? s.workDrawer : panel === "discussion" ? s.discussionDrawer : ""}`}
         aria-labelledby="story-panel-title"
         onCancel={() => setPanel(null)}
+        onPointerDown={(event) => {
+          backdropPressed.current = outsidePanel(event);
+        }}
+        onPointerUp={(event) => {
+          if (backdropPressed.current && outsidePanel(event)) setPanel(null);
+        }}
       >
         <header className={s.drawerHeader}>
-          <h2 id="story-panel-title">
+          {panel === "phone" && contact && (
+            <Button
+              variant="ghost"
+              aria-label="返回会话列表"
+              onClick={() => setContact(null)}
+            >
+              ← 会话列表
+            </Button>
+          )}
+          <h2 id="story-panel-title" tabIndex={-1}>
             {
               {
-                phone: "我的手机",
+                phone: contact
+                  ? contact === "group"
+                    ? "研发部工作群"
+                    : names[contact]
+                  : "通讯",
                 work: "工作系统",
                 relations: "关系图",
                 discussion: "知乎众议",
@@ -845,8 +989,15 @@ export function PlayV3({
               }[panel ?? "phone"]
             }
           </h2>
+          {panel === "work" && (
+            <>
+              <small className={s.workMotto}>专注当下 · 成就更好的自己</small>
+              <span className={s.workUser}>周菱菱</span>
+            </>
+          )}
           <Button
             variant="secondary"
+            className={s.panelClose}
             aria-label="关闭面板"
             onClick={() => setPanel(null)}
           >
@@ -854,71 +1005,42 @@ export function PlayV3({
           </Button>
         </header>
         {panel && !play.proposal && !interlude && feedback}
-        <div className={s.drawerBody}>
+        <div
+          className={`${s.drawerBody} ${panel === "phone" ? s.phoneBody : ""}`}
+        >
           {panel === "phone" && (
             <>
               {contact ? (
                 <>
-                  <Button variant="secondary" onClick={() => setContact(null)}>
-                    ← 会话列表
-                  </Button>
-                  <h3>{contact === "group" ? "项目工作群" : names[contact]}</h3>
-                  <div className={s.messages}>
-                    {conversation.hasNextPage && (
-                      <Button
-                        variant="secondary"
-                        isDisabled={conversation.isFetchingNextPage}
-                        onClick={() => void conversation.fetchNextPage()}
-                      >
-                        加载更早消息
-                      </Button>
+                  <PhoneMessages
+                    key={`${save.id}:${contact}`}
+                    story={story}
+                    events={npcEvents}
+                    loading={conversation.isPending}
+                    error={!!conversation.error}
+                    retry={() => void conversation.refetch()}
+                    hasMore={conversation.hasNextPage}
+                    loadingMore={conversation.isFetchingNextPage}
+                    loadMore={() => void conversation.fetchNextPage()}
+                    scene={story.acts[state.act]!}
+                    group={contact === "group"}
+                  />
+                  <div className={s.phoneFooter}>
+                    {contact === "group" && (
+                      <Actions
+                        options={(play.available_actions ?? []).filter((a) =>
+                          [
+                            "clarify",
+                            "review_clarification",
+                            "trace_rumor",
+                          ].includes(a.action),
+                        )}
+                        act={act}
+                        busy={busy}
+                      />
                     )}
-                    {conversation.error && (
-                      <p role="alert">
-                        会话读取失败。
-                        <Button
-                          variant="secondary"
-                          onClick={() => void conversation.refetch()}
-                        >
-                          重试读取
-                        </Button>
-                      </p>
-                    )}
-                    {npcEvents.map((e) => (
-                      <p key={e.id}>
-                        <strong>
-                          {e.speaker === "system"
-                            ? "事件记录"
-                            : e.kind === "npc"
-                              ? names[e.npc]
-                              : "我"}
-                          ：
-                        </strong>
-                        {e.text}
-                      </p>
-                    ))}
-                    {!npcEvents.length && (
-                      <p>
-                        {contact === "group"
-                          ? "群内只发布已核实的工作事实。"
-                          : story.npcs[contact]?.greeting}
-                      </p>
-                    )}
+                    {composer(true)}
                   </div>
-                  {contact === "group" && (
-                    <Actions
-                      options={(play.available_actions ?? []).filter((a) =>
-                        [
-                          "clarify",
-                          "review_clarification",
-                          "trace_rumor",
-                        ].includes(a.action),
-                      )}
-                      act={act}
-                      busy={busy}
-                    />
-                  )}
-                  {composer(true)}
                 </>
               ) : (
                 <>
@@ -937,6 +1059,8 @@ export function PlayV3({
                         variant="secondary"
                         className={s.contact}
                         key={n}
+                        aria-label={`${n === "group" ? "研发部工作群" : names[n]}${unread ? " · 未读" : ""}`}
+                        data-group={n === "group"}
                         onClick={() => {
                           setContact(n);
                           void mark(
@@ -945,15 +1069,43 @@ export function PlayV3({
                           );
                         }}
                       >
-                        <strong>
-                          {n === "group" ? "项目工作群" : names[n]}
-                          {unread ? " · 未读" : ""}
-                        </strong>
-                        <small>
-                          {play.contacts?.[n]?.preview ||
-                            messages.at(-1)?.text ||
-                            "打开会话"}
-                        </small>
+                        {n === "group" ? (
+                          <span className={s.avatar} aria-hidden="true">
+                            群
+                          </span>
+                        ) : (
+                          <img
+                            className={s.avatar}
+                            src={imageSource(
+                              story.npcs[n]?.portrait ?? "",
+                              256,
+                            )}
+                            alt=""
+                          />
+                        )}
+                        <span className={s.contactText}>
+                          <strong>
+                            {n === "group" ? "研发部工作群" : names[n]}
+                          </strong>
+                          <small>
+                            {play.contacts?.[n]?.preview ||
+                              messages.at(-1)?.text ||
+                              (n === "group"
+                                ? "群聊"
+                                : (story.npcs[n]?.role ?? "联系人"))}
+                          </small>
+                        </span>
+                        {unread && (
+                          <span className={s.unread} aria-hidden="true">
+                            {Math.max(
+                              0,
+                              (play.contacts?.[n]?.count ?? messages.length) -
+                                (positions[
+                                  n === "group" ? "group" : `dm_${n}`
+                                ] ?? 0),
+                            ) || ""}
+                          </span>
+                        )}
                       </Button>
                     );
                   })}
@@ -963,6 +1115,7 @@ export function PlayV3({
           )}
           {panel === "work" && (
             <Work
+              requireMentions={requireMentions}
               draftIdentity={{ userId, saveId: save.id }}
               state={state}
               options={play.available_actions ?? []}
@@ -1003,6 +1156,11 @@ export function PlayV3({
           )}
           {panel === "history" && (
             <>
+              <ActionReceipt
+                play={play}
+                openActions={() => setPanel("work")}
+                act={act}
+              />
               <EventHistory
                 userId={userId}
                 saveId={save.id}

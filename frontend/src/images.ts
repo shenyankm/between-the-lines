@@ -1,8 +1,5 @@
 import assets from "./assets.json";
-const manifest: Record<
-  string,
-  { width: number; src: string; bytes: number }[]
-> = assets;
+const manifest: Record<string, { width: number; src: string }[]> = assets;
 export function imageSource(source: string, width = 1280): string {
   const variants = manifest[source];
   return (

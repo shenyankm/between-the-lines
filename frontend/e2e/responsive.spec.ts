@@ -95,6 +95,13 @@ test("all five panels keep close controls and feedback reachable", async ({
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
+    const modalBox = (await dialog.boundingBox())!;
+    expect(
+      Math.abs(
+        modalBox.x + modalBox.width / 2 - page.viewportSize()!.width / 2,
+      ),
+    ).toBeLessThan(2);
+    expect(modalBox.x).toBeGreaterThan(0);
     await noOverflow(page);
     await inViewport(dialog.getByRole("button", { name: "关闭面板" }), page);
     if (name === "工作系统") {
@@ -358,5 +365,271 @@ test("long stage history and interlude remain usable with terminal discussion st
     );
     await noOverflow(page);
     await capture(page, info, `discussion-${status}`);
+  }
+});
+
+test("phone reference layout preserves context, portraits, and a reachable composer", async ({
+  page,
+}, info) => {
+  const fixture = await responsiveFixture(page);
+  fixture.view.play.performance![0]!.portraits = ["player", "sun"];
+  await fixture.stage();
+  for (const width of [390, 600, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.getByRole("button", { name: "我的手机", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "通讯" })).toBeVisible();
+    const names = await dialog
+      .locator('[class*="contactText"] strong')
+      .allTextContents();
+    expect(names).toEqual(["孙淼", "王会计", "李姐", "张工", "研发部工作群"]);
+    const loaded = await dialog
+      .locator("img")
+      .evaluateAll((images) =>
+        images.every(
+          (image) =>
+            (image as HTMLImageElement).complete &&
+            (image as HTMLImageElement).naturalWidth > 0,
+        ),
+      );
+    if (!loaded)
+      await expect
+        .poll(() =>
+          dialog
+            .locator("img")
+            .evaluateAll((images) =>
+              images.every(
+                (image) => (image as HTMLImageElement).naturalWidth > 0,
+              ),
+            ),
+        )
+        .toBe(true);
+    await page.screenshot({
+      path: `../artifacts/phone-reference/${info.project.name}-${width}-contacts.png`,
+    });
+    await dialog.getByRole("button", { name: "张工", exact: true }).click();
+    await expect(
+      dialog.getByText("暂无聊天记录", { exact: true }),
+    ).toBeVisible();
+    await expect(dialog.getByText(/当前情景.*第一幕/)).toBeVisible();
+    await expect(dialog.getByText(/项目最近怎么样/)).toHaveCount(0);
+    await dialog
+      .getByRole("textbox", { name: "自由表达" })
+      .fill("我想确认欢送会的安排。".repeat(12));
+    await inViewport(
+      dialog.getByRole("button", { name: "发送", exact: true }),
+      page,
+    );
+    await noOverflow(page);
+    await page.screenshot({
+      path: `../artifacts/phone-reference/${info.project.name}-${width}-empty.png`,
+    });
+    await dialog.getByRole("button", { name: "关闭面板" }).click();
+    await expect(
+      page.getByRole("button", { name: "我的手机", exact: true }),
+    ).toBeFocused();
+  }
+  expect(fixture.view.turns).toBe(0);
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await page.screenshot({
+    path: `../artifacts/phone-reference/${info.project.name}-stage.png`,
+  });
+  fixture.view.play.events = [
+    {
+      id: "message-1",
+      kind: "npc",
+      npc: "sun",
+      speaker: "sun",
+      channel: "dm",
+      text: "欢送会的安排，我们再确认一下。",
+    },
+    {
+      id: "message-2",
+      kind: "player",
+      npc: "sun",
+      speaker: "player",
+      channel: "dm",
+      text: "我希望能直接收到通知。",
+    },
+  ];
+  await page.getByRole("button", { name: "我的手机", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "孙淼", exact: true })
+    .click();
+  await expect(
+    page.getByText("我希望能直接收到通知。", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("暂无聊天记录", { exact: true })).toHaveCount(0);
+  await page.screenshot({
+    path: `../artifacts/phone-reference/${info.project.name}-chat.png`,
+  });
+  await page.setViewportSize({ width: 390, height: 450 });
+  await inViewport(
+    page.getByRole("dialog").getByRole("button", { name: "发送", exact: true }),
+    page,
+  );
+  await noOverflow(page);
+  await page.goto("/");
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await expect(
+    page.getByRole("button", { name: "开始新的故事" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `../artifacts/phone-reference/${info.project.name}-home.png`,
+  });
+});
+
+test("work and discussion references keep real records and responsive cards", async ({
+  page,
+}, info) => {
+  const fixture = await responsiveFixture(page);
+  Object.assign(fixture.view.play.save.state, {
+    act: 2,
+    node: "act_2",
+    content_revision: 3,
+    work: {
+      purchase: "returned",
+      facts: {},
+      submissions: [
+        {
+          kind: "standard",
+          version: 1,
+          purpose: "实验耗材采购原始申请",
+          evidence: ["quote"],
+          event_id: "submission-fixture",
+          status: "returned",
+          feedback: "请补充用途说明。",
+        },
+      ],
+      reviews: [
+        {
+          version: 1,
+          actor: "sun",
+          decision: "退回",
+          detail: "请补充用途说明。",
+          time: "本幕",
+          event_id: "review-fixture",
+        },
+      ],
+    },
+  });
+  fixture.view.play.reading = { act_2: 1 };
+  await fixture.stage();
+  await expect(
+    page.getByRole("button", { name: "工作系统 · 未读", exact: true }),
+  ).toBeVisible();
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.getByRole("button", { name: /^工作系统/ }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(
+      dialog.getByRole("heading", { name: "试制材料采购 已退回" }),
+    ).toBeVisible();
+    await expect(
+      dialog
+        .getByLabel("审批与提交记录")
+        .getByText("实验耗材采购原始申请", { exact: true }),
+    ).toBeVisible();
+    await expect(dialog.getByLabel("审批与提交记录")).toContainText(
+      "请补充用途说明。",
+    );
+    await inViewport(
+      dialog.getByRole("button", { name: "提交所选材料与说明" }),
+      page,
+    );
+    const form = (await dialog.getByLabel("采购申请表").boundingBox())!;
+    const reviews = (await dialog.getByLabel("审批与提交记录").boundingBox())!;
+    if (width > 800) {
+      expect(reviews.x).toBeGreaterThan(form.x + form.width);
+      expect(form.width / reviews.width).toBeGreaterThan(1.5);
+    }
+    await noOverflow(page);
+    await page.screenshot({
+      path: `../artifacts/phone-reference/${info.project.name}-${width}-work.png`,
+    });
+    await dialog.getByRole("button", { name: "关闭面板" }).click();
+    await expect(
+      page.getByRole("button", { name: "工作系统 · 待处理", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "知乎众议", exact: true }).click();
+    await expect(
+      dialog.getByText("先核实，再回应", { exact: true }),
+    ).toBeVisible();
+    await expect(dialog.locator("blockquote")).toHaveText(
+      "我想先确认具体安排。",
+    );
+    await noOverflow(page);
+    await page.screenshot({
+      path: `../artifacts/phone-reference/${info.project.name}-${width}-discussion.png`,
+    });
+    await dialog.getByRole("button", { name: "关闭面板" }).click();
+  }
+  expect(fixture.view.turns).toBe(0);
+});
+
+test("completed scene receipts leave no blank block above phone contacts", async ({
+  page,
+}) => {
+  const fixture = await responsiveFixture(page);
+  fixture.view.play.events = [
+    {
+      id: "completed-input",
+      kind: "player",
+      npc: "sun",
+      speaker: "player",
+      channel: "scene",
+      action: "begin",
+      text: "进入故事",
+    },
+  ];
+  await fixture.stage();
+  await expect(
+    page.getByText("最近一轮 · 已保存记录", { exact: true }),
+  ).toBeHidden();
+  await page.screenshot({
+    path: "../artifacts/phone-reference/clean-stage.png",
+  });
+  await page.getByRole("button", { name: "完整记录", exact: true }).click();
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByText("最近一轮 · 已保存记录", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "关闭面板" }).click();
+  await page.getByRole("button", { name: "我的手机", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("操作反馈")).toBeHidden();
+  const header = (await dialog.locator("header").boundingBox())!;
+  const contact = (await dialog
+    .getByRole("button", { name: "孙淼", exact: true })
+    .boundingBox())!;
+  expect(contact.y - header.y - header.height).toBeLessThan(24);
+});
+
+test("tool modals dismiss on the backdrop without dismissing inside clicks or drags", async ({
+  page,
+}) => {
+  await (await responsiveFixture(page)).stage();
+  for (const name of [
+    "我的手机",
+    "工作系统",
+    "关系图",
+    "知乎众议",
+    "完整记录",
+  ]) {
+    await page.getByRole("button", { name, exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator("#story-panel-title").click();
+    await expect(dialog).toBeVisible();
+    const box = (await dialog.boundingBox())!;
+    await page.mouse.move(box.x + 10, box.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(2, 2);
+    await page.mouse.up();
+    await expect(dialog).toBeVisible();
+    await page.mouse.click(2, 2);
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole("button", { name, exact: true })).toBeFocused();
   }
 });
