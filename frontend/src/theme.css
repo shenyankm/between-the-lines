@@ -6,8 +6,10 @@
 @import "@heroui/styles/themes/default/variables.css" layer(theme);
 @import "@heroui/styles/components/button.css" layer(components);
 @import "@heroui/styles/components/card.css" layer(components);
+@import "@heroui/styles/components/surface.css" layer(components);
 
 @import "@heroui/styles/components/textarea.css" layer(components);
+@import "@heroui/styles/components/input.css" layer(components);
 
 :root,
 .dark,

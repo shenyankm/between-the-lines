@@ -1,3 +1,4 @@
+import { Button, Surface } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ApiError, errorMessage, isCancelled } from "./api";
@@ -59,7 +60,7 @@ export function ErrorNotice({
     }
   }
   return (
-    <div role="alert" className={s.error}>
+    <Surface role="alert" className={s.error}>
       <p>{message || errorMessage(error)}</p>
       <p>{seconds > 0 ? `请等待 ${seconds} 秒后再试。` : advice}</p>
       {apiError?.details?.map((issue, index) => (
@@ -71,19 +72,25 @@ export function ErrorNotice({
         <Link to="/">返回首页登录</Link>
       ) : (
         onRetry && (
-          <button disabled={disabled || seconds > 0} onClick={onRetry}>
+          <Button
+            variant="secondary"
+            isDisabled={disabled || seconds > 0}
+            onClick={onRetry}
+          >
             {retryLabel}
-          </button>
+          </Button>
         )
       )}
       {diagnostic && (
         <details>
           <summary>错误详情</summary>
           <pre>{diagnostic}</pre>
-          <button onClick={() => void copy()}>复制错误信息</button>
+          <Button variant="secondary" onClick={() => void copy()}>
+            复制错误信息
+          </Button>
           <span>{copied}</span>
         </details>
       )}
-    </div>
+    </Surface>
   );
 }

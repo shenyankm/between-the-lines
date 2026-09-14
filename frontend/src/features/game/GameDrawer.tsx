@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { imageSource } from "../../images";
 import { Check, ChevronRight, Sparkles, X } from "lucide-react";
 import s from "../../App.module.css";
@@ -58,15 +59,20 @@ export function GameDrawer({
                 }[panel || "phone"]
               }
             </h2>
-            <button aria-label="关闭面板" onClick={() => setPanel(null)}>
+            <Button
+              variant="secondary"
+              aria-label="关闭面板"
+              onClick={() => setPanel(null)}
+            >
               <X />
-            </button>
+            </Button>
           </div>
           {panel === "phone" && (
             <>
               <p className={s.muted}>联系人</p>
               {(Object.keys(story.npcs) as Npc[]).map((key) => (
-                <button
+                <Button
+                  variant="secondary"
                   className={`${s.contact} ${key === npc ? s.selectedContact : ""}`}
                   key={key}
                   onClick={() => {
@@ -87,7 +93,7 @@ export function GameDrawer({
                     <small>{(story.npcs[key] ?? story.npcs.sun).role}</small>
                   </span>
                   <ChevronRight size={18} />
-                </button>
+                </Button>
               ))}
               <article className={s.note}>
                 <span className={s.overline}>朋友圈 · 王会计</span>
@@ -155,10 +161,11 @@ export function GameDrawer({
                   ].includes(a.action),
                 )
                 .map((a) => (
-                  <button
+                  <Button
+                    variant="secondary"
                     key={a.action}
-                    disabled={disabled || !a.enabled}
-                    title={a.reason}
+                    isDisabled={disabled || !a.enabled}
+                    aria-description={a.reason}
                     onClick={() => {
                       void act(a.action, "", a.target ?? undefined);
                       setPanel(null);
@@ -166,12 +173,13 @@ export function GameDrawer({
                   >
                     {a.label}
                     {a.completed ? " · 已完成" : ""}
-                  </button>
+                  </Button>
                 ))}
               {state.act > 0 && !state.ending && (
-                <button
+                <Button
+                  variant="secondary"
                   className={s.textButton}
-                  disabled={disabled}
+                  isDisabled={disabled}
                   onClick={() => {
                     if (
                       availableActions?.length ||
@@ -183,7 +191,7 @@ export function GameDrawer({
                   }}
                 >
                   选择离开当前环境
-                </button>
+                </Button>
               )}
             </>
           )}
