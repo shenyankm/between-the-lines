@@ -818,12 +818,8 @@ it("restores reading preferences and rejects invalid stored options", () => {
     speed: "-1",
   });
   let view = mount();
-  expect((screen.getByLabelText("文字大小") as HTMLSelectElement).value).toBe(
-    "18",
-  );
-  expect((screen.getByLabelText("对白显示") as HTMLSelectElement).value).toBe(
-    "35",
-  );
+  expect(screen.getByLabelText("文字大小").value).toBe("18");
+  expect(screen.getByLabelText("对白显示").value).toBe("35");
   expect(screen.getByText("四项指标与说明").closest("details")?.open).toBe(
     false,
   );
@@ -835,12 +831,8 @@ it("restores reading preferences and rejects invalid stored options", () => {
   });
   view.unmount();
   view = mount();
-  expect((screen.getByLabelText("文字大小") as HTMLSelectElement).value).toBe(
-    "23",
-  );
-  expect((screen.getByLabelText("对白显示") as HTMLSelectElement).value).toBe(
-    "0",
-  );
+  expect(screen.getByLabelText("文字大小").value).toBe("23");
+  expect(screen.getByLabelText("对白显示").value).toBe("0");
   expect(
     view.container
       .querySelector("main")
