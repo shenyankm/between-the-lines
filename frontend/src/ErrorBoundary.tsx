@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import styles from "./App.module.css";
 import { ApiError } from "./api";
@@ -48,13 +49,13 @@ export class ErrorBoundary extends Component<Props, State> {
           这次操作没有完成，刷新页面即可回到最近的进度。
           {requestId ? `（请求编号 ${requestId}）` : ""}
         </p>
-        <button
+        <Button
           type="button"
           className={styles.primary}
           onClick={() => window.location.reload()}
         >
           刷新页面
-        </button>
+        </Button>
       </div>
     );
   }

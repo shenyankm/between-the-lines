@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ApiError, errorMessage, isCancelled } from "./api";
@@ -71,16 +72,23 @@ export function ErrorNotice({
         <Link to="/">返回首页登录</Link>
       ) : (
         onRetry && (
-          <button disabled={disabled || seconds > 0} onClick={onRetry}>
+          <Button
+            type="button"
+            variant="secondary"
+            isDisabled={disabled || seconds > 0}
+            onClick={onRetry}
+          >
             {retryLabel}
-          </button>
+          </Button>
         )
       )}
       {diagnostic && (
         <details>
           <summary>错误详情</summary>
           <pre>{diagnostic}</pre>
-          <button onClick={() => void copy()}>复制错误信息</button>
+          <Button type="button" variant="secondary" onClick={() => void copy()}>
+            复制错误信息
+          </Button>
           <span>{copied}</span>
         </details>
       )}

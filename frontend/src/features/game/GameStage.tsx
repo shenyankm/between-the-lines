@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import {
   Bookmark,
   BriefcaseBusiness,
@@ -115,10 +116,16 @@ export function GameStage({
               { key: "history", icon: History, label: "回顾" },
             ] as const
           ).map(({ key, icon: Icon, label }) => (
-            <button key={key} onClick={() => setPanel(key)} aria-label={label}>
+            <Button
+              type="button"
+              variant="secondary"
+              key={key}
+              onClick={() => setPanel(key)}
+              aria-label={label}
+            >
               <Icon size={21} />
               <span>{label}</span>
-            </button>
+            </Button>
           ))}
         </div>
       </section>

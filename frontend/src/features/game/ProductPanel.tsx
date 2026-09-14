@@ -1,3 +1,4 @@
+import { Button, TextArea } from "@heroui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -139,24 +140,33 @@ export function ProductPanel({
     .join("\n\n");
   return (
     <section className={s.productPanel}>
-      <button onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
         复盘、观点卡与重玩
-      </button>
+      </Button>
       {open && (
         <>
           <h2>我的故事记录</h2>
           <div className={s.choices}>
             {save.state.ending && (
-              <button
-                disabled={busy || disabled}
+              <Button
+                type="button"
+                variant="secondary"
+                isDisabled={busy || disabled}
                 onClick={() => void generate("ending")}
               >
                 生成独立结局演出
-              </button>
+              </Button>
             )}
             {save.state.ending && (
-              <button
-                disabled={
+              <Button
+                type="button"
+                variant="secondary"
+                isDisabled={
                   busy ||
                   disabled ||
                   jobs.data?.some(
@@ -166,10 +176,12 @@ export function ProductPanel({
                 onClick={() => void generate("reflection")}
               >
                 生成个人化复盘
-              </button>
+              </Button>
             )}
-            <button
-              disabled={
+            <Button
+              type="button"
+              variant="secondary"
+              isDisabled={
                 busy ||
                 disabled ||
                 jobs.data?.some(
@@ -182,7 +194,7 @@ export function ProductPanel({
               onClick={() => void generate("discussion")}
             >
               查看本幕观点卡
-            </button>
+            </Button>
           </div>
           {(jobs.data ?? []).map((job) => (
             <article key={job.id}>
@@ -230,8 +242,10 @@ export function ProductPanel({
                       </a>
                     ) : null,
                   )}
-                  <button
-                    disabled={
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    isDisabled={
                       disabled ||
                       !!save.state.ending ||
                       job.status !== "completed" ||
@@ -242,7 +256,7 @@ export function ProductPanel({
                     }
                   >
                     带入草稿（可编辑）
-                  </button>
+                  </Button>
                 </div>
               ))}
             </article>
@@ -250,9 +264,11 @@ export function ProductPanel({
           <h3>尝试另一种回应</h3>
           <p>重玩会建立独立分支，保留原故事。</p>
           {(points.data ?? []).map((point) => (
-            <button
+            <Button
+              type="button"
+              variant="secondary"
               key={point.id}
-              disabled={busy || disabled}
+              isDisabled={busy || disabled}
               onClick={() =>
                 void perform(async () => {
                   const result = await api(
@@ -268,7 +284,7 @@ export function ProductPanel({
               }
             >
               {nodes[point.node] ?? point.node}
-            </button>
+            </Button>
           ))}
           {save.story_version !== 2 && (
             <p>旧版本不提供无法可靠还原的重玩节点，请新建故事体验新版。</p>
@@ -286,8 +302,10 @@ export function ProductPanel({
                 </p>
               ))}
             {!allHistory && (
-              <button
-                disabled={busy}
+              <Button
+                type="button"
+                variant="secondary"
+                isDisabled={busy}
                 onClick={() =>
                   void perform(async () => {
                     const cursor = history[0]?.id ?? events[0]?.id;
@@ -305,7 +323,7 @@ export function ProductPanel({
                 }
               >
                 查看更早记录
-              </button>
+              </Button>
             )}
           </details>
           <details>
@@ -327,7 +345,9 @@ export function ProductPanel({
               最近三次点击行动
             </label>
             <pre className={s.sharePreview}>{share}</pre>
-            <button
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() =>
                 void perform(async () => {
                   await navigator.clipboard.writeText(share);
@@ -336,18 +356,20 @@ export function ProductPanel({
               }
             >
               {copied ? "已复制" : "复制预览内容"}
-            </button>
+            </Button>
           </details>
           <details>
             <summary>提交体验反馈</summary>
-            <textarea
+            <TextArea
               maxLength={1500}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               aria-label="体验反馈"
             />
-            <button
-              disabled={!feedback.trim() || busy}
+            <Button
+              type="button"
+              variant="secondary"
+              isDisabled={!feedback.trim() || busy}
               onClick={() =>
                 void perform(async () => {
                   await api("/feedback", { text: feedback });
@@ -356,7 +378,7 @@ export function ProductPanel({
               }
             >
               提交反馈
-            </button>
+            </Button>
           </details>
           <ErrorNotice error={error || jobs.error || points.error} />
         </>

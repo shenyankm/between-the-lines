@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { imageSource, imageSet } from "./images";
 import s from "./App.module.css";
@@ -38,13 +39,23 @@ export function SceneInterlude({
         <p>{scene.text}</p>
         <div>
           {choices || (
-            <button className={s.primary} onClick={onContinue}>
+            <Button
+              type="button"
+              variant="secondary"
+              className={s.primary}
+              onClick={onContinue}
+            >
               进入下一幕
-            </button>
+            </Button>
           )}
-          <button className={s.textButton} onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            className={s.textButton}
+            onClick={onClose}
+          >
             返回当前剧情
-          </button>
+          </Button>
         </div>
       </div>
     </dialog>
