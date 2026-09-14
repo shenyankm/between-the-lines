@@ -13,7 +13,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../../testing/server";
 import { save, sunReply } from "../../testing/fixtures";
 import type { PlayState, Story, TurnInput } from "../../types";
-import { readDraft, writeDraft } from "../game/drafts";
+import { readDraft, writeDraft, writeFormDraft } from "../game/drafts";
 import { PlayV3 } from "./PlayV3";
 import type { Option, StateV3 } from "./Work";
 import authored from "../../testing/story-v3.json";
@@ -809,4 +809,54 @@ it("labels the recipient before sending and offers an explicit contact switch", 
   fireEvent.click(screen.getByRole("button", { name: "切换对话对象" }));
   fireEvent.click(screen.getByRole("button", { name: /张工/ }));
   expect(screen.getByText("私聊 · 张工")).toBeTruthy();
+});
+
+it("restores reading preferences and rejects invalid stored options", () => {
+  vi.stubGlobal("innerWidth", 390);
+  writeFormDraft("test-user", "save-1", "reading-preferences", {
+    size: "invalid",
+    speed: "-1",
+  });
+  let view = mount();
+  expect(screen.getByLabelText<HTMLSelectElement>("文字大小").value).toBe("18");
+  expect(screen.getByLabelText<HTMLSelectElement>("对白显示").value).toBe("35");
+  expect(screen.getByText("四项指标与说明").closest("details")?.open).toBe(
+    false,
+  );
+  fireEvent.change(screen.getByLabelText("文字大小"), {
+    target: { value: "23" },
+  });
+  fireEvent.change(screen.getByLabelText("对白显示"), {
+    target: { value: "0" },
+  });
+  view.unmount();
+  view = mount();
+  expect(screen.getByLabelText<HTMLSelectElement>("文字大小").value).toBe("23");
+  expect(screen.getByLabelText<HTMLSelectElement>("对白显示").value).toBe("0");
+  expect(
+    view.container
+      .querySelector("main")
+      ?.style.getPropertyValue("--story-text-size"),
+  ).toBe("23px");
+});
+
+it("keeps the scene compact after editing without letting private input change its layout", () => {
+  const view = mount();
+  const root = view.container.querySelector("main")!;
+  expect(root.dataset.composing).toBe("false");
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: "孙淼打开会话" }));
+  fireEvent.focus(
+    within(screen.getByRole("dialog")).getByLabelText("自由表达"),
+  );
+  expect(root.dataset.composing).toBe("false");
+  fireEvent.click(screen.getByLabelText("关闭面板"));
+  const input = screen.getByLabelText("自由表达");
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: "保留输入" } });
+  fireEvent.blur(input);
+  expect(root.dataset.composing).toBe("true");
+  expect(screen.getByLabelText<HTMLTextAreaElement>("自由表达").value).toBe(
+    "保留输入",
+  );
 });

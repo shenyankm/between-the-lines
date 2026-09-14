@@ -62,3 +62,44 @@ it("logout clears memory even if persisted-key deletion fails", () => {
   });
   expect(() => clearIdentityDrafts("alice")).not.toThrow();
 });
+
+it("isolates form drafts by identity, save and type and removes them on logout", async () => {
+  const { readFormDraft, writeFormDraft, clearIdentityDrafts } = await import(
+    "./drafts"
+  );
+  writeFormDraft("form-user", "save-a", "support:leave", {
+    reason: "休息",
+    plan: "交接",
+  });
+  expect(readFormDraft("form-user", "save-a", "support:leave")).toEqual({
+    reason: "休息",
+    plan: "交接",
+  });
+  expect(readFormDraft("other-user", "save-a", "support:leave")).toBeNull();
+  expect(readFormDraft("form-user", "save-b", "support:leave")).toBeNull();
+  expect(readFormDraft("form-user", "save-a", "support:help")).toBeNull();
+  clearIdentityDrafts("form-user");
+  expect(readFormDraft("form-user", "save-a", "support:leave")).toBeNull();
+});
+
+it("keeps form input in memory when session storage fails, and rejects malformed storage", async () => {
+  const { readFormDraft, writeFormDraft, clearIdentityDrafts } = await import(
+    "./drafts"
+  );
+  sessionStorage.setItem(
+    "draft:v2:malformed:form:s:exit",
+    JSON.stringify({ reason: 123 }),
+  );
+  expect(readFormDraft("malformed", "s", "exit")).toBeNull();
+  const fail = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw new Error("unavailable");
+  });
+  expect(writeFormDraft("fallback-form", "s", "exit", { reason: "保留" })).toBe(
+    false,
+  );
+  expect(readFormDraft("fallback-form", "s", "exit")).toEqual({
+    reason: "保留",
+  });
+  clearIdentityDrafts("fallback-form");
+  fail.mockRestore();
+});

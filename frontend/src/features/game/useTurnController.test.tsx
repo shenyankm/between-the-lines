@@ -458,3 +458,108 @@ it("does not clear a draft when the recovered terminal result failed", async () 
   await tick();
   expect(completed).not.toHaveBeenCalled();
 });
+
+it("keeps unknown submission distinct from server-confirmed acceptance", async () => {
+  const send = vi
+    .spyOn(api, "sendTurn")
+    .mockRejectedValue(new Error("连接断开"));
+  const h = mount();
+  await act(async () => {
+    await h.result.current.submit(save(), "boundary", "", "sun");
+  });
+  expect(h.result.current.savedStatus).toContain("是否受理尚未确认");
+  await tick(1000);
+  expect(h.result.current.savedStatus).toContain("请求已受理");
+  expect(h.result.current.savedStatus).toContain("行动结果尚待确认");
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+it("retains committed effect evidence when only the reply fails", async () => {
+  const send = vi.spyOn(api, "sendTurn").mockResolvedValue(
+    result({
+      status: "failed",
+      effects: [
+        { text: "李姐已核对报价单与用途说明。", changes: { credit: 10 } },
+      ],
+    }),
+  );
+  const h = mount();
+  await act(async () => {
+    await h.result.current.submit(save(), "boundary", "", "sun");
+  });
+  expect(h.result.current.savedStatus).toContain("行动已保存，角色回复未完成");
+  expect(h.result.current.savedEffects).toEqual([
+    "李姐已核对报价单与用途说明。",
+  ]);
+  await tick(10_000);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(h.result.current.pending).toBeNull();
+});
+
+it("does not invent a saved action from a failed reply without effects", async () => {
+  vi.spyOn(api, "sendTurn").mockResolvedValue(
+    result({ status: "failed", effects: [] }),
+  );
+  const h = mount();
+  await act(async () => {
+    await h.result.current.submit(save(), "speak", "你好", "sun");
+  });
+  expect(h.result.current.savedStatus).not.toContain("行动已保存");
+  expect(h.result.current.savedEffects).toEqual([]);
+});
+
+it("keeps terminal completion visible when page refresh fails and does not resubmit", async () => {
+  vi.spyOn(api, "sendTurn").mockResolvedValue(result());
+  const h = mount();
+  const invalidate = vi.spyOn(h.client, "invalidateQueries");
+  // Resolve both invalidations with a shared rejection so the refresh settles.
+  let rejectRefresh: (error: Error) => void = () => {};
+  const refreshing = new Promise<void>((_resolve, reject) => {
+    rejectRefresh = reject;
+  });
+  invalidate.mockReturnValue(refreshing);
+  let submitted: Promise<boolean> = Promise.resolve(false);
+  await act(async () => {
+    submitted = h.result.current.submit(save(), "speak", "你好", "sun");
+    await Promise.resolve();
+  });
+  expect(h.result.current.savedStatus).toContain(
+    "本回合已完成，进度已保存。正在刷新页面",
+  );
+  await act(async () => {
+    rejectRefresh(new Error("刷新断网"));
+    await submitted;
+  });
+  expect(h.result.current.savedStatus).toContain(
+    "本回合已完成，进度已保存。页面刷新未完成",
+  );
+  expect(h.result.current.pending).toBeNull();
+  expect(api.sendTurn).toHaveBeenCalledTimes(1);
+  expect(api.gameApi.turn).not.toHaveBeenCalled();
+});
+
+it("keeps committed action evidence through a failed page refresh without inventing missing text", async () => {
+  vi.spyOn(api, "sendTurn").mockResolvedValue(
+    result({
+      status: "failed",
+      text: "",
+      effects: [
+        { text: "已提交说明。" },
+        { text: "" },
+        { changes: { credit: 10 } },
+      ],
+    }),
+  );
+  const h = mount();
+  vi.spyOn(h.client, "invalidateQueries").mockRejectedValue(
+    new Error("刷新断网"),
+  );
+  await act(async () => {
+    await h.result.current.submit(save(), "speak", "说明", "sun");
+  });
+  expect(h.result.current.savedStatus).toContain("行动已保存，角色回复未完成");
+  expect(h.result.current.savedEffects).toEqual(["已提交说明。"]);
+  expect(h.result.current.error).toContain("进度刷新未完成");
+  expect(h.result.current.pending).toBeNull();
+  expect(api.sendTurn).toHaveBeenCalledTimes(1);
+});

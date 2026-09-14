@@ -1,4 +1,9 @@
 import { Form, TextArea, Button } from "@heroui/react";
+import {
+  useFormDraft,
+  FormDraftNotice,
+  type DraftIdentity,
+} from "./useFormDraft";
 import { useState } from "react";
 import { SupportForm } from "./SupportForm";
 import type { Action, Npc, TurnInput } from "../../types";
@@ -70,11 +75,13 @@ export function Work({
   options,
   act,
   busy,
+  draftIdentity,
 }: {
   state: StateV3;
   options: Option[];
   act: Act;
   busy: boolean;
+  draftIdentity?: DraftIdentity;
 }) {
   const [purchaseKind, setPurchaseKind] = useState<"standard" | "urgent">(
     state.work?.submissions?.at(-1)?.kind ?? "standard",
@@ -83,10 +90,17 @@ export function Work({
   const [evidence, setEvidence] = useState<("quote" | "purpose" | "urgency")[]>(
     [],
   );
-  const [kind, setKind] = useState<"resign" | "transfer" | "withdraw">(
-    "resign",
-  );
-  const [reason, setReason] = useState("");
+  const exit = useFormDraft(draftIdentity, "exit", {
+    kind: state.exit_draft?.kind ?? "resign",
+    reason: state.exit_draft?.reason ?? "",
+  });
+  const kind = ["resign", "transfer", "withdraw"].includes(
+    exit.value.kind ?? "",
+  )
+    ? exit.value.kind!
+    : "resign";
+  const reason = exit.value.reason ?? "";
+  const [reasonError, setReasonError] = useState(false);
   const [tab, setTab] = useState("purchase");
   const enabled = (name: Action) =>
     !busy && options.some((a) => a.action === name && a.enabled);
@@ -311,22 +325,49 @@ export function Work({
         </>
       ) : (
         <>
-          <SupportForm state={state} options={options} act={act} busy={busy} />
+          <SupportForm
+            state={state}
+            options={options}
+            act={act}
+            busy={busy}
+            draftIdentity={draftIdentity}
+          />
           <h3>退出申请</h3>
+          <FormDraftNotice storageIssue={exit.storageIssue} />
+          <Button
+            variant="secondary"
+            isDisabled={!!state.exit_draft?.submitted}
+            onClick={() => exit.update({ kind: "resign", reason: "" })}
+          >
+            清空退出申请输入
+          </Button>
+          {reasonError && (
+            <p id="exit-reason-error" role="alert">
+              请填写申请理由，不能只输入空格。
+            </p>
+          )}
           <Form
             onSubmit={(e) => {
               e.preventDefault();
               if (!enabled("draft_exit")) return;
-              act("draft_exit", "sun", { params: { kind, reason } });
+              if (!reason.trim()) {
+                setReasonError(true);
+                return;
+              }
+              setReasonError(false);
+              act("draft_exit", "sun", {
+                params: {
+                  kind: kind as "resign" | "transfer" | "withdraw",
+                  reason,
+                },
+              });
             }}
           >
             <label>
               申请类型
               <select
                 value={kind}
-                onChange={(e) =>
-                  setKind(e.target.value as "resign" | "transfer" | "withdraw")
-                }
+                onChange={(e) => exit.update({ kind: e.target.value })}
               >
                 <option value="resign">离职</option>
                 <option value="transfer">调岗</option>
@@ -339,7 +380,12 @@ export function Work({
                 required
                 maxLength={1000}
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => {
+                  exit.update({ reason: e.target.value });
+                  setReasonError(false);
+                }}
+                aria-invalid={reasonError}
+                aria-describedby={reasonError ? "exit-reason-error" : undefined}
               />
             </label>
             <Button

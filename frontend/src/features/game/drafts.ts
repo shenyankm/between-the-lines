@@ -7,6 +7,7 @@ export type Draft = {
   perspective_id?: string;
 };
 const memory = new Map<string, Draft>();
+const formMemory = new Map<string, Record<string, string>>();
 const prefix = (user: string) => `draft:v2:${user}:`;
 const key = (user: string, save: string, npc: Npc, scope = "") =>
   `${prefix(user)}${save}:${npc}${scope ? `:${scope}` : ""}`;
@@ -58,6 +59,8 @@ export function writeDraft(
   }
 }
 export function clearIdentityDrafts(user: string) {
+  for (const name of formMemory.keys())
+    if (name.startsWith(prefix(user))) formMemory.delete(name);
   for (const name of memory.keys())
     if (name.startsWith(prefix(user))) memory.delete(name);
   try {
@@ -65,5 +68,42 @@ export function clearIdentityDrafts(user: string) {
       if (name.startsWith(prefix(user))) sessionStorage.removeItem(name);
   } catch {
     /* Memory already cleared. */
+  }
+}
+
+export function readFormDraft(user: string, save: string, form: string) {
+  const name = `${prefix(user)}form:${save}:${form}`;
+  if (formMemory.has(name)) return formMemory.get(name)!;
+  try {
+    const value: unknown = JSON.parse(sessionStorage.getItem(name) || "null");
+    if (
+      record(value) &&
+      Object.keys(value).length <= 10 &&
+      Object.values(value).every(
+        (v) => typeof v === "string" && v.length <= 1000,
+      )
+    ) {
+      const fields = value as Record<string, string>;
+      formMemory.set(name, fields);
+      return fields;
+    }
+  } catch {
+    /* The current page still keeps in-memory input. */
+  }
+  return null;
+}
+export function writeFormDraft(
+  user: string,
+  save: string,
+  form: string,
+  fields: Record<string, string>,
+) {
+  const name = `${prefix(user)}form:${save}:${form}`;
+  formMemory.set(name, fields);
+  try {
+    sessionStorage.setItem(name, JSON.stringify(fields));
+    return true;
+  } catch {
+    return false;
   }
 }

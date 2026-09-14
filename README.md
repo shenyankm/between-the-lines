@@ -46,3 +46,7 @@ At the end, revisit what happened and reflect on your choices. You do not have t
 Found a confusing choice or a problem while playing? [Open an issue](https://github.com/shenyankm/between-the-lines/issues) with the scene, what you tried, and what happened. A screenshot can help; leave out private messages and account information. Report security issues through the [security policy](SECURITY.md).
 
 To work on the project, see the [contribution guide](CONTRIBUTING.md). Local setup and hosting instructions are in [development and deployment](docs/development.md); implementation details are in the [architecture guide](docs/architecture.md).
+
+## Current story scope
+
+This release focuses on the three-act workplace story and boundaries with coworkers. Partner and family-support scenes are not playable features in this release. Advancing the story never makes a breakup, reconciliation, disclosure, or forgiveness decision for the player. See [story scope](docs/story-scope.md).

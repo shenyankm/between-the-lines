@@ -9,10 +9,12 @@ export function ActionReceipt({
   play,
   openActions,
   act,
+  compact = false,
 }: {
   play: PlayState;
   openActions: () => void;
   act?: Act;
+  compact?: boolean;
 }) {
   const start = play.events.reduce(
     (last, event, index) => (event.kind === "player" ? index : last),
@@ -48,49 +50,51 @@ export function ActionReceipt({
   );
   return (
     <section aria-label="最近一轮记录">
-      <h3>最近一轮 · 已保存记录</h3>
-      {actions.map((event) => (
-        <article key={event.id}>
-          <p role="status">{event.text}</p>
-          <EffectDetails event={event} />
-          <EventEvidence saveId={play.save.id} eventId={event.id} />
-        </article>
-      ))}
-      {input.action === "speak" && !actions.length && (
-        <p>
-          {play.active_turn
-            ? "对白已保存，正在核对行动与回复。"
-            : play.proposal
-              ? "候选行动等待确认，尚未执行。"
-              : "本轮已作为对话保存；没有已执行行动的记录。可使用行动按钮，需填写的申请请先完善表单。"}
-        </p>
-      )}
-      {!play.active_turn && choices.length > 0 && (
-        <div aria-label="可追溯的下一步">
-          <h4>接下来可以</h4>
-          {choices.map((option) => (
-            <div key={option.action}>
-              <Button
-                variant="secondary"
-                isDisabled={!option.enabled}
-                onClick={() =>
-                  option.action === "supplement" || !act
-                    ? openActions()
-                    : act(option.action, option.target ?? "sun")
-                }
-              >
-                下一步：{option.label}
-              </Button>
-              <p>{option.reason || option.effect}</p>
-            </div>
-          ))}
-        </div>
-      )}
-      {input.action === "speak" && !actions.length && !play.active_turn && (
-        <Button variant="secondary" onClick={openActions}>
-          查看可用行动与表单
-        </Button>
-      )}
+      <details open={!compact}>
+        <summary>最近一轮 · 已保存记录</summary>
+        {actions.map((event) => (
+          <article key={event.id}>
+            <p role="status">{event.text}</p>
+            <EffectDetails event={event} />
+            <EventEvidence saveId={play.save.id} eventId={event.id} />
+          </article>
+        ))}
+        {input.action === "speak" && !actions.length && (
+          <p>
+            {play.active_turn
+              ? "对白已保存，正在核对行动与回复。"
+              : play.proposal
+                ? "候选行动等待确认，尚未执行。"
+                : "本轮已作为对话保存；没有已执行行动的记录。可使用行动按钮，需填写的申请请先完善表单。"}
+          </p>
+        )}
+        {!play.active_turn && choices.length > 0 && (
+          <div aria-label="可追溯的下一步">
+            <h4>接下来可以</h4>
+            {choices.map((option) => (
+              <div key={option.action}>
+                <Button
+                  variant="secondary"
+                  isDisabled={!option.enabled}
+                  onClick={() =>
+                    option.action === "supplement" || !act
+                      ? openActions()
+                      : act(option.action, option.target ?? "sun")
+                  }
+                >
+                  下一步：{option.label}
+                </Button>
+                <p>{option.reason || option.effect}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {input.action === "speak" && !actions.length && !play.active_turn && (
+          <Button variant="secondary" onClick={openActions}>
+            查看可用行动与表单
+          </Button>
+        )}
+      </details>
     </section>
   );
 }
