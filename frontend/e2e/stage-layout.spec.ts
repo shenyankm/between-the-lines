@@ -8,6 +8,11 @@ test("stage controls and grouped metrics fit narrow and wide screens", async ({
   for (const width of info.project.name === "mobile" ? [390] : [900, 1440]) {
     await page.setViewportSize({ width, height: 960 });
     await expect(dialogue(page)).toBeVisible();
+    const metrics = page.getByText("四项指标与说明", { exact: true });
+    if (info.project.name === "mobile") {
+      await expect(page.getByRole("meter")).toHaveCount(0);
+      await metrics.click();
+    }
     await expect(page.getByRole("meter")).toHaveCount(4);
     const next = page.getByRole("button", { name: "带着当前进度进入下一幕 →" });
     await expect(next).toBeVisible();

@@ -151,7 +151,7 @@ export async function exitStory(page: Page) {
   await page.getByRole("button", { name: /^工作系统/ }).click();
   await page.getByRole("button", { name: "人事申请" }).click();
   await page
-    .getByLabel("申请理由", { exact: true })
+    .getByRole("textbox", { name: "申请理由", exact: true })
     .fill("经过考虑，我希望离开当前环境。");
   await commitClick(page, () =>
     page.getByRole("button", { name: "保存并预览", exact: true }).click(),
