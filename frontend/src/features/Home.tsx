@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Bookmark, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -136,13 +137,15 @@ export function Home() {
         {user.data &&
         !(user.error instanceof ApiError && user.error.status === 401) ? (
           <div className={s.homeActions}>
-            <button
+            <Button
+              type="button"
+              variant="secondary"
               className={s.primary}
-              disabled={busy}
+              isDisabled={busy}
               onClick={() => void start()}
             >
               开始新的故事 <ArrowRight size={18} />
-            </button>
+            </Button>
             {latest && (
               <Link className={s.secondary} to={`/play/${latest.id}`}>
                 {latest.state.ending ? "回看最近的故事" : "继续上次的故事"}{" "}
@@ -156,13 +159,15 @@ export function Home() {
         ) : (
           <div className={s.homeActions}>
             {config.data?.guest_login && (
-              <button
+              <Button
+                type="button"
+                variant="secondary"
                 className={s.primary}
-                disabled={busy}
+                isDisabled={busy}
                 onClick={() => void trial()}
               >
                 立即试玩 · 第一幕
-              </button>
+              </Button>
             )}
             <a
               className={`${s.primary} ${!config.data?.zhihu_login ? s.disabled : ""}`}
@@ -172,13 +177,15 @@ export function Home() {
               知乎账号登录 <ArrowRight size={18} />
             </a>
             {config.data?.dev_login && (
-              <button
+              <Button
+                type="button"
+                variant="secondary"
                 className={s.secondary}
-                disabled={busy}
+                isDisabled={busy}
                 onClick={() => void login()}
               >
                 开发环境试玩 <ChevronRight size={17} />
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -264,19 +271,21 @@ export function Saves() {
       />
       {saves.data?.length === 0 && <p>还没有故事，从第一句话开始。</p>}
       <ErrorNotice error={manageError} />
-      <nav>
+      <nav className={s.saveFilters} aria-label="存档分类">
         {[
           ["active", "进行中与已完成"],
           ["archived", "归档"],
           ["trash", "回收站"],
         ].map(([key, label]) => (
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             key={key}
             onClick={() => setCategory(key!)}
             aria-pressed={category === key}
           >
             {label}
-          </button>
+          </Button>
         ))}
       </nav>
       <div className={s.saveGrid}>
@@ -290,54 +299,84 @@ export function Saves() {
                   : !item.archived_at && !item.deleted_at,
             )
             .map((item) => (
-              <div key={item.id} className={s.saveCard}>
-                {!item.deleted_at && (
-                  <Link to={`/play/${item.id}`}>打开故事</Link>
-                )}
-                <Bookmark />
-                <h2>
-                  {item.parent_save_id ? "重玩分支" : "我的故事"} ·{" "}
-                  {item.id.slice(0, 8)}
-                </h2>
-                <p>
-                  {item.last_played_at
-                    ? new Date(item.last_played_at).toLocaleString("zh-CN")
-                    : "旧版本存档"}{" "}
-                  · 故事 v{item.story_version ?? 1}
-                </p>
-                {item.parent_save_id && (
-                  <p>分支来自存档 {item.parent_save_id.slice(0, 8)}</p>
-                )}
-                <p>{item.state.ending || `第 ${item.state.act} 幕`}</p>
-                <span>
-                  专业信用 {item.state.credit} · 心绪消耗 {item.state.stress}
-                </span>
-                <button
-                  onClick={() =>
-                    void manage(
-                      item.id,
-                      item.deleted_at
-                        ? "restore"
+              <Card key={item.id} className={s.saveCard}>
+                <Card.Header className={s.saveCardHeader}>
+                  <Bookmark aria-hidden="true" size={20} />
+                  <div>
+                    <h2>{item.parent_save_id ? "重玩分支" : "我的故事"}</h2>
+                    <small>存档 {item.id.slice(0, 8)}</small>
+                  </div>
+                  <Chip size="sm">
+                    {item.deleted_at
+                      ? "回收站"
+                      : item.archived_at
+                        ? "已归档"
+                        : item.state.ending
+                          ? "已完成"
+                          : "进行中"}
+                  </Chip>
+                </Card.Header>
+                <Card.Content className={s.saveCardContent}>
+                  <p className={s.saveProgress}>
+                    {item.state.ending || `第 ${item.state.act} 幕`}
+                  </p>
+                  <p className={s.saveMetadata}>
+                    <span>
+                      {item.last_played_at
+                        ? new Date(item.last_played_at).toLocaleString("zh-CN")
+                        : "旧版本存档"}
+                    </span>
+                    <span>故事 v{item.story_version ?? 1}</span>
+                  </p>
+                  {item.parent_save_id && (
+                    <p>分支来自存档 {item.parent_save_id.slice(0, 8)}</p>
+                  )}
+                  <span>
+                    专业信用 {item.state.credit} · 心绪消耗 {item.state.stress}
+                  </span>
+                </Card.Content>
+                <Card.Footer className={s.saveCardFooter}>
+                  {!item.deleted_at && (
+                    <Link className={s.openSave} to={`/play/${item.id}`}>
+                      打开故事
+                    </Link>
+                  )}
+                  <div className={s.saveManagement}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        void manage(
+                          item.id,
+                          item.deleted_at
+                            ? "restore"
+                            : item.archived_at
+                              ? "unarchive"
+                              : "archive",
+                        )
+                      }
+                    >
+                      {item.deleted_at
+                        ? "从回收站恢复"
                         : item.archived_at
-                          ? "unarchive"
-                          : "archive",
-                    )
-                  }
-                >
-                  {item.deleted_at
-                    ? "从回收站恢复"
-                    : item.archived_at
-                      ? "恢复归档"
-                      : "归档"}
-                </button>
-                {!item.deleted_at && (
-                  <button onClick={() => void manage(item.id, "delete")}>
-                    移入回收站（30 天）
-                  </button>
-                )}
-              </div>
+                          ? "恢复归档"
+                          : "归档"}
+                    </Button>
+                    {!item.deleted_at && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => void manage(item.id, "delete")}
+                      >
+                        移入回收站（30 天）
+                      </Button>
+                    )}
+                  </div>
+                </Card.Footer>
+              </Card>
             ))}
       </div>
     </main>
   );
 }
+import { Card, Chip } from "@heroui/react";

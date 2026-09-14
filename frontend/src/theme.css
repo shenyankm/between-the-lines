@@ -1,0 +1,57 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@heroui/styles/base";
+@import "@heroui/styles/themes/default";
+@import "@heroui/styles/components/button.css" layer(components);
+@import "@heroui/styles/components/button-group.css" layer(components);
+@import "@heroui/styles/components/card.css" layer(components);
+@import "@heroui/styles/components/chip.css" layer(components);
+@import "@heroui/styles/components/close-button.css" layer(components);
+@import "@heroui/styles/components/input.css" layer(components);
+@import "@heroui/styles/components/textarea.css" layer(components);
+@import "@heroui/styles/components/modal.css" layer(components);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+
+/* Shared controls use HeroUI; CSS Modules own story composition and artwork. */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0b1421;
+  --foreground: #e7edf3;
+  --surface: #142235;
+  --surface-foreground: #e7edf3;
+  --surface-secondary: #1d3045;
+  --surface-secondary-foreground: #e7edf3;
+  --surface-tertiary: #253b50;
+  --surface-tertiary-foreground: #e7edf3;
+  --overlay: #142235;
+  --overlay-foreground: #e7edf3;
+  --accent: #e3bf80;
+  --accent-foreground: #15243a;
+  --default: #253349;
+  --default-foreground: #f5eedf;
+  --muted: #b4c0d0;
+  --border: #52637a;
+  --field-background: #1d2c40;
+  --field-foreground: #f5eedf;
+  --field-placeholder: #b4c0d0;
+  --field-border: #657086;
+  --field-border-width: 1px;
+  --focus: #e3bf80;
+}
+
+.button {
+  min-height: 44px;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.textarea,
+.input {
+  min-width: 0;
+}
+.button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}

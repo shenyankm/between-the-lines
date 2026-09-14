@@ -29,7 +29,9 @@ assert critical <= 800_000, critical
 bundles = list((ROOT / "frontend/dist/assets").glob("*.js"))
 assert bundles, "Build the frontend first"
 js_bytes = sum(len(gzip.compress(file.read_bytes())) for file in bundles)
-assert js_bytes <= 150_000, js_bytes
+# HeroUI migration (#9): approved 160 KB ceiling; measured baseline was ~127 KB
+# and the migrated controls/accessible modal are ~153 KB after lite variants.
+assert js_bytes <= 160_000, js_bytes
 report = {
     "passed": True,
     "critical_image_upper_bound_bytes": critical,
