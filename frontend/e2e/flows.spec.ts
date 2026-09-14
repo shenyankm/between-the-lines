@@ -188,11 +188,11 @@ test("two tabs reconcile a stale version without losing drafts or duplicating fa
   );
   await second.getByRole("button", { name: /既然知道我可能会生气/ }).click();
   await rejected;
-  await expect(dialogue(second)).toHaveValue("保留这段草稿");
   await expect(
     second.getByRole("button", { name: /既然知道我可能会生气/ }),
   ).toHaveCount(0);
   await readScene(second);
+  await expect(dialogue(second)).toHaveValue("保留这段草稿");
   await say(second, "保留这段草稿");
   expect(
     (await state(second)).events.filter((e) => e.action === "boundary"),
