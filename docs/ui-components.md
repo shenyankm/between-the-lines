@@ -17,3 +17,7 @@ V3 controls use HeroUI Button, Form and TextArea. Existing draft keys, submissio
 The overlay shell intentionally retains browser-native `dialog`: HeroUI Modal brought the combined production JS above the existing 150 KB gzip budget even with lite variants and minification. Native dialog preserves modal focus containment, Escape and focus restoration without another overlay runtime. The existing native selects, checkboxes and meters also retain their HTML semantics. These are explicit migration exceptions, not wrapper imitations of HeroUI controls.
 
 V3 follows system `prefers-reduced-motion` changes directly. The retired identity-specific override is removed, including when it conflicts with the system; storage access failures do not disable system preferences.
+
+## Ending page
+
+HeroUI Card separates the ending header, responsive narrative/facts columns and action footer. Paragraph breaks are rendered as text nodes, not HTML. Facts, outcome lists, copy text and the share canvas keep their existing data sources. On ending screens the navigation returns to normal document flow so the wide card cannot cover the work/history controls.

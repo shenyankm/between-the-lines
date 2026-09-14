@@ -130,3 +130,25 @@ it("recovers a failed read and displays event summaries when there was no player
   expect(screen.getByText("已收到")).toBeTruthy();
   expect(screen.getByText("事实正文")).toBeTruthy();
 });
+
+it("separates long narrative paragraphs without interpreting markup", async () => {
+  server.use(
+    http.post("/api/saves/save-1/jobs", () =>
+      HttpResponse.json({
+        id: "paragraphs",
+        kind: "ending",
+        status: "completed",
+        result: { text: "第一段保留事实。\n\n<b>第二段仍然只是文字。</b>" },
+      }),
+    ),
+  );
+  const client = new QueryClient();
+  const view = render(
+    <QueryClientProvider client={client}>
+      <EndingNarrative save={save()} userId="paragraph-user" />
+    </QueryClientProvider>,
+  );
+  expect((await screen.findByText("第一段保留事实。")).tagName).toBe("P");
+  expect(screen.getByText("<b>第二段仍然只是文字。</b>").tagName).toBe("P");
+  expect(view.container.querySelector("b")).toBeNull();
+});
