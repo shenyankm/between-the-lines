@@ -442,7 +442,7 @@ export function PlayV3({
             {scene.time} · {scene.location}
           </small>
         </div>
-        <div>
+        <div className={s.metricPanel}>
           <div className={s.metrics}>
             {[
               ["舆论温度", state.heat],
