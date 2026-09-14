@@ -78,6 +78,7 @@ export function PlayV3({
     ? Number(reading.value.speed)
     : 35;
   const [metricsOpen, setMetricsOpen] = useState(() => window.innerWidth > 700);
+  const [composingNode, setComposingNode] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>(null),
     [contact, setContact] = useState<Npc | "group" | null>(null);
   const [reduced, setReduced] = useState(
@@ -321,6 +322,9 @@ export function PlayV3({
       </label>
       <TextArea
         id={dm ? "dm-input" : "scene-input"}
+        onFocus={() => {
+          if (!dm) setComposingNode(state.node ?? "prologue");
+        }}
         aria-describedby={dm ? "dm-recipient" : "scene-recipient"}
         maxLength={1500}
         value={draft.text}
@@ -458,6 +462,7 @@ export function PlayV3({
   return (
     <main
       className={s.root}
+      data-composing={composingNode === (state.node ?? "prologue")}
       style={
         {
           "--story-text-size": `${textSize}px`,
