@@ -8,25 +8,27 @@ export function Script({
   lines,
   position,
   reduced,
+  speed = 35,
   advance,
 }: {
   lines: NonNullable<Story["scenes"]>[string];
   position: number;
   reduced: boolean;
+  speed?: number;
   advance: () => void;
 }) {
   const line = lines[position];
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (reduced || !line || count >= line.text.length) return;
+    if (reduced || speed === 0 || !line || count >= line.text.length) return;
     const timer = setTimeout(
       () => setCount((n) => Math.min(n + 2, line.text.length)),
-      35,
+      speed,
     );
     return () => clearTimeout(timer);
-  }, [line, reduced, count]);
+  }, [line, reduced, count, speed]);
   if (!line) return null;
-  const full = reduced || count >= line.text.length;
+  const full = reduced || speed === 0 || count >= line.text.length;
   return (
     <Button
       variant="secondary"

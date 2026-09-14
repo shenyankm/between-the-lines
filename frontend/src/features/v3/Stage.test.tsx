@@ -77,3 +77,38 @@ it("uses authored portrait presence, clothing, and speaker fallback", () => {
   );
   expect(view.container.querySelectorAll("img")).toHaveLength(0);
 });
+it("honors slow and instant reading preferences while reduced motion wins", () => {
+  vi.useFakeTimers();
+  const advance = vi.fn();
+  const lines = [{ id: "line", speaker: "sun", text: "请先核对工作材料。" }];
+  const view = render(
+    <Script
+      lines={lines}
+      position={0}
+      reduced={false}
+      speed={70}
+      advance={advance}
+    />,
+  );
+  void act(() => vi.advanceTimersByTime(35));
+  expect(screen.queryByText("请先")).toBeNull();
+  void act(() => vi.advanceTimersByTime(35));
+  expect(screen.getByText("请先")).toBeTruthy();
+  view.rerender(
+    <Script
+      lines={lines}
+      position={0}
+      reduced={false}
+      speed={0}
+      advance={advance}
+    />,
+  );
+  expect(screen.getByText(lines[0]!.text)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button"));
+  expect(advance).toHaveBeenCalledOnce();
+  view.rerender(
+    <Script lines={lines} position={0} reduced speed={70} advance={advance} />,
+  );
+  expect(screen.getByText(lines[0]!.text)).toBeTruthy();
+  expect(vi.getTimerCount()).toBe(0);
+});

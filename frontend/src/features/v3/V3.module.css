@@ -1013,3 +1013,67 @@
     width: 100%;
   }
 }
+
+.metricPanel > summary,
+.readingSettings {
+  background: #102033f2;
+  border-radius: var(--ui-radius);
+  padding: 8px 16px;
+}
+.root summary,
+.root select {
+  min-height: 44px;
+}
+.root summary {
+  cursor: pointer;
+  align-content: center;
+}
+.readingSettings {
+  min-width: 0;
+}
+.readingSettings label {
+  margin-block: 8px;
+}
+.readingSettings select {
+  display: block;
+  width: 100%;
+}
+.script span,
+.current,
+.messages {
+  font-size: var(--story-text-size, 18px);
+}
+@media (max-width: 700px) {
+  .root {
+    grid-template-areas: "header" "portraits" "dialogue" "status" "tools";
+    gap: 12px;
+  }
+  .root:has(.ending) {
+    grid-template-areas: "header" "ending" "status" "tools";
+  }
+  .header {
+    gap: 8px;
+  }
+  .readingSettings {
+    width: 100%;
+  }
+  .portraits {
+    height: 100px;
+  }
+  .portraits img {
+    max-height: 140px;
+  }
+  .root:has(textarea:focus) .portraits {
+    height: 48px;
+  }
+  .root:has(textarea:focus) .portraits img {
+    max-height: 64px;
+  }
+  .composer textarea {
+    scroll-margin-block: 16px;
+    font-size: max(16px, var(--story-text-size));
+  }
+  .status > section {
+    padding: 8px 12px;
+  }
+}

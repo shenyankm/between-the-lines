@@ -1,5 +1,11 @@
 import { Form, TextArea, Button } from "@heroui/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { isEvent } from "../../contracts";
@@ -18,6 +24,7 @@ import { Actions, Work, type StateV3 } from "./Work";
 import { followUpChoices } from "./followUp";
 import { Relations } from "./Relations";
 import { Discussion } from "./Discussion";
+import { useFormDraft } from "./useFormDraft";
 import { MetricsGuide } from "./MetricsGuide";
 import { ClosingPreview } from "./ClosingPreview";
 import { ActionReceipt } from "./ActionReceipt";
@@ -59,6 +66,18 @@ export function PlayV3({
   }
   const save = play.save,
     state = save.state as StateV3;
+  const reading = useFormDraft(
+    { userId, saveId: save.id },
+    "reading-preferences",
+    { size: "18", speed: "35" },
+  );
+  const textSize = ["18", "20", "23"].includes(reading.value.size ?? "")
+    ? Number(reading.value.size)
+    : 18;
+  const textSpeed = ["0", "35", "70"].includes(reading.value.speed ?? "")
+    ? Number(reading.value.speed)
+    : 35;
+  const [metricsOpen, setMetricsOpen] = useState(() => window.innerWidth > 700);
   const [panel, setPanel] = useState<Panel>(null),
     [contact, setContact] = useState<Npc | "group" | null>(null);
   const [reduced, setReduced] = useState(
@@ -395,6 +414,7 @@ export function PlayV3({
         play={play}
         openActions={() => setPanel("work")}
         act={act}
+        compact={!!panel}
       />
       {controller.status && <p role="status">{controller.status}</p>}
       <ErrorNotice error={controller.issue} message={controller.error} />
@@ -430,9 +450,12 @@ export function PlayV3({
   return (
     <main
       className={s.root}
-      style={{
-        backgroundImage: `linear-gradient(180deg,rgba(9,20,20,.3),rgba(9,20,20,.5)),url(${imageSource(scene.background, 1280)})`,
-      }}
+      style={
+        {
+          "--story-text-size": `${textSize}px`,
+          backgroundImage: `linear-gradient(180deg,rgba(9,20,20,.3),rgba(9,20,20,.5)),url(${imageSource(scene.background, 1280)})`,
+        } as CSSProperties
+      }
     >
       <header className={s.header}>
         <div>
@@ -442,7 +465,12 @@ export function PlayV3({
             {scene.time} · {scene.location}
           </small>
         </div>
-        <div className={s.metricPanel}>
+        <details
+          className={s.metricPanel}
+          open={metricsOpen}
+          onToggle={(event) => setMetricsOpen(event.currentTarget.open)}
+        >
+          <summary>四项指标与说明</summary>
           <div className={s.metrics}>
             {[
               ["舆论温度", state.heat],
@@ -465,7 +493,35 @@ export function PlayV3({
             ))}
           </div>
           <MetricsGuide state={state} saveId={save.id} />
-        </div>
+        </details>
+        <details className={s.readingSettings}>
+          <summary>阅读设置</summary>
+          <label>
+            文字大小
+            <select
+              value={textSize}
+              onChange={(event) => reading.update({ size: event.target.value })}
+            >
+              <option value={18}>标准</option>
+              <option value={20}>较大</option>
+              <option value={23}>大字</option>
+            </select>
+          </label>
+          <label>
+            对白显示
+            <select
+              value={textSpeed}
+              onChange={(event) =>
+                reading.update({ speed: event.target.value })
+              }
+            >
+              <option value={35}>标准速度</option>
+              <option value={70}>慢速</option>
+              <option value={0}>直接显示全文</option>
+            </select>
+          </label>
+          <p>系统减少动态效果开启时，始终直接显示全文。</p>
+        </details>
       </header>
       {!state.ending && (
         <Portraits
@@ -481,66 +537,7 @@ export function PlayV3({
           player
         />
       )}
-      <nav className={s.toolbar} aria-label="故事工具与账户">
-        <div className={s.storyTools}>
-          {(
-            [
-              ["phone", "我的手机"],
-              ["work", "工作系统"],
-              ["relations", "关系图"],
-              ["discussion", "知乎众议"],
-            ] as const
-          ).map(([id, label]) => (
-            <Button
-              variant="secondary"
-              key={id}
-              data-panel={id}
-              onClick={() => {
-                setPanel(id);
-                setContact(null);
-              }}
-            >
-              {label}
-              {id === "work" && state.work?.purchase === "returned"
-                ? " · 待处理"
-                : ""}
-            </Button>
-          ))}
-          <Button
-            variant="secondary"
-            data-panel="history"
-            onClick={() => setPanel("history")}
-          >
-            完整记录
-          </Button>
-        </div>
-        <div className={s.accountTools}>
-          <Button
-            variant="secondary"
-            isDisabled={
-              controller.busy ||
-              !!controller.pending ||
-              savingReading ||
-              loggingOut
-            }
-            onClick={() => void navigate("/saves")}
-            aria-description={
-              controller.busy || controller.pending
-                ? "当前回合处理完成后可返回存档"
-                : undefined
-            }
-          >
-            返回存档
-          </Button>
-          <Button
-            variant="secondary"
-            isDisabled={loggingOut}
-            onClick={() => void logout()}
-          >
-            退出登录
-          </Button>
-        </div>
-      </nav>
+
       {state.ending ? (
         <Ending state={state} save={save} userId={userId} />
       ) : (
@@ -553,6 +550,7 @@ export function PlayV3({
               lines={lines}
               position={position}
               reduced={reduced}
+              speed={textSpeed}
               advance={() => void mark(state.node ?? "prologue", position + 1)}
             />
           ) : (
@@ -628,6 +626,66 @@ export function PlayV3({
         </section>
       )}
       {!panel && !play.proposal && !interlude && feedback}
+      <nav className={s.toolbar} aria-label="故事工具与账户">
+        <div className={s.storyTools}>
+          {(
+            [
+              ["phone", "我的手机"],
+              ["work", "工作系统"],
+              ["relations", "关系图"],
+              ["discussion", "知乎众议"],
+            ] as const
+          ).map(([id, label]) => (
+            <Button
+              variant="secondary"
+              key={id}
+              data-panel={id}
+              onClick={() => {
+                setPanel(id);
+                setContact(null);
+              }}
+            >
+              {label}
+              {id === "work" && state.work?.purchase === "returned"
+                ? " · 待处理"
+                : ""}
+            </Button>
+          ))}
+          <Button
+            variant="secondary"
+            data-panel="history"
+            onClick={() => setPanel("history")}
+          >
+            完整记录
+          </Button>
+        </div>
+        <div className={s.accountTools}>
+          <Button
+            variant="secondary"
+            isDisabled={
+              controller.busy ||
+              !!controller.pending ||
+              savingReading ||
+              loggingOut
+            }
+            onClick={() => void navigate("/saves")}
+            aria-description={
+              controller.busy || controller.pending
+                ? "当前回合处理完成后可返回存档"
+                : undefined
+            }
+          >
+            返回存档
+          </Button>
+          <Button
+            variant="secondary"
+            isDisabled={loggingOut}
+            onClick={() => void logout()}
+          >
+            退出登录
+          </Button>
+        </div>
+      </nav>
       {play.proposal && (
         <dialog
           ref={confirmation}
