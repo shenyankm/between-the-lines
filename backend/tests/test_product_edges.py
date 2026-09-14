@@ -131,7 +131,8 @@ async def test_generator_repairs_schema_once_and_backfills_sources(v2, monkeypat
         async def close(self):
             closed.append("async")
 
-        async def ainvoke(self, messages):
+        async def ainvoke(self, messages, *, response_format):
+            assert response_format == {"type": "json_object"}
             calls.append(messages.copy())
             if len(calls) == 1:
                 return AIMessage(
