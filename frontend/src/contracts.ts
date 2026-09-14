@@ -187,9 +187,7 @@ export function isPlayState(v: unknown): v is PlayState {
         integer(v.proposal.version) &&
         strings(v.proposal, ["label", "effect"]))) &&
     (v.ai === undefined ||
-      (record(v.ai) &&
-        typeof v.ai.available === "boolean" &&
-        (v.ai.remaining == null || integer(v.ai.remaining)))) &&
+      (record(v.ai) && typeof v.ai.available === "boolean")) &&
     Array.isArray(v.events) &&
     v.events.every(isEvent) &&
     (v.active_turn === null ||
@@ -197,26 +195,7 @@ export function isPlayState(v: unknown): v is PlayState {
   );
 }
 export function isTurn(v: unknown): v is Turn {
-  if (!record(v) || typeof v.id !== "string" || !record(v.usage)) return false;
-  const u = v.usage;
-  if (
-    ![
-      "model_calls",
-      "input_tokens",
-      "output_tokens",
-      "total_tokens",
-      "elapsed_ms",
-    ].every((k) => u[k] === undefined || integer(u[k])) ||
-    (u.model != null && typeof u.model !== "string") ||
-    (u.mode != null && u.mode !== "mock" && u.mode !== "deepseek") ||
-    (u.cost_estimate_usd !== undefined &&
-      (typeof u.cost_estimate_usd !== "number" ||
-        !Number.isFinite(u.cost_estimate_usd) ||
-        u.cost_estimate_usd < 0)) ||
-    (u.billing_complete !== undefined &&
-      typeof u.billing_complete !== "boolean")
-  )
-    return false;
+  if (!record(v) || typeof v.id !== "string") return false;
   return v.status === "running"
     ? v.result === null
     : isResult(v.result) &&

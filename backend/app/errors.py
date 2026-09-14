@@ -145,9 +145,7 @@ SUBMIT_RESPONSES: Responses = {
     409: envelope_response(codes(409, *VOCABULARY[409])),
     422: envelope_response(codes(422, *VOCABULARY[422])),
     429: envelope_response(codes(429, *VOCABULARY[429]), _RETRY_AFTER_HEADER),
-    503: envelope_response(
-        codes(503, "model_unconfigured", "monthly_cost_cap_reached"), _RETRY_AFTER_HEADER
-    ),
+    503: envelope_response(codes(503, "model_unconfigured")),
 }
 
 

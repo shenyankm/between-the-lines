@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, or_, select
 
 from .agents import MODEL, make_model
+from .ai_tasks import create_job
 from .artifact_quality import (
     STRATEGIES,
     ArtifactQualityError,
@@ -20,9 +21,8 @@ from .artifact_quality import (
     role_context,
     validate_advice,
 )
-from .budget import reserve_job, settle
 from .content import content_hash
-from .db import AIJob, AISpend, Event, Turn, User, ZhihuContent, utcnow
+from .db import AIJob, Event, Turn, User, ZhihuContent, utcnow
 from .ending_grounding import EndingFactError, current_ending_facts, validate_ending_prose
 from .errors import ApiError
 from .schemas import JobInput
@@ -162,11 +162,6 @@ class JobRunner:
                 select(Turn.id).where(Turn.save_id == save_id, Turn.status == "running")
             ):
                 raise ApiError(409, "save_busy")
-            from .product import rate_limit
-
-            await rate_limit(
-                db, "artifact:" + user_id, self.service.settings.mutation_limit_per_minute, 60
-            )
             payload: dict[str, Any] = {
                 "version": save.version,
                 "act": save.state["act"],
@@ -355,7 +350,7 @@ class JobRunner:
                 return job
             try:
                 async with db.begin_nested():
-                    job = await reserve_job(
+                    job = await create_job(
                         db,
                         self.service.settings,
                         user,
@@ -366,8 +361,6 @@ class JobRunner:
                     )
             except ApiError as exc:
                 if body.kind != "discussion" or exc.code not in {
-                    "daily_limit_reached",
-                    "monthly_cost_cap_reached",
                     "model_unconfigured",
                 }:
                     raise
@@ -402,7 +395,6 @@ class JobRunner:
             )
 
     async def execute(self, job_id: str) -> None:
-        usage: dict[str, Any] = {}
         result: dict[str, Any] | None = None
         failed = False
         async with self.service.sessions() as db:
@@ -443,7 +435,7 @@ class JobRunner:
                         }
                     )
                 else:
-                    raw = await self.generate(kind, payload, usage)
+                    raw = await self.generate(kind, payload)
                 if kind == "ending" and self.service.settings.agent_mode == "mock":
                     raw = {
                         "text": "本局主结局："
@@ -482,7 +474,7 @@ class JobRunner:
             await db.scalar(select(User).where(User.id == job.user_id).with_for_update())
             saved = await db.get(AIJob, job_id)
             if saved and saved.status == "running":
-                await settle(db, saved, self.service.settings, usage, failed)
+                saved.status = "failed" if failed else "completed"
                 saved.result = result
 
     def validate(self, kind: str, payload: dict[str, Any], raw: Any) -> dict[str, Any]:
@@ -565,7 +557,7 @@ class JobRunner:
             ],
         }
 
-    async def generate(self, kind: str, payload: dict[str, Any], usage: dict[str, Any]) -> Any:
+    async def generate(self, kind: str, payload: dict[str, Any]) -> Any:
         model = make_model(self.service.settings)
         schema = EndingText if kind == "ending" else Reflection if kind == "reflection" else Cards
         prompt_payload = payload
@@ -620,16 +612,7 @@ class JobRunner:
         ]
         try:
             for attempt in range(2):
-                if (
-                    sum(len(m[1].encode()) for m in messages)
-                    > self.service.settings.ai_input_byte_limit
-                ):
-                    raise ValueError("Input budget exceeded")
                 reply = await model.ainvoke(messages, response_format={"type": "json_object"})
-                usage["model_calls"] = attempt + 1
-                for key, value in (reply.usage_metadata or {}).items():
-                    if isinstance(value, int):
-                        usage[key] = usage.get(key, 0) + value
                 try:
                     raw = json.loads(str(reply.content))
                     self.validate(kind, payload, raw)
@@ -677,10 +660,7 @@ class JobRunner:
                     > utcnow() - timedelta(seconds=self.service.settings.turn_timeout_seconds + 15)
                 ):
                     continue
-                job.status = "unknown" if job.reserved_usd else "failed"
-                ledger = await db.get(AISpend, job.id)
-                if ledger:
-                    ledger.status = job.status
+                job.status = "failed"
                 job.result = (
                     editorial()
                     if job.kind == "discussion"

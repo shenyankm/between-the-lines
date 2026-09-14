@@ -44,14 +44,14 @@ describe("normalise()", () => {
     const error = new ApiError(
       "请求未完成。",
       429,
-      "daily_limit_reached",
+      "concurrency_budget_exhausted",
       "abc123",
     );
     const payload = normalise("query", error);
     expect(payload).toMatchObject({
       kind: "query",
       message: "请求未完成。",
-      code: "daily_limit_reached",
+      code: "concurrency_budget_exhausted",
       requestId: "abc123",
     });
     expect(typeof payload.stack).toBe("string");

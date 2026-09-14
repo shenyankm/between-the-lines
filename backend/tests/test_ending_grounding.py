@@ -119,15 +119,13 @@ async def test_generation_retries_contradiction_once_within_existing_budget(
         root_client=SimpleNamespace(close=Mock()),
     )
     monkeypatch.setattr("app.jobs.make_model", lambda _: model)
-    runner = JobRunner(SimpleNamespace(settings=SimpleNamespace(ai_input_byte_limit=24000)))
-    usage = {}
+    runner = JobRunner(SimpleNamespace(settings=SimpleNamespace()))
     if valid_retry:
-        result = await runner.generate("ending", repair_payload(), usage)
+        result = await runner.generate("ending", repair_payload())
         assert "已承认伤害" in result["text"]
     else:
         with pytest.raises(ValueError, match="contradicts"):
-            await runner.generate("ending", repair_payload(), usage)
-    assert usage == {"model_calls": 2, "input_tokens": 20, "output_tokens": 10}
+            await runner.generate("ending", repair_payload())
     assert model.ainvoke.await_count == 2
     assert all(
         call.kwargs["response_format"] == {"type": "json_object"}

@@ -77,12 +77,11 @@ async def play(concurrency):
             )
             elapsed = time.perf_counter() - start
             if response.status_code != 200:
-                return {"seconds": elapsed, "status": response.status_code, "usage": {}}
+                return {"seconds": elapsed, "status": response.status_code}
             turn = (await client.get(f"/api/saves/{save['id']}/turns/{request_id}")).json()
             return {
                 "seconds": elapsed,
                 "status": turn["status"],
-                "usage": turn["usage"],
             }
 
         results = await asyncio.gather(
@@ -96,8 +95,6 @@ async def play(concurrency):
             "failure_rate": sum(r["status"] != "completed" for r in results) / concurrency,
             "p50_seconds": round(statistics.median(durations), 3),
             "p95_seconds": round(durations[max(0, int(len(durations) * 0.95) - 1)], 3),
-            "model_calls": sum(r["usage"].get("model_calls", 0) for r in results),
-            "cost_estimate_usd": sum(r["usage"].get("cost_estimate_usd", 0) for r in results),
             "results": results,
         }
     finally:

@@ -22,7 +22,7 @@ pytestmark = pytest.mark.unit
     [
         (TimeoutError("secret"), FailureCode.TIMEOUT),
         (httpx.ReadTimeout("secret"), FailureCode.TIMEOUT),
-        (GraphRecursionError("secret"), FailureCode.BUDGET),
+        (GraphRecursionError("secret"), FailureCode.UNKNOWN),
         (httpx.ConnectError("secret"), FailureCode.MODEL),
         (EmptyReplyError("secret"), FailureCode.EMPTY),
         (asyncio.CancelledError(), FailureCode.INTERRUPTED),

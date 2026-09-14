@@ -1,13 +1,4 @@
-"""The refusal to boot, which is the only guard that cannot be tested in production.
-
-`production_guards` is what stands between a misconfigured deployment and one that
-serves traffic. Every branch here fails closed at import time, so a mistake is a
-container that never starts rather than a running service that leaks a credential or
-bills without a ceiling. That is worth more than any runtime check, and it is only
-worth it if each branch is actually reached by a test.
-
-Unit-marked: constructing Settings touches no database and no network.
-"""
+"""Production configuration guards, independent of database and provider calls."""
 
 import pytest
 from pydantic import ValidationError
@@ -30,7 +21,6 @@ PRODUCTION = {
     "public_origin": "https://play.example",
     "deepseek_api_key": "fixture-key-not-a-real-credential",
     "deepseek_api_base": "https://api.deepseek.com",
-    "monthly_cost_cap_usd": 25.0,
     "zhihu_client_id": "fixture",
     "zhihu_client_secret": "fixture-secret",
     "zhihu_authorize_url": "https://auth.example/authorize",
@@ -63,8 +53,6 @@ def test_a_complete_production_configuration_boots():
         ({"public_origin": "http://play.example"}, "HTTPS"),
         ({"deepseek_api_key": ""}, "DEEPSEEK_API_KEY"),
         ({"deepseek_api_base": "http://api.deepseek.com"}, "DEEPSEEK_API_BASE"),
-        ({"monthly_cost_cap_usd": 0.0}, "MONTHLY_COST_CAP_USD"),
-        ({"monthly_cost_cap_usd": -5.0}, "MONTHLY_COST_CAP_USD"),
     ],
 )
 def test_each_production_guard_refuses_to_boot(overrides, fragment):
@@ -87,7 +75,7 @@ def test_the_placeholder_secret_is_rejected_even_at_32_characters():
 
 def test_the_guards_do_not_fire_outside_production():
     # Development has to be able to run with the checked-in defaults: mock agents,
-    # dev login, an http origin and no cost cap. A guard that fired here would make
+    # dev login, an http origin. A guard that fired here would make
     # `make api` impossible without a credential nobody has locally.
     for environment in ("development", "test"):
         settings = build(
@@ -98,19 +86,8 @@ def test_the_guards_do_not_fire_outside_production():
             public_origin="http://localhost:5173",
             deepseek_api_key="",
             deepseek_api_base="http://localhost:9999",
-            monthly_cost_cap_usd=0.0,
         )
         assert settings.environment == environment
-
-
-def test_the_cost_cap_default_is_disabled_and_that_is_not_safe_for_production():
-    # 0 means "no ceiling", which is correct for mock mode where a turn costs
-    # nothing and would otherwise block CI. The pairing of these two assertions is
-    # the point: the permissive default is only acceptable because the guard above
-    # refuses to let it reach production.
-    assert Settings(_env_file=None, environment="test").monthly_cost_cap_usd == 0.0
-    with pytest.raises(ValidationError, match="MONTHLY_COST_CAP_USD"):
-        build(monthly_cost_cap_usd=0.0)
 
 
 def test_oauth_ready_needs_every_endpoint_not_just_the_credentials():
@@ -126,3 +103,20 @@ def test_oauth_ready_needs_every_endpoint_not_just_the_credentials():
     with pytest.raises(ValidationError, match="OAuth"):
         build(**partial, zhihu_userinfo_url="")
     assert build(**partial, zhihu_userinfo_url="https://partner.example/userinfo").oauth_ready
+
+
+def test_removed_environment_limits_are_ignored(monkeypatch):
+    for name in (
+        "DAILY_TURN_LIMIT",
+        "GUEST_AI_LIMIT",
+        "MONTHLY_COST_CAP_USD",
+        "MAX_MODEL_CALLS",
+        "MAX_TOOL_CALLS",
+        "AI_INPUT_BYTE_LIMIT",
+        "MUTATION_LIMIT_PER_MINUTE",
+        "DEEPSEEK_INPUT_USD_PER_MILLION",
+        "DEEPSEEK_OUTPUT_USD_PER_MILLION",
+    ):
+        monkeypatch.setenv(name, "0")
+        assert name.lower() not in Settings.model_fields
+    assert build().environment == "production"

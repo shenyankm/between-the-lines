@@ -3,9 +3,6 @@
 import asyncio
 
 import httpx
-from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededError
-from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
-from langgraph.errors import GraphRecursionError
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 
 from .error_catalog import FailureCode
@@ -18,10 +15,6 @@ class EmptyReplyError(RuntimeError):
 def classify_failure(exc: BaseException) -> FailureCode:
     if isinstance(exc, (TimeoutError, APITimeoutError, httpx.TimeoutException)):
         return FailureCode.TIMEOUT
-    if isinstance(
-        exc, (ModelCallLimitExceededError, ToolCallLimitExceededError, GraphRecursionError)
-    ):
-        return FailureCode.BUDGET
     if isinstance(
         exc, (APIConnectionError, APIStatusError, httpx.TransportError, httpx.HTTPStatusError)
     ):

@@ -30,7 +30,7 @@ import asyncio, os
 from pathlib import Path
 import app.main as main
 
-async def paused(turn, checkpointer, usage):
+async def paused(turn, checkpointer):
     await main.app.state.runtime.service.npc_operation(turn.id, 'sun', 'request_materials')
     Path(os.environ['TEST_MARKER']).write_text('committed')
     await asyncio.sleep(120)

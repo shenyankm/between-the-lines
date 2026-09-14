@@ -1334,7 +1334,7 @@
             }
           },
           "429": {
-            "description": "daily_limit_reached / concurrency_budget_exhausted",
+            "description": "concurrency_budget_exhausted",
             "headers": {
               "Retry-After": {
                 "description": "整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。",
@@ -1352,15 +1352,7 @@
             }
           },
           "503": {
-            "description": "model_unconfigured / monthly_cost_cap_reached",
-            "headers": {
-              "Retry-After": {
-                "description": "整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
+            "description": "model_unconfigured",
             "content": {
               "application/json": {
                 "schema": {
@@ -1988,7 +1980,7 @@
             }
           },
           "429": {
-            "description": "daily_limit_reached / concurrency_budget_exhausted",
+            "description": "concurrency_budget_exhausted",
             "headers": {
               "Retry-After": {
                 "description": "整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。",
@@ -2006,15 +1998,7 @@
             }
           },
           "503": {
-            "description": "model_unconfigured / monthly_cost_cap_reached",
-            "headers": {
-              "Retry-After": {
-                "description": "整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
+            "description": "model_unconfigured",
             "content": {
               "application/json": {
                 "schema": {
@@ -2434,17 +2418,6 @@
               }
             ],
             "title": "Reason"
-          },
-          "remaining": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Remaining"
           }
         },
         "type": "object",
@@ -3166,12 +3139,10 @@
           "validation_failed",
           "empty_message",
           "rule_violation",
-          "daily_limit_reached",
           "concurrency_budget_exhausted",
           "internal_error",
           "oauth_not_configured",
           "model_unconfigured",
-          "monthly_cost_cap_reached",
           "http_404",
           "http_405"
         ],
@@ -5080,17 +5051,13 @@
                 "type": "null"
               }
             ]
-          },
-          "usage": {
-            "$ref": "#/components/schemas/TurnUsage"
           }
         },
         "type": "object",
         "required": [
           "id",
           "status",
-          "result",
-          "usage"
+          "result"
         ],
         "title": "TurnOut"
       },
@@ -5168,73 +5135,6 @@
         "title": "TurnResult",
         "type": "object"
       },
-      "TurnUsage": {
-        "properties": {
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "mode": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "mock",
-                  "deepseek"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mode"
-          },
-          "model_calls": {
-            "type": "integer",
-            "title": "Model Calls",
-            "default": 0
-          },
-          "input_tokens": {
-            "type": "integer",
-            "title": "Input Tokens",
-            "default": 0
-          },
-          "output_tokens": {
-            "type": "integer",
-            "title": "Output Tokens",
-            "default": 0
-          },
-          "total_tokens": {
-            "type": "integer",
-            "title": "Total Tokens",
-            "default": 0
-          },
-          "elapsed_ms": {
-            "type": "integer",
-            "title": "Elapsed Ms",
-            "default": 0
-          },
-          "cost_estimate_usd": {
-            "type": "number",
-            "title": "Cost Estimate Usd",
-            "default": 0.0
-          },
-          "billing_complete": {
-            "type": "boolean",
-            "title": "Billing Complete",
-            "default": false
-          }
-        },
-        "type": "object",
-        "title": "TurnUsage"
-      },
       "UserOut": {
         "properties": {
           "id": {
@@ -5261,17 +5161,6 @@
               }
             ],
             "title": "Guest Expires At"
-          },
-          "ai_remaining": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ai Remaining"
           },
           "binding_pending": {
             "type": "boolean",

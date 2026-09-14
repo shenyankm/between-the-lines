@@ -1,5 +1,7 @@
 # 本地六结局与真实 AI 审查 · 2026-09-14
 
+> Historical note: AI quota, reservation and cost-accounting descriptions below predate their removal in schema 0009 and no longer describe the current application.
+
 当前六种结局均可通过浏览器完成，结局优先级的主要交叉路径符合规则。原审查发现的四项明确缺陷现已按优先级修复，并完成 Mock 与真实 DeepSeek 回归。下文保留原始发现，修复和最终验证见文末。
 
 基线：`ce0d61d`，新故事 v3 / content_revision=2。开始时工作区干净。初轮仅审查，随后按用户授权实施修复；尚未提交或发布。

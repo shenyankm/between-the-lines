@@ -5,7 +5,6 @@ from uuid import uuid4
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -95,7 +94,7 @@ class Turn(Base):
     status: Mapped[str] = mapped_column(String(20), default="running")
     attempt: Mapped[int] = mapped_column(Integer, default=1)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -185,9 +184,6 @@ class AIJob(Base):
     save_id: Mapped[str] = mapped_column(ForeignKey("saves.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(16), default="running")
-    reserved_usd: Mapped[float] = mapped_column(Float, default=0)
-    cost_usd: Mapped[float] = mapped_column(Float, default=0)
-    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
@@ -228,22 +224,6 @@ class ProductAggregate(Base):
     day: Mapped[str] = mapped_column(String(10), primary_key=True)
     name: Mapped[str] = mapped_column(String(50), primary_key=True)
     count: Mapped[int] = mapped_column(Integer)
-
-
-class AISpend(Base):
-    """Billing ledger survives save/task cleanup and never contains dialogue."""
-
-    __tablename__ = "ai_spend"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), index=True)
-    save_id: Mapped[str] = mapped_column(String(36))
-    kind: Mapped[str] = mapped_column(String(20))
-    status: Mapped[str] = mapped_column(String(16), default="reserved")
-    reserved_usd: Mapped[float] = mapped_column(Float, default=0)
-    cost_usd: Mapped[float] = mapped_column(Float, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, index=True
-    )
 
 
 class SearchCache(Base):

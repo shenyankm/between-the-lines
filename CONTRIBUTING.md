@@ -155,7 +155,7 @@ Use `make deps-update` for backend upgrades and review both `backend/uv.lock` an
 
 Follow existing module responsibilities and type constraints. See the [architecture guide](docs/architecture.md). Preserve these invariants:
 
-- Python and PostgreSQL adjudicate story rules, permissions, quotas, and fact writes. Model output must not decide them directly.
+- Python and PostgreSQL adjudicate story rules, permissions and fact writes. Model output must not decide them directly.
 - NPCs receive only role-visible information and have independent checkpoints. Public responses must not leak personas, internal prompts, reasoning, or tool arguments.
 - Model calls do not hold long business transactions. Committed tool facts survive later model failures, disconnections, and restarts.
 - Preserve request idempotency, per-save concurrency constraints, and terminal-state consistency. Query the original turn when the outcome is unknown; do not create a new request that repeats execution.

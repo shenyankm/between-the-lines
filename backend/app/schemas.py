@@ -96,7 +96,6 @@ class UserOut(BaseModel):
     name: str
     identity_type: str = "member"
     guest_expires_at: datetime | None = None
-    ai_remaining: int | None = None
     binding_pending: bool = False
 
 
@@ -114,18 +113,6 @@ class DevLogin(BaseModel):
 
 class LogoutOut(BaseModel):
     ok: bool
-
-
-class TurnUsage(BaseModel):
-    model: str | None = None
-    mode: Literal["mock", "deepseek"] | None = None
-    model_calls: int = 0
-    input_tokens: int = 0
-    output_tokens: int = 0
-    total_tokens: int = 0
-    elapsed_ms: int = 0
-    cost_estimate_usd: float = 0.0
-    billing_complete: bool = False
 
 
 class TurnFailure(BaseModel):
@@ -197,7 +184,6 @@ class ProposalOut(BaseModel):
 class AIAvailability(BaseModel):
     available: bool = True
     reason: str | None = None
-    remaining: int | None = None
 
 
 class ContactOut(BaseModel):
@@ -243,7 +229,6 @@ class TurnOut(BaseModel):
     id: str
     status: TurnStatus
     result: TurnResult | None
-    usage: TurnUsage
 
 
 class FieldIssue(BaseModel):

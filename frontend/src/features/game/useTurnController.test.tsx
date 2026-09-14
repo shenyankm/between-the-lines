@@ -34,17 +34,6 @@ const terminal = (value = result()): Turn => ({
   id: "turn-1",
   status: value.status,
   result: value,
-  usage: {
-    model: null,
-    mode: null,
-    model_calls: 0,
-    input_tokens: 0,
-    output_tokens: 0,
-    total_tokens: 0,
-    elapsed_ms: 0,
-    cost_estimate_usd: 0,
-    billing_complete: true,
-  },
 });
 const running = (): Turn => ({
   ...terminal(),
@@ -255,7 +244,7 @@ describe("new submissions", () => {
   });
   it.each([
     new api.ApiError("conflict", 409, "version_conflict"),
-    new api.ApiError("cap", 503, "monthly_cost_cap_reached"),
+    new api.ApiError("unconfigured", 503, "model_unconfigured"),
     new api.ApiError("running", 409, "turn_still_running"),
     new api.ApiError("gateway", 502),
     new api.ApiError("proxy timeout", 408),
@@ -269,9 +258,7 @@ describe("new submissions", () => {
     });
     expect(h.result.current.pending === null).toBe(
       error instanceof api.ApiError &&
-        ["version_conflict", "monthly_cost_cap_reached"].includes(
-          error.code ?? "",
-        ),
+        ["version_conflict", "model_unconfigured"].includes(error.code ?? ""),
     );
   });
   it("preserves terminal failure text and never automatically replays a failed turn", async () => {

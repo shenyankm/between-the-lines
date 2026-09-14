@@ -481,8 +481,6 @@ export interface components {
             available: boolean;
             /** Reason */
             reason?: string | null;
-            /** Remaining */
-            remaining?: number | null;
         };
         /** Act */
         Act: {
@@ -701,7 +699,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "oauth_failed" | "request_body_invalid" | "not_authenticated" | "forbidden_origin" | "not_found" | "save_not_found" | "turn_not_found" | "request_id_reused" | "turn_still_running" | "save_busy" | "version_conflict" | "unsupported_save_version" | "json_required" | "validation_failed" | "empty_message" | "rule_violation" | "daily_limit_reached" | "concurrency_budget_exhausted" | "internal_error" | "oauth_not_configured" | "model_unconfigured" | "monthly_cost_cap_reached" | "http_404" | "http_405";
+        ErrorCode: "oauth_failed" | "request_body_invalid" | "not_authenticated" | "forbidden_origin" | "not_found" | "save_not_found" | "turn_not_found" | "request_id_reused" | "turn_still_running" | "save_busy" | "version_conflict" | "unsupported_save_version" | "json_required" | "validation_failed" | "empty_message" | "rule_violation" | "concurrency_budget_exhausted" | "internal_error" | "oauth_not_configured" | "model_unconfigured" | "http_404" | "http_405";
         /** ErrorEnvelope */
         ErrorEnvelope: {
             error: components["schemas"]["ErrorBody"];
@@ -1344,7 +1342,6 @@ export interface components {
              */
             status: "running" | "completed" | "failed";
             result: components["schemas"]["TurnResult"] | null;
-            usage: components["schemas"]["TurnUsage"];
         };
         /** TurnResult */
         TurnResult: {
@@ -1377,48 +1374,6 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        /** TurnUsage */
-        TurnUsage: {
-            /** Model */
-            model?: string | null;
-            /** Mode */
-            mode?: ("mock" | "deepseek") | null;
-            /**
-             * Model Calls
-             * @default 0
-             */
-            model_calls: number;
-            /**
-             * Input Tokens
-             * @default 0
-             */
-            input_tokens: number;
-            /**
-             * Output Tokens
-             * @default 0
-             */
-            output_tokens: number;
-            /**
-             * Total Tokens
-             * @default 0
-             */
-            total_tokens: number;
-            /**
-             * Elapsed Ms
-             * @default 0
-             */
-            elapsed_ms: number;
-            /**
-             * Cost Estimate Usd
-             * @default 0
-             */
-            cost_estimate_usd: number;
-            /**
-             * Billing Complete
-             * @default false
-             */
-            billing_complete: boolean;
-        };
         /** UserOut */
         UserOut: {
             /** Id */
@@ -1432,8 +1387,6 @@ export interface components {
             identity_type: string;
             /** Guest Expires At */
             guest_expires_at?: string | null;
-            /** Ai Remaining */
-            ai_remaining?: number | null;
             /**
              * Binding Pending
              * @default false
@@ -2564,7 +2517,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description daily_limit_reached / concurrency_budget_exhausted */
+            /** @description concurrency_budget_exhausted */
             429: {
                 headers: {
                     /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
@@ -2584,11 +2537,9 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description model_unconfigured / monthly_cost_cap_reached */
+            /** @description model_unconfigured */
             503: {
                 headers: {
-                    /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
-                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3154,7 +3105,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description daily_limit_reached / concurrency_budget_exhausted */
+            /** @description concurrency_budget_exhausted */
             429: {
                 headers: {
                     /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
@@ -3174,11 +3125,9 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description model_unconfigured / monthly_cost_cap_reached */
+            /** @description model_unconfigured */
             503: {
                 headers: {
-                    /** @description 整秒数。RFC 9110 数值形式，客户端应据此等待后再重试。 */
-                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

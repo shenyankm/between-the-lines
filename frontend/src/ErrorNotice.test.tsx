@@ -35,7 +35,7 @@ it("honors cooldown before enabling retry and copies diagnostics", async () => {
   const error = new ApiError(
     "忙碌",
     429,
-    "daily_limit_reached",
+    "concurrency_budget_exhausted",
     "trace",
     2,
     "http",
@@ -62,7 +62,7 @@ it("honors cooldown before enabling retry and copies diagnostics", async () => {
     await Promise.resolve();
   });
   expect(writeText).toHaveBeenCalledWith(
-    "错误码：daily_limit_reached\n请求编号：trace",
+    "错误码：concurrency_budget_exhausted\n请求编号：trace",
   );
   expect(screen.getByText("已复制")).toBeTruthy();
 });

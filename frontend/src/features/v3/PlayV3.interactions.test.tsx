@@ -210,7 +210,7 @@ it("keeps scene, private and group drafts separate and clears only the matching 
 });
 it("keeps deterministic actions available without AI and recovers an accepted turn", () => {
   const p = play();
-  p.ai = { available: false, reason: "预算不足" };
+  p.ai = { available: false, reason: "模型未配置" };
   ctrl.pending = "request";
   mount(p);
   fireEvent.change(screen.getByLabelText("自由表达"), {

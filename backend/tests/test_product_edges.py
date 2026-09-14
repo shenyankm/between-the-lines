@@ -17,11 +17,8 @@ from test_product_v2 import (
     v2 as product_fixture,
 )
 
-from app.budget import reservation, reserve_job, settle
-from app.config import Settings
 from app.db import (
     AIJob,
-    AISpend,
     OAuthBinding,
     ProductEvent,
     Save,
@@ -52,68 +49,6 @@ async def test_rate_limit_reset_and_retry(v2):
         row.expires_at = utcnow() - timedelta(seconds=1)
     async with runtime.sessions.begin() as db:
         await rate_limit(db, "edge-rate", 1, 1)
-
-
-async def test_admission_reserves_global_budget_and_survives_save_cleanup(v2):
-    client, runtime = v2
-    save = await create(client)
-    settings = Settings(
-        _env_file=None,
-        environment="test",
-        agent_mode="deepseek",
-        deepseek_api_key="fixture",
-        monthly_cost_cap_usd=reservation(runtime.settings) + 0.000001,
-    )
-    user_id = (await client.get("/api/auth/me")).json()["id"]
-    async with runtime.sessions.begin() as db:
-        user = await db.get(User, user_id)
-        job = await reserve_job(db, settings, user, save["id"], str(uuid4()), "turn", {})
-        job_id = job.id
-    async with runtime.sessions.begin() as db:
-        user = await db.get(User, user_id)
-        with pytest.raises(ApiError) as failure:
-            await reserve_job(db, settings, user, save["id"], str(uuid4()), "turn", {})
-        assert failure.value.code == "monthly_cost_cap_reached"
-    async with runtime.sessions.begin() as db:
-        job = await db.get(AIJob, job_id)
-        await settle(db, job, settings, {"input_tokens": 100, "output_tokens": 20}, True)
-    async with runtime.sessions() as db:
-        ledger = await db.get(AISpend, job_id)
-        assert ledger.status == "unknown" and ledger.reserved_usd > 0 and ledger.cost_usd > 0
-    async with runtime.sessions.begin() as db:
-        source = await db.get(Save, save["id"])
-        await db.delete(source)
-    async with runtime.sessions() as db:
-        assert await db.get(AISpend, job_id) is not None
-
-
-async def test_budget_parallel_different_users_has_one_winner(v2):
-    client, runtime = v2
-    first = await create(client)
-    first_user = (await client.get("/api/auth/me")).json()["id"]
-    await client.post("/api/auth/logout", json={})
-    second_user = (await client.post("/api/auth/dev", json={})).json()["id"]
-    second = await create(client)
-    settings = Settings(
-        _env_file=None,
-        environment="test",
-        agent_mode="deepseek",
-        deepseek_api_key="fixture",
-        monthly_cost_cap_usd=reservation(runtime.settings) + 0.000001,
-    )
-
-    async def reserve(user_id, save_id):
-        try:
-            async with runtime.sessions.begin() as db:
-                user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
-                await reserve_job(db, settings, user, save_id, str(uuid4()), "turn", {})
-            return "accepted"
-        except ApiError as e:
-            return e.code
-
-    assert sorted(
-        await asyncio.gather(reserve(first_user, first["id"]), reserve(second_user, second["id"]))
-    ) == ["accepted", "monthly_cost_cap_reached"]
 
 
 async def test_generator_repairs_schema_once_and_backfills_sources(v2, monkeypatch):
@@ -158,11 +93,10 @@ async def test_generator_repairs_schema_once_and_backfills_sources(v2, monkeypat
             }
         ]
     }
-    usage = {}
-    raw = await runtime.jobs.generate("discussion", payload, usage)
+    raw = await runtime.jobs.generate("discussion", payload)
     value = runtime.jobs.validate("discussion", payload, raw)
     assert value["cards"][0]["sources"][0]["title"] == "真实标题"
-    assert len(calls) == 2 and usage["model_calls"] == 2 and set(closed) == {"sync", "async"}
+    assert len(calls) == 2 and set(closed) == {"sync", "async"}
     raw["cards"][0]["source_ids"] = ["forged"]
     with pytest.raises(KeyError):
         runtime.jobs.validate("discussion", payload, raw)
@@ -179,7 +113,7 @@ async def test_generator_repairs_schema_once_and_backfills_sources(v2, monkeypat
         )
 
 
-async def test_generator_failures_and_restart_preserve_facts_and_unknown_cost(v2, monkeypatch):
+async def test_generator_failures_and_restart_preserve_facts(v2, monkeypatch):
     client, runtime = v2
     save = await create(client)
     await act(client, save, "begin")
@@ -201,23 +135,22 @@ async def test_generator_failures_and_restart_preserve_facts_and_unknown_cost(v2
     assert response.status_code == 200, response.text
     await asyncio.gather(*runtime.jobs.tasks)
     job = (await client.get(f"/api/saves/{save['id']}/jobs")).json()[0]
-    assert job["status"] == "unknown" and job["result"]["nodes"]
+    assert job["status"] == "failed" and job["result"]["nodes"]
     async with runtime.sessions.begin() as db:
         row = await db.get(AIJob, job["id"])
         row.status = "running"
     await runtime.jobs.recover()
     async with runtime.sessions() as db:
         row = await db.get(AIJob, job["id"])
-        ledger = await db.get(AISpend, job["id"])
-        assert row.status == "unknown" and ledger.reserved_usd > 0
+        assert row.status == "failed"
     assert not runtime.jobs.active
 
 
-async def test_cached_editorial_does_not_spend_quota_or_allow_cross_act_reference(v2):
+async def test_cached_editorial_preserves_identity_and_rejects_cross_act_reference(v2):
     client, runtime = v2
     save = await create(client)
     await act(client, save, "begin")
-    runtime.settings.daily_turn_limit = 0
+    runtime.settings.discussions_enabled = False
     body = {"kind": "discussion", "version": save["version"], "request_id": str(uuid4())}
     first = (await client.post(f"/api/saves/{save['id']}/jobs", json=body)).json()
     assert first["result"] == editorial()
@@ -232,11 +165,9 @@ async def test_cached_editorial_does_not_spend_quota_or_allow_cross_act_referenc
         json={**body, "request_id": str(uuid4()), "kind": "reflection"},
     )
     assert invalid.status_code == 422
-    async with runtime.sessions() as db:
-        assert not (await db.scalars(select(AISpend))).all()
     await act(client, save, "boundary")
     await act(client, save, "next")
-    runtime.settings.daily_turn_limit = 100
+    runtime.settings.discussions_enabled = True
     invalid = await client.post(
         f"/api/saves/{save['id']}/turns",
         json={
@@ -325,7 +256,7 @@ async def test_binding_waits_for_inflight_turn_and_expired_guest_is_rejected(v2)
     await process_bindings(runtime.sessions)
     async with runtime.sessions() as db:
         assert (await db.get(Save, save["id"])).user_id == guest["id"]
-    await runtime.service.finish_turn(turn_id, None, {}, True)
+    await runtime.service.finish_turn(turn_id, None, None, True)
     await process_bindings(runtime.sessions)
     async with runtime.sessions() as db:
         assert (await db.get(Save, save["id"])).user_id == member
@@ -442,8 +373,8 @@ async def test_oauth_binding_uses_recorded_state_not_callback_identity(
         row = await db.get(Save, save["id"])
         assert row.checkpoint_namespace == namespace and row.user_id == member["id"]
         assert (await db.get(User, guest["id"])).merged_into == member["id"]
-        fees = (await db.scalars(select(AISpend).where(AISpend.save_id == save["id"]))).all()
-        assert len(fees) == 1 and fees[0].user_id == member["id"]
+        tasks = (await db.scalars(select(AIJob).where(AIJob.save_id == save["id"]))).all()
+        assert len(tasks) == 1 and tasks[0].user_id == member["id"]
 
 
 async def test_guest_archive_trash_cannot_multiply_trial_saves(v2):
@@ -457,21 +388,6 @@ async def test_guest_archive_trash_cannot_multiply_trial_saves(v2):
         )
         assert response.status_code == 200, response.text
         assert (await client.post("/api/saves", json={})).status_code == 422
-
-
-async def test_ai_view_reflects_reserved_monthly_budget(v2):
-    client, runtime = v2
-    save = await create(client)
-    user = (await client.get("/api/auth/me")).json()["id"]
-    runtime.settings.agent_mode = "deepseek"
-    runtime.settings.deepseek_api_key = "fixture"
-    runtime.settings.monthly_cost_cap_usd = reservation(runtime.settings) * 1.5
-    async with runtime.sessions.begin() as db:
-        identity = await db.get(User, user)
-        await reserve_job(db, runtime.settings, identity, save["id"], str(uuid4()), "turn", {})
-    view = (await client.get(f"/api/saves/{save['id']}/play-state")).json()
-    assert not view["ai"]["available"] and view["ai"]["remaining"] > 0
-    await act(client, save, "begin")
 
 
 @pytest.mark.unit
@@ -525,7 +441,7 @@ async def test_reimported_content_requires_fresh_review_only_when_semantics_chan
         assert source.review_status == "candidate" and not source.content_hash
 
 
-async def test_long_dialogue_history_remains_within_request_budget(v2):
+async def test_long_dialogue_history_remains_playable(v2):
     client, _runtime = v2
     save = await create(client)
     await act(client, save, "begin")

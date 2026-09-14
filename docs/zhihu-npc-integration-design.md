@@ -1,5 +1,7 @@
 # Zhihu perspectives and NPC reference integration design
 
+> Historical note: AI quota, reservation and cost-accounting descriptions below predate their removal in schema 0009 and no longer describe the current application.
+
 Design references: [Game acts and asset list](https://ccnoz23f7y98.feishu.cn/wiki/Ka47wg91jiUW1ekAcbFc9Fuonqe), read at version 801, plus existing three-act rules, independent NPC checkpoints, and 319 candidate `zhihu_contents` records. This is a design proposal: the new APIs, tables, and interactions below were not implemented at the time of this document.
 
 ## Product goal

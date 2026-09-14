@@ -152,7 +152,7 @@ def test_oauth_failure_logs_the_type_and_never_the_credential(app, client, logge
 def test_turn_failure_logs_the_type_and_never_the_message(app, client, logged, monkeypatch):
     save = prepare(client)
 
-    async def failing(turn, checkpointer, usage):
+    async def failing(turn, checkpointer):
         raise RuntimeError(f"upstream echoed {PRIVATE_TEXT!r} with {FAKE_KEY}")
         yield "unreachable"  # pragma: no cover - keeps this an async generator
 
@@ -216,18 +216,18 @@ def test_a_completed_turn_logs_neither_the_player_text_nor_the_reply(client, log
     finished = [r for r in records(logged) if r["message"] == "turn_finished"]
     assert len(finished) == 1
     # What an operator does get is enough to diagnose without reading the game:
-    # which turn, which NPC, which action, how it ended, and what it cost. The
-    # call count is not pinned to a number -- a speak turn makes however many the
-    # agent's tool loop needs, and that is an implementation detail.
+    # which turn, which NPC, which action, how it ended, and how long it took.
     assert finished[0]["npc"] == "sun"
     assert finished[0]["action"] == "speak"
     assert finished[0]["outcome"] == "completed"
     assert finished[0]["turn_id"]
-    assert finished[0]["model_calls"] >= 1
+    assert finished[0]["elapsed_ms"] >= 0
     assert finished[0]["mode"] == "mock"
-    # Mock mode is free, so a non-zero cost here would mean the estimate is being
-    # computed from something other than the mode actually in use.
-    assert finished[0]["cost_estimate_usd"] == 0.0
+    # Provider accounting must not be reintroduced through operational logs.
+    assert (
+        not {"cost_estimate_usd", "input_tokens", "output_tokens", "model_calls"}
+        & finished[0].keys()
+    )
 
 
 def test_validation_failure_logs_field_names_but_not_submitted_values(client, logged):

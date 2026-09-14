@@ -1,5 +1,7 @@
 # Source and product review · 2026-09-13
 
+> Historical note: AI quota, reservation and cost-accounting descriptions below predate their removal in schema 0009 and no longer describe the current application.
+
 **Assessment: a workplace interactive-fiction MVP with a complete playable route and solid engineering foundations. Visual quality and reliability are ahead of gameplay depth. The next useful investment is to give player expressions understandable consequences and test whether players want to continue.**
 
 The review baseline was `2b6cb6c` plus pre-existing uncommitted changes to `agents.py`, `test_agents.py`, and `verification.md`. Coverage included frontend/backend business code, story definitions, APIs and recovery state machines, role permissions, data models, tests, builds, deployment, and operations scripts, supported by local page inspection, existing tests, and targeted reproductions. This report did not modify business code.

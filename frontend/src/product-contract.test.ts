@@ -28,7 +28,7 @@ const view = {
   active_turn: null,
   available_actions: [available],
   proposal,
-  ai: { available: true, remaining: 3 },
+  ai: { available: true, reason: null },
 };
 it("accepts extended play state and rejects malformed actions, proposals and AI status", () => {
   expect(isPlayState(view)).toBe(true);
@@ -37,7 +37,7 @@ it("accepts extended play state and rejects malformed actions, proposals and AI 
       ...view,
       available_actions: [{ ...available, target: null }],
       proposal: null,
-      ai: { available: false, remaining: null },
+      ai: { available: false, reason: null },
     }),
   ).toBe(true);
   for (const field of [
@@ -60,7 +60,7 @@ it("accepts extended play state and rejects malformed actions, proposals and AI 
     expect(
       isPlayState({ ...view, proposal: { ...proposal, [field]: false } }),
     ).toBe(false);
-  for (const ai of [[], { available: 1 }, { available: true, remaining: -1 }])
+  for (const ai of [[], { available: 1 }])
     expect(isPlayState({ ...view, ai })).toBe(false);
   expect(isPlayState({ ...view, available_actions: "bad" })).toBe(false);
 });

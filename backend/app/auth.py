@@ -110,7 +110,6 @@ async def me(request: Request, user: User = Depends(current_user)) -> dict[str, 
     runtime = runtime_for(request)
     await process_bindings(runtime.sessions)
     async with runtime.sessions() as db:
-        ai = await runtime.service.ai_status(db, user.id)
         pending = await db.scalar(
             select(OAuthBinding.state_hash)
             .where(OAuthBinding.member_id == user.id, OAuthBinding.status == "waiting")
@@ -121,7 +120,6 @@ async def me(request: Request, user: User = Depends(current_user)) -> dict[str, 
         "name": user.name,
         "identity_type": user.identity_type,
         "guest_expires_at": user.guest_expires_at,
-        "ai_remaining": ai["remaining"],
         "binding_pending": bool(pending),
     }
 
@@ -260,5 +258,4 @@ async def guest_login(request: Request, response: Response) -> dict[str, Any]:
         **result,
         "identity_type": "guest",
         "guest_expires_at": user.guest_expires_at,
-        "ai_remaining": runtime.settings.guest_ai_limit,
     }

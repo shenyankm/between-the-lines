@@ -115,7 +115,7 @@ def test_csrf_and_no_persona_leak(client):
 
 def test_failure_keeps_committed_action(app, client, monkeypatch):
 
-    async def failing(turn, checkpointer, usage):
+    async def failing(turn, checkpointer):
         npc_operation = app.state.runtime.service.npc_operation
 
         await npc_operation(turn.id, "sun", "request_materials")

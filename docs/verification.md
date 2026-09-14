@@ -18,7 +18,7 @@
 | Legacy public protocol                        | 490 events and 335 turns passed new DTO compatibility checks                                                                                     |
 | Backup restoration                            | Isolated CI database restored with 62 saves and 768 checkpoint records; source not overwritten                                                   |
 
-Story tests cover the four existing endings, core action values, and procurement prerequisites. Permission tests cover users, saves, NPCs, private contexts, and checkpoints. Recovery tests cover repeated requests, same ID with different payloads, stale versions, concurrent races, replay at full quota, timeouts, and failure after tool commit. Frontend tests cover unknown outcomes, invalid SSE, one-time 404 reconciliation/resend, storage exceptions, legacy pending records, save switching, late results, and unsubscribe.
+Story tests cover the four existing endings, core action values, and procurement prerequisites. Permission tests cover users, saves, NPCs, private contexts, and checkpoints. Recovery tests cover repeated requests, same ID with different payloads, stale versions, concurrent races, replay at full execution capacity, timeouts, and failure after tool commit. Frontend tests cover unknown outcomes, invalid SSE, one-time 404 reconciliation/resend, storage exceptions, legacy pending records, save switching, late results, and unsubscribe.
 
 Desktop/mobile screenshots were inspected without missing assets or horizontal overflow. Refresh testing interrupted the response after backend completion but before the browser received it. Real TCP tests separately cover disconnection during execution.
 
@@ -72,7 +72,7 @@ Using a key from a local ignored file, the existing `ChatDeepSeek` / Deep Agents
 
 Initially, finance listed materials verbally without registering requirements. Further investigation found Li Jie processing historical material requests instead of the current review request. The fix clarified tool conditions and supplied the current player message separately, marking historical dialogue as reference only. Backend permissions and prerequisites remained authoritative.
 
-The repaired main route completed all 14 steps: Sun Miao dialogue, material registration/submission, project report, Engineer Zhang support, Li Jie review, Act 3 clarification/delivery, ending private contact, and AI reflection. `requirements`, `supported`, `procurement=approved`, the final ending, and refreshed reads were verified. Five AI turns made ten model requests, with 29,650 input and 443 output tokens; AI turns took approximately 1.46–2.79 seconds. The application estimated 0.0094266 USD for this route, excluding preliminary probes and failed reproductions; this is not provider billing.
+The repaired main route completed all 14 steps: Sun Miao dialogue, material registration/submission, project report, Engineer Zhang support, Li Jie review, Act 3 clarification/delivery, ending private contact, and AI reflection. `requirements`, `supported`, `procurement=approved`, the final ending, and refreshed reads were verified. The historical figures below predate accounting removal in schema 0009. Five AI turns made ten model requests, with 29,650 input and 443 output tokens; AI turns took approximately 1.46–2.79 seconds. The application estimated 0.0094266 USD for this route, excluding preliminary probes and failed reproductions; this is not provider billing.
 
 Details are in ignored `artifacts/ai-smoke.json`. This is one real-service smoke test, not proof of reliable behavior for arbitrary wording. Desktop/mobile frontend evidence remains the mock E2E results above.
 
@@ -82,7 +82,7 @@ Related regressions passed: four Agent tests and 31 domain/relationship/API test
 
 See the [v2 release guide](product-v2-release.md) for implementation and rollout. New behavior is evaluated separately from the earlier v1 real-model smoke test; that run does not count as v2 semantic acceptance.
 
-- v1 save/turn compatibility retained; new stories use v2. Free actions and AI budgets are separated, with proposal confirmation, three-act relationship branches, private interludes, guest state-bound migration, independent replay, reflections, and reviewed perspectives.
+- v1 save/turn compatibility retained; new stories use v2. AI quotas and accounting are removed; deterministic actions remain model-independent, with proposal confirmation, three-act relationship branches, private interludes, guest state-bound migration, independent replay, reflections, and reviewed perspectives.
 - All 66 desktop/mobile browser tests passed against independent containers with a production Web build, Nginx, mock Agent, and PostgreSQL. Coverage includes legacy main routes/recovery and v2 partner branches, drafts, confirmation, and guest gates.
 - All ninety fixed mock semantic samples passed, with 100% rule accuracy and zero automatic major commitments, private leaks, or fabricated successes. The ninety real-model cases had not run.
 - TCP disconnection and forced-process-restart drills passed: facts retained, no duplicate tools/dialogue, no partial dialogue saved. Real HTTP OAuth success/failure callback logs through Uvicorn/Nginx were redacted, using a partner fixture.

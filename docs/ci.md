@@ -37,7 +37,7 @@ sh scripts/verify-restore.sh
 make ci-stack-down
 ```
 
-Load tests use the real Agent graph with mock model transport, confirm mock mode first, and run 10/20/30 concurrent turns. Failure rate must be zero and p95 below the configured budget. Container tests connect directly to Uvicorn; Playwright covers Nginx. The isolated stack has a concurrency budget of 64; the application default remains 30. Deterministic tests cover quota rejection separately.
+Load tests use the real Agent graph with mock model transport, confirm mock mode first, and run 10/20/30 concurrent turns. Failure rate must be zero and p95 below the configured budget. Container tests connect directly to Uvicorn; Playwright covers Nginx. The isolated stack has a concurrency budget of 64; the application default remains 30. Deterministic tests cover retained capacity rejection and unrestricted AI submission separately.
 
 The restore script uses a temporary database without overwriting its source. `make ci-stack-down` removes only the isolated test stack and volumes. CI cleans up on success or failure and retains reports for seven days. Remote Actions results require verification of the actual run; local results are not substitutes.
 

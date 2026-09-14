@@ -221,11 +221,10 @@ async def test_quality_failures_stop_after_two_model_calls(monkeypatch, kind):
         root_client=SimpleNamespace(close=Mock()),
     )
     monkeypatch.setattr(jobs, "make_model", lambda _: model)
-    runner = JobRunner(SimpleNamespace(settings=SimpleNamespace(ai_input_byte_limit=24000)))
-    usage = {}
+    runner = JobRunner(SimpleNamespace(settings=SimpleNamespace()))
     with pytest.raises(ValueError):
-        await runner.generate(kind, payload, usage)
-    assert model.ainvoke.await_count == 2 and usage["model_calls"] == 2
+        await runner.generate(kind, payload)
+    assert model.ainvoke.await_count == 2
     model.root_async_client.close.assert_awaited_once()
 
 
