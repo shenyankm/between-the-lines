@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
@@ -59,7 +60,9 @@ export function EndingNarrative({
       {job.error && (
         <p role="alert">
           结局正文暂时无法生成，以下事实总结仍然有效。
-          <button onClick={() => void job.refetch()}>重试读取</button>
+          <Button variant="secondary" onClick={() => void job.refetch()}>
+            重试读取
+          </Button>
         </p>
       )}
       {(job.data?.status === "failed" || job.data?.status === "unknown") && (
@@ -70,7 +73,14 @@ export function EndingNarrative({
           <small>
             {typeof result.label === "string" ? result.label : "结局正文"}
           </small>
-          <p style={{ whiteSpace: "pre-wrap" }}>{result.text}</p>
+          {result.text
+            .split(/\n\s*\n/)
+            .filter((paragraph) => paragraph.trim())
+            .map((paragraph, index) => (
+              <p key={index} style={{ whiteSpace: "pre-wrap" }}>
+                {paragraph}
+              </p>
+            ))}
         </>
       )}
       {!!interactions.length && (

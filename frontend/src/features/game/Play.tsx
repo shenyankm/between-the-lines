@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlayV3 } from "../v3/PlayV3";
 import { LogOut } from "lucide-react";
@@ -280,15 +281,18 @@ function LegacyPlaySession({
           ) : (
             <p>知乎登录尚未配置，当前进度会保留。</p>
           )}
-          <button onClick={() => setGuestGate(false)}>稍后再说</button>
+          <Button variant="secondary" onClick={() => setGuestGate(false)}>
+            稍后再说
+          </Button>
         </section>
       )}
       {playQuery.data?.proposal && (
         <section className={s.confirmation} aria-label="重要选择确认">
           <h2>{playQuery.data.proposal.label}</h2>
           <p>{playQuery.data.proposal.effect}</p>
-          <button
-            disabled={disabled}
+          <Button
+            variant="secondary"
+            isDisabled={disabled}
             onClick={() => {
               const proposal = playQuery.data?.proposal;
               if (proposal)
@@ -298,13 +302,14 @@ function LegacyPlaySession({
             }}
           >
             确认这个选择
-          </button>
-          <button
-            disabled={disabled}
+          </Button>
+          <Button
+            variant="secondary"
+            isDisabled={disabled}
             onClick={() => void act("cancel_proposal")}
           >
             暂不决定
-          </button>
+          </Button>
         </section>
       )}
       <ProductPanel
@@ -334,16 +339,17 @@ function LegacyPlaySession({
                 {playQuery.data?.available_actions
                   ?.filter((a) => a.action.startsWith("partner_"))
                   .map((a) => (
-                    <button
+                    <Button
+                      variant="secondary"
                       key={a.action}
-                      disabled={disabled}
+                      isDisabled={disabled}
                       onClick={() => {
                         setInterludeAct(null);
                         void act(a.action);
                       }}
                     >
                       {a.label}
-                    </button>
+                    </Button>
                   ))}
               </div>
             ) : undefined
@@ -375,14 +381,15 @@ function LegacyPlaySession({
         retryLabel="重试退出"
         disabled={loggingOut}
       />
-      <button
-        disabled={loggingOut}
+      <Button
+        variant="secondary"
+        isDisabled={loggingOut}
         className={s.logout}
         aria-label="退出登录"
         onClick={() => void logout()}
       >
         <LogOut size={14} />
-      </button>
+      </Button>
     </main>
   );
 }

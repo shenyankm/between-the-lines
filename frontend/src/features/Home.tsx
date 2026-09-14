@@ -137,13 +137,14 @@ export function Home() {
         {user.data &&
         !(user.error instanceof ApiError && user.error.status === 401) ? (
           <div className={s.homeActions}>
-            <button
+            <Button
+              variant="primary"
               className={s.primary}
-              disabled={busy}
+              isDisabled={busy}
               onClick={() => void start()}
             >
               开始新的故事 <ArrowRight size={18} />
-            </button>
+            </Button>
             {latest && (
               <Link className={s.secondary} to={`/play/${latest.id}`}>
                 {latest.state.ending ? "回看最近的故事" : "继续上次的故事"}{" "}
@@ -157,13 +158,14 @@ export function Home() {
         ) : (
           <div className={s.homeActions}>
             {config.data?.guest_login && (
-              <button
+              <Button
+                variant="primary"
                 className={s.primary}
-                disabled={busy}
+                isDisabled={busy}
                 onClick={() => void trial()}
               >
                 立即试玩 · 第一幕
-              </button>
+              </Button>
             )}
             <a
               className={`${s.primary} ${!config.data?.zhihu_login ? s.disabled : ""}`}
@@ -173,13 +175,14 @@ export function Home() {
               知乎账号登录 <ArrowRight size={18} />
             </a>
             {config.data?.dev_login && (
-              <button
+              <Button
+                variant="secondary"
                 className={s.secondary}
-                disabled={busy}
+                isDisabled={busy}
                 onClick={() => void login()}
               >
                 开发环境试玩 <ChevronRight size={17} />
-              </button>
+              </Button>
             )}
           </div>
         )}
