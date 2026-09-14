@@ -38,7 +38,7 @@ export function loadShareImage(
   });
 }
 
-export const posterFont = '"Ending Serif", "Songti SC", "SimSun", serif';
+const posterFont = '"Ending Serif", "Songti SC", "SimSun", serif';
 
 export async function preparePosterFonts(text: string) {
   if (!document.fonts) return;

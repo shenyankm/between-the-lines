@@ -3,7 +3,7 @@ import type { GameEvent, Save, Story } from "../types";
 import { story as storyFixture } from "./fixtures";
 
 /** A save, or a getter for tests where the server-side copy changes. */
-export type SaveSource = Save | (() => Save);
+type SaveSource = Save | (() => Save);
 
 /**
  * The three reads `Play` performs on mount: story data, the save itself and

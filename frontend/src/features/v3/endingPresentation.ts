@@ -1,6 +1,6 @@
 import type { StateV3 } from "./Work";
 
-export const endingVisuals = {
+const endingVisuals = {
   rules_rewritten: {
     code: "E01",
     asset: "rules",

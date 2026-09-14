@@ -1,7 +1,7 @@
 import type { GameEvent } from "../../types";
 import { record } from "../../contracts";
 
-export const metricNames = {
+const metricNames = {
   credit: "专业信用",
   rumination: "内耗",
   pressure: "工作压力",

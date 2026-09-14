@@ -1,6 +1,6 @@
 import type { Npc } from "../../types";
 import { record } from "../../contracts";
-export type Draft = {
+type Draft = {
   text: string;
   act: number;
   discussion_id?: string;

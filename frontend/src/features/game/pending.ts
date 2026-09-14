@@ -14,7 +14,7 @@ const key = (userId: string, saveId: string) =>
   `pending:v1:${userId}:${saveId}`;
 const validId = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-export function validPayload(value: unknown, requestId: string): boolean {
+function validPayload(value: unknown, requestId: string): boolean {
   if (!record(value)) return false;
   return (
     validId(requestId) &&
