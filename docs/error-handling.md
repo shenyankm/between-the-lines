@@ -38,10 +38,9 @@ Except for the independent `/api/ready` probe response, errors use this structur
 | 409       | `turn_still_running` / `save_busy`                       | Query the original turn or the save's current turn                                                           |
 | 409       | `unsupported_save_version`                               | Ask the administrator to upgrade the service                                                                 |
 | 422       | `validation_failed` / `empty_message` / `rule_violation` | Check input or choose another action                                                                         |
-| 429       | `daily_limit_reached` / `concurrency_budget_exhausted`   | Wait, then submit explicitly                                                                                 |
+| 429       | `concurrency_budget_exhausted`                           | Wait, then submit explicitly                                                                                 |
 | 500       | `internal_error`                                         | Outcome may be unknown; query the original turn after submission                                             |
 | 503       | `oauth_not_configured` / `model_unconfigured`            | Ask the administrator to configure the service                                                               |
-| 503       | `monthly_cost_cap_reached`                               | Show the wait time and contact the administrator                                                             |
 | 404 / 405 | `http_404` / `http_405`                                  | Framework routing error, not evidence of an absent turn                                                      |
 
 Quota responses carry `Retry-After` and `retry_after_seconds`; the server emits integer seconds. The frontend also accepts HTTP-date headers from proxies. If both values are valid, use the longer delay. Error and successful API responses prohibit caching and include request-tracing information.
@@ -53,7 +52,7 @@ Paths use UUID parameters. Versions must be nonnegative JSON integers; booleans,
 `TurnResult.failure` is nullable and contains `code/message/request_id/recovery`. Failure types:
 
 - `turn_timeout`: execution or upstream-call timeout.
-- `execution_budget_exhausted`: model, tool-call, or graph-execution budget exhausted.
+- `execution_budget_exhausted`: historical persisted failures only; new executions do not emit this code. The retained graph recursion guard maps to `turn_failed`.
 - `model_unavailable`: upstream connection or HTTP failure.
 - `empty_reply`: no valid dialogue or reflection text returned.
 - `turn_interrupted`: cancellation, restart, or leftover-turn recovery.

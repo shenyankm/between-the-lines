@@ -63,7 +63,7 @@ def main():
 
             with psycopg.connect(dsn) as db:
                 version = db.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-                assert version == "0007"
+                assert version == "0009"
                 saves = db.execute("SELECT count(*) FROM saves").fetchone()[0]
                 branches = db.execute(
                     "SELECT count(*) FROM saves WHERE parent_save_id IS NOT NULL"
@@ -79,7 +79,7 @@ def main():
                 assert not db.execute(
                     "SELECT count(*) FROM ai_jobs WHERE status='running'"
                 ).fetchone()[0]
-                ledger = db.execute("SELECT count(*) FROM ai_spend").fetchone()[0]
+                assert db.execute("SELECT to_regclass('ai_spend')").fetchone()[0] is None
                 db.execute(
                     "INSERT INTO zhihu_contents(content_type,content_id,title,summary,source_url,author_name,vote_count,comment_count,topics,fetched_at) VALUES ('answer','ops-fixture','审核测试','只用于隔离测试','https://www.zhihu.com/question/1/answer/2','测试',0,0,'[\"act_1\"]',now())"
                 )
@@ -115,6 +115,8 @@ def main():
                 )
             admin("review-import", "--file", str(file), "--apply", expected=1)
             metrics = json.loads(admin("metrics"))
+            assert set(metrics) == {"funnel", "turns"}
+            assert {"average_ms", "p95_ms"} <= metrics["turns"].keys()
             with psycopg.connect(dsn) as db:
                 db.execute("UPDATE saves SET deleted_at=now()-interval '31 days'")
             dry = json.loads(admin("cleanup"))
@@ -139,7 +141,7 @@ def main():
                         ).fetchone()[0]
                         == 0
                     )
-                assert db.execute("SELECT count(*) FROM ai_spend").fetchone()[0] == ledger
+                assert db.execute("SELECT to_regclass('ai_spend')").fetchone()[0] is None
             report = {
                 "passed": True,
                 "restored": {
@@ -148,7 +150,7 @@ def main():
                     "snapshots": snapshots,
                     "checkpoints": checkpoints,
                 },
-                "retained_billing_entries": ledger,
+                "accounting_removed": True,
                 "review_dry_run_and_stale_hash": True,
                 "cleanup_dry_run_and_checkpoints": True,
                 "metrics_available": bool(metrics),

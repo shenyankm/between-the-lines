@@ -38,7 +38,7 @@ At the end, revisit what happened and reflect on your choices. You do not have t
 - **The game is currently in Chinese.** This English README introduces the experience; it does not indicate an English-language game mode.
 - **Conversation and action work together.** If a message does not advance the story, check the available actions or required materials. Important choices may need a separate confirmation.
 - **You can come back after a connection problem.** Reopen the save and let it recover the current turn. If prompted, use the recovery or retry action shown on the page.
-- **AI features have usage limits.** If dialogue or a reflection is temporarily unavailable, follow the on-screen guidance. Deterministic story actions have a separate budget from AI requests.
+- **AI features have no application usage quota.** Dialogue and generated artifacts do not have daily or spending limits. If the model is unavailable or execution capacity is full, follow the on-screen guidance; deterministic story actions remain playable.
 - **The experience is still evolving.** Available scenes and features depend on the deployed version. Older saves may retain an earlier story or be available for reading only.
 
 ## Feedback and contributions

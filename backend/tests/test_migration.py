@@ -90,7 +90,7 @@ def test_legacy_saves_payloads_events_and_sessions_survive_migration(app):
             assert view["save"]["state"] == state
             assert view["events"][0]["text"] == event["text"]
             old = client.get(f"/api/saves/{save_id}/turns/{payload['request_id']}").json()
-            assert old["usage"]["billing_complete"] is False
+            assert "usage" not in old
             assert old["result"]["retryable"] is False
         # Replay the exact old payload, even though its version predates the save.
         save_id, _, payload, _ = originals[0]
@@ -108,3 +108,89 @@ def test_legacy_saves_payloads_events_and_sessions_survive_migration(app):
                 conn.execute("SELECT data FROM events WHERE save_id=%s", (save_id,)).fetchone()[0]
                 == event
             )
+
+
+def test_budget_removal_preserves_results_and_only_valid_timings(app):
+    """Upgrade populated 0008 rows, including malformed historical usage values."""
+    url = os.environ["CHECKPOINT_URL"]
+    assert url.endswith("/btl_test") or "/btl_upgrade_test_" in url
+    cwd = Path(__file__).resolve().parents[1]
+    with TestClient(app) as client:
+        client.post("/api/auth/dev", json={})
+        save = client.post("/api/saves", json={}).json()
+        for action in ("begin", "speak", "speak", "speak", "speak", "speak", "speak"):
+            body = {
+                "request_id": str(uuid4()),
+                "version": save["version"],
+                "action": action,
+                "text": "你好" if action == "speak" else "",
+            }
+            assert client.post(f"/api/saves/{save['id']}/turns", json=body).status_code == 200
+            save = client.get(f"/api/saves/{save['id']}").json()
+    with psycopg.connect(url) as conn:
+        before = conn.execute("SELECT id,payload,result FROM turns ORDER BY id").fetchall()
+        events = conn.execute("SELECT id,data FROM events ORDER BY id").fetchall()
+        jobs = conn.execute("SELECT id,status,payload,result FROM ai_jobs ORDER BY id").fetchall()
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "downgrade", "0008"],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+    )
+    timings = [125, None, "invalid", -1, 1.5, 2147483648, "42"]
+    try:
+        with psycopg.connect(url) as conn:
+            for (turn_id, _, _), timing in zip(before, timings, strict=True):
+                conn.execute(
+                    "UPDATE turns SET usage=%s::jsonb WHERE id=%s",
+                    (
+                        json.dumps(
+                            {"elapsed_ms": timing, "input_tokens": 50, "cost_estimate_usd": 1.5}
+                        ),
+                        turn_id,
+                    ),
+                )
+            conn.execute(
+                "UPDATE ai_jobs SET reserved_usd=100,cost_usd=5,usage='{\"input_tokens\":50}'"
+            )
+            conn.execute("""
+                INSERT INTO ai_spend(id,user_id,save_id,kind,status,reserved_usd,cost_usd,created_at)
+                SELECT id,user_id,save_id,kind,'unknown',100,5,created_at FROM ai_jobs
+            """)
+            for key in ("turn:fixture", "artifact:fixture", "guest:fixture"):
+                conn.execute(
+                    "INSERT INTO rate_buckets(key,count,expires_at) VALUES (%s,999,now())", (key,)
+                )
+    finally:
+        subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+        )
+    with psycopg.connect(url) as conn:
+        assert conn.execute("SELECT id,payload,result FROM turns ORDER BY id").fetchall() == before
+        assert conn.execute("SELECT id,data FROM events ORDER BY id").fetchall() == events
+        assert (
+            conn.execute("SELECT id,status,payload,result FROM ai_jobs ORDER BY id").fetchall()
+            == jobs
+        )
+        assert (
+            conn.execute("SELECT elapsed_ms FROM turns ORDER BY id").fetchall()
+            == [(125,)] + [(None,)] * 6
+        )
+        assert conn.execute("SELECT to_regclass('ai_spend')").fetchone()[0] is None
+        assert (
+            conn.execute("""
+            SELECT table_name,column_name FROM information_schema.columns
+            WHERE table_schema='public' AND table_name IN ('turns','ai_jobs')
+            AND column_name IN ('usage','reserved_usd','cost_usd')
+        """).fetchall()
+            == []
+        )
+        assert conn.execute(
+            "SELECT key FROM rate_buckets WHERE key LIKE '%:fixture'"
+        ).fetchall() == [("guest:fixture",)]
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "check"], cwd=cwd, check=True, capture_output=True
+    )

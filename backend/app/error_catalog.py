@@ -24,12 +24,10 @@ class ErrorCode(StrEnum):
     VALIDATION_FAILED = "validation_failed"
     EMPTY_MESSAGE = "empty_message"
     RULE_VIOLATION = "rule_violation"
-    DAILY_LIMIT_REACHED = "daily_limit_reached"
     CONCURRENCY_BUDGET_EXHAUSTED = "concurrency_budget_exhausted"
     INTERNAL_ERROR = "internal_error"
     OAUTH_NOT_CONFIGURED = "oauth_not_configured"
     MODEL_UNCONFIGURED = "model_unconfigured"
-    MONTHLY_COST_CAP_REACHED = "monthly_cost_cap_reached"
     HTTP_404 = "http_404"
     HTTP_405 = "http_405"
 
@@ -64,15 +62,11 @@ CATALOG: dict[ErrorCode, ErrorDefinition] = {
     ErrorCode.VALIDATION_FAILED: ErrorDefinition(422, "请求格式不正确。", "edit"),
     ErrorCode.EMPTY_MESSAGE: ErrorDefinition(422, "请输入要说的话。", "edit"),
     ErrorCode.RULE_VIOLATION: ErrorDefinition(422, "当前进度不允许此操作。", "edit"),
-    ErrorCode.DAILY_LIMIT_REACHED: ErrorDefinition(429, "今日回合额度已用完。", "wait"),
     ErrorCode.CONCURRENCY_BUDGET_EXHAUSTED: ErrorDefinition(429, "当前较忙，请稍后重试。", "wait"),
     ErrorCode.INTERNAL_ERROR: ErrorDefinition(500, "服务器内部错误，请稍后重试。", "retry"),
     ErrorCode.OAUTH_NOT_CONFIGURED: ErrorDefinition(503, "知乎登录尚未完成配置。", "contact"),
     ErrorCode.MODEL_UNCONFIGURED: ErrorDefinition(
         503, "对话服务尚未配置，请联系管理员。", "contact"
-    ),
-    ErrorCode.MONTHLY_COST_CAP_REACHED: ErrorDefinition(
-        503, "本月服务额度已用尽，请联系管理员。", "wait"
     ),
     ErrorCode.HTTP_404: ErrorDefinition(404, "接口不存在。", "refresh"),
     ErrorCode.HTTP_405: ErrorDefinition(405, "请求方法不受支持。", "refresh"),
@@ -81,6 +75,7 @@ CATALOG: dict[ErrorCode, ErrorDefinition] = {
 
 class FailureCode(StrEnum):
     TIMEOUT = "turn_timeout"
+    # Read compatibility for persisted failures; new executions never emit this code.
     BUDGET = "execution_budget_exhausted"
     MODEL = "model_unavailable"
     EMPTY = "empty_reply"

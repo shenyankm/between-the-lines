@@ -42,10 +42,8 @@ const admissionErrors: ReadonlySet<string> = new Set<ErrorCode>([
   "request_body_invalid",
   "empty_message",
   "rule_violation",
-  "daily_limit_reached",
   "concurrency_budget_exhausted",
   "model_unconfigured",
-  "monthly_cost_cap_reached",
 ]);
 function rejected(error: unknown): boolean {
   // A proxy's status alone cannot prove that the API rejected the original turn.
@@ -79,13 +77,7 @@ export function useTurnController(
         paused.current = true;
         void client.invalidateQueries({ queryKey: ["user"] });
       }
-      if (
-        [
-          "daily_limit_reached",
-          "monthly_cost_cap_reached",
-          "model_unconfigured",
-        ].includes(error.code ?? "")
-      ) {
+      if (error.code === "model_unconfigured") {
         setAiBlocked(true);
         return;
       }

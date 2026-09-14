@@ -39,22 +39,11 @@ class Settings(BaseSettings):
     guest_enabled: bool = True
     automatic_intents_enabled: bool = True
     discussions_enabled: bool = True
-    guest_ai_limit: int = 8
     guest_days: int = 7
     trusted_proxy_networks: list[str] = []
     active_save_limit: int = 20
-    mutation_limit_per_minute: int = 60
-    ai_input_byte_limit: int = 24000
-    daily_turn_limit: int = 100
     max_concurrent_turns: int = 30
     turn_timeout_seconds: int = 60
-    # Billing kill switch. 0 disables it, which is correct for mock mode where
-    # every turn costs nothing and wrong for production -- see production_guards.
-    monthly_cost_cap_usd: float = 0.0
-    max_model_calls: int = 4
-    max_tool_calls: int = 6
-    deepseek_input_usd_per_million: float = 0.30
-    deepseek_output_usd_per_million: float = 1.20
     zhihu_client_id: str = ""
     zhihu_protocol: Literal["standard", "hackathon"] = "standard"
     zhihu_access_secret: str = ""
@@ -79,10 +68,6 @@ class Settings(BaseSettings):
             # is a credential leak rather than a misconfiguration.
             if not self.deepseek_api_base.startswith("https://"):
                 raise ValueError("Production requires an HTTPS DEEPSEEK_API_BASE")
-            # 0 means "no cap", which is right for mock mode where turns are free
-            # and unacceptable where they are billed. Refuse to boot without one.
-            if self.monthly_cost_cap_usd <= 0:
-                raise ValueError("Production requires a positive MONTHLY_COST_CAP_USD")
             if not self.oauth_ready:
                 raise ValueError("Production requires complete Zhihu OAuth configuration")
         return self

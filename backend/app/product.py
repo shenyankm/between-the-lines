@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .content import content_hash
 from .db import (
     AIJob,
-    AISpend,
     BranchRequest,
     Event,
     LoginSession,
@@ -216,7 +215,7 @@ async def process_bindings(sessions: Any) -> None:
             if guest.merged_into:
                 pending.status = "completed"
                 continue
-            for model in (Save, Turn, AIJob, AISpend):
+            for model in (Save, Turn, AIJob):
                 await db.execute(
                     update(model).where(model.user_id == guest.id).values(user_id=pending.member_id)
                 )

@@ -12,7 +12,7 @@ from app.auth import digest
 from app.content import content_hash
 from app.context import AgentTurn
 from app.db import (
-    AISpend,
+    AIJob,
     OAuthBinding,
     Proposal,
     Save,
@@ -75,9 +75,17 @@ async def second_act(client, save):
 
 @pytest.mark.parametrize("response", ["decline", "agree"])
 @pytest.mark.parametrize("relationship", ["cut_ties", "repair_friendship"])
-async def test_three_acts_without_any_ai_budget(v2, response, relationship):
+@pytest.mark.parametrize("model_ready", [True, False])
+async def test_three_acts_without_ai_calls(v2, response, relationship, model_ready, monkeypatch):
     client, runtime = v2
-    runtime.settings.daily_turn_limit = 0
+    runtime.settings.agent_mode = "mock" if model_ready else "deepseek"
+    runtime.settings.deepseek_api_key = ""
+
+    async def unexpected(*args):
+        raise AssertionError("Deterministic actions must not invoke a model")
+        yield "unreachable"
+
+    monkeypatch.setattr(runtime.runner, "reply", unexpected)
     save = await create(client)
     assert save["story_version"] == 3
     await second_act(client, save)
@@ -98,10 +106,8 @@ async def test_three_acts_without_any_ai_budget(v2, response, relationship):
     assert save["state"]["outcome"]["id"] == (
         "professional_boundary" if relationship == "cut_ties" else "limited_repair"
     )
-    async with runtime.sessions() as db:
-        assert not await db.scalar(select(func.count()).select_from(AISpend))
     view = (await client.get(f"/api/saves/{save['id']}/play-state")).json()
-    assert view["ai"]["available"] is False
+    assert view["ai"]["available"] is model_ready
     assert not any(e["kind"] == "epilogue" for e in view["events"])
     assert any(e.get("speaker") == "system" for e in view["events"])
 
@@ -225,7 +231,7 @@ async def test_private_branch_never_enters_coworker_context(v2):
         )
 
 
-async def test_snapshot_branch_has_no_future_history_or_cost(v2):
+async def test_snapshot_branch_has_no_future_history(v2):
     client, runtime = v2
     save = await create(client)
     await act(client, save, "begin")
@@ -252,7 +258,7 @@ async def test_snapshot_branch_has_no_future_history_or_cost(v2):
     await act(client, branch, "boundary")
 
 
-async def test_guest_quota_and_deferred_merge(v2):
+async def test_guest_story_access_and_deferred_merge(v2):
     client, runtime = v2
     await client.post("/api/auth/logout", json={})
     guest = (await client.post("/api/auth/guest", json={})).json()
@@ -261,18 +267,8 @@ async def test_guest_quota_and_deferred_merge(v2):
     save = await create(client)
     assert (await client.post("/api/saves", json={})).status_code == 422
     await act(client, save, "begin")
-    runtime.settings.guest_ai_limit = 1
     await act(client, save, "speak", text="你好")
-    blocked = await client.post(
-        f"/api/saves/{save['id']}/turns",
-        json={
-            "request_id": str(uuid4()),
-            "version": save["version"],
-            "action": "speak",
-            "text": "你好",
-        },
-    )
-    assert blocked.status_code == 429
+    await act(client, save, "speak", text="你好")
     await act(client, save, "boundary")
     blocked = await client.post(
         f"/api/saves/{save['id']}/turns",
@@ -302,9 +298,9 @@ async def test_guest_quota_and_deferred_merge(v2):
         assert row.checkpoint_namespace == namespace
         assert (
             await db.scalar(
-                select(func.count()).select_from(AISpend).where(AISpend.user_id == member["id"])
+                select(func.count()).select_from(AIJob).where(AIJob.user_id == member["id"])
             )
-            == 1
+            == 2
         )
     await act(client, inherited, "next")
     client.cookies.set("btl_session", cookie)
@@ -441,7 +437,7 @@ async def test_intent_fact_survives_a_later_reply_failure(v2):
     save = await create(client)
     await act(client, save, "begin")
 
-    async def failing(turn, checkpointer, usage):
+    async def failing(turn, checkpointer):
         await runtime.service.player_intent(turn.id, "sun", "boundary", turn.input.text)
         raise RuntimeError("fixture after commit")
         yield "unreachable"  # pragma: no cover

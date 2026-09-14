@@ -19,9 +19,9 @@ from .schemas import TurnInput
 from .services import GameService, owned_save
 
 logger = logging.getLogger("btl.turns")
-Reply = Callable[[AgentTurn, Checkpointer, dict[str, Any]], AsyncIterator[str]]
-Epilogue = Callable[[dict[str, Any], dict[str, Any]], Awaitable[str]]
-Observer = Callable[[str, float, int, float], None]
+Reply = Callable[[AgentTurn, Checkpointer], AsyncIterator[str]]
+Epilogue = Callable[[dict[str, Any]], Awaitable[str]]
+Observer = Callable[[str, float], None]
 
 
 class TurnRunner:
@@ -72,7 +72,7 @@ class TurnRunner:
                 asyncio.get_running_loop().create_future()
             )
             result.set_result(turn.result)
-            self.observe("replayed", 0, 0, 0)
+            self.observe("replayed", 0)
             return turn.id, result
         context = AgentTurn(turn.id, turn.user_id, turn.save_id, body)
         # No await between committed acceptance and registration. A disconnect can
@@ -97,13 +97,6 @@ class TurnRunner:
             )
 
     async def execute(self, turn: AgentTurn, reservation: object) -> dict[str, Any] | None:
-        usage: dict[str, Any] = {
-            "model": MODEL,
-            "mode": self.settings.agent_mode,
-            "model_calls": 0,
-            "input_tokens": 0,
-            "output_tokens": 0,
-        }
         started = time.monotonic()
         outcome = "failed"
         reply = ""
@@ -112,13 +105,13 @@ class TurnRunner:
             try:
                 async with asyncio.timeout(self.settings.turn_timeout_seconds):
                     if turn.input.action == "speak" and turn.input.channel != "group":
-                        async for chunk in self.reply(turn, self.checkpointer, usage):
+                        async for chunk in self.reply(turn, self.checkpointer):
                             reply += chunk
                     elif turn.input.action == "epilogue":
                         async with self.service.sessions() as db:
                             save = await owned_save(db, turn.save_id, turn.user_id)
                         if save.state["ending"]:
-                            reply = await self.epilogue(save.state, usage)
+                            reply = await self.epilogue(save.state)
             except asyncio.CancelledError:
                 failure = FailureCode.INTERRUPTED
                 reply = failure_message(failure)
@@ -135,9 +128,9 @@ class TurnRunner:
                         }
                     },
                 )
-            usage["elapsed_ms"] = round((time.monotonic() - started) * 1000)
+            elapsed_ms = round((time.monotonic() - started) * 1000)
             result = await self.service.finish_turn(
-                turn.id, reply, usage, failure is not None, failure, request_id.get()
+                turn.id, reply, elapsed_ms, failure is not None, failure, request_id.get()
             )
             if result:
                 outcome = result["status"]
@@ -147,8 +140,6 @@ class TurnRunner:
             self.observe(
                 outcome,
                 time.monotonic() - started,
-                usage["model_calls"],
-                usage.get("cost_estimate_usd", 0.0),
             )
             logger.info(
                 "turn_finished",
@@ -158,7 +149,9 @@ class TurnRunner:
                         "npc": turn.input.npc,
                         "action": turn.input.action,
                         "outcome": outcome,
-                        **usage,
+                        "model": MODEL,
+                        "mode": self.settings.agent_mode,
+                        "elapsed_ms": round((time.monotonic() - started) * 1000),
                     }
                 },
             )

@@ -7,11 +7,11 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
-async def test_same_save_admission_and_quota(app, monkeypatch):
+async def test_same_save_admission_and_subsequent_execution(app, monkeypatch):
 
     entered, release = asyncio.Event(), asyncio.Event()
 
-    async def slow_agent(turn, checkpointer, usage):
+    async def slow_agent(turn, checkpointer):
         entered.set()
         await release.wait()
         yield "我听到了。"
@@ -38,17 +38,16 @@ async def test_same_save_admission_and_quota(app, monkeypatch):
         assert (await first).status_code == 200
         fresh = (await c.get(f"/api/saves/{save['id']}")).json()
         assert fresh["version"] == 2
-        monkeypatch.setattr(app.state.runtime.service.settings, "daily_turn_limit", 1)
         blocked = await c.post(
             f"/api/saves/{save['id']}/turns",
             json={**body, "request_id": str(uuid4()), "version": 2},
         )
-        assert blocked.status_code == 429
+        assert blocked.status_code == 200
 
 
 async def test_timeout_and_capacity_release(app, monkeypatch):
 
-    async def never_finishes(turn, checkpointer, usage):
+    async def never_finishes(turn, checkpointer):
         await asyncio.sleep(5)
         yield "never"
 

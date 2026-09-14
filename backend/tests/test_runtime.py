@@ -24,7 +24,7 @@ def payload(save, action="begin"):
     return {"request_id": str(uuid4()), "version": save["version"], "action": action}
 
 
-async def test_replay_bypasses_capacity_and_preserves_usage(app):
+async def test_replay_bypasses_capacity_and_preserves_result(app):
     async with (
         app.router.lifespan_context(app),
         httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
@@ -46,10 +46,9 @@ async def test_replay_bypasses_capacity_and_preserves_usage(app):
 async def test_subscriber_cancellation_does_not_cancel_runner_and_shutdown_drains(app):
     entered, release = asyncio.Event(), asyncio.Event()
 
-    async def delayed(turn, checkpointer, usage):
+    async def delayed(turn, checkpointer):
         entered.set()
         await release.wait()
-        usage["model_calls"] = 1
         yield "持久化的完整对白。"
 
     app.state.dependencies.reply = delayed
@@ -77,7 +76,7 @@ async def test_subscriber_cancellation_does_not_cancel_runner_and_shutdown_drain
         assert result["status"] == "completed"
         assert result["result"]["text"] == "持久化的完整对白。"
         original = result["result"]
-        repeated = await app.state.runtime.service.finish_turn(result["id"], "wrong", {}, True)
+        repeated = await app.state.runtime.service.finish_turn(result["id"], "wrong", None, True)
         assert repeated == original
         assert not app.state.runtime.runner.active
 
@@ -144,7 +143,7 @@ def test_public_story_has_all_assets_and_no_private_personas():
 
 
 async def test_structured_failure_preserves_facts_and_original_identity(app):
-    async def timeout(turn, checkpointer, usage):
+    async def timeout(turn, checkpointer):
         raise TimeoutError("private provider details")
         yield  # pragma: no cover
 

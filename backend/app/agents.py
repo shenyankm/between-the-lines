@@ -1,5 +1,5 @@
 import json
-from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable
 from contextlib import suppress
 from typing import Any, Literal
 
@@ -10,11 +10,6 @@ from deepagents.profiles import (
     GeneralPurposeSubagentProfile,
     HarnessProfile,
     register_harness_profile,
-)
-from langchain.agents.middleware import (
-    AgentMiddleware,
-    ModelCallLimitMiddleware,
-    ToolCallLimitMiddleware,
 )
 from langchain_core.messages import HumanMessage, RemoveMessage
 from langchain_core.runnables import RunnableConfig
@@ -44,16 +39,6 @@ register_harness_profile(
 
 
 def make_model(settings: Settings) -> ChatDeepSeek:
-    requests = 0
-
-    async def guard(request: httpx.Request) -> None:
-        nonlocal requests
-        requests += 1
-        if requests > max(1, settings.max_model_calls) * (1 + settings.deepseek_max_retries):
-            raise RuntimeError("Physical model call budget exceeded")
-        if len(request.content) > settings.ai_input_byte_limit:
-            raise RuntimeError("Model input budget exceeded")
-
     if settings.agent_mode == "mock":
         from .mock_llm import handle_request
 
@@ -64,12 +49,10 @@ def make_model(settings: Settings) -> ChatDeepSeek:
             # would silently absorb a failure the fixture fabricated to be observed,
             # and the backoff would make CI timings inexact.
             max_retries=0,
-            http_async_client=httpx.AsyncClient(
-                transport=httpx.MockTransport(handle_request), event_hooks={"request": [guard]}
-            ),
+            http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(handle_request)),
             extra_body={"thinking": {"type": "disabled"}},
             streaming=True,
-            stream_usage=True,
+            stream_usage=False,
         )
     if not settings.deepseek_api_key:
         raise RuntimeError("DEEPSEEK_API_KEY is not configured")
@@ -77,14 +60,13 @@ def make_model(settings: Settings) -> ChatDeepSeek:
         model_name=MODEL,
         api_key=settings.deepseek_api_key,
         api_base=settings.deepseek_api_base,
-        http_async_client=httpx.AsyncClient(event_hooks={"request": [guard]}),
+        http_async_client=httpx.AsyncClient(),
         temperature=0.7,
-        max_tokens=800,
         timeout=25,
         max_retries=settings.deepseek_max_retries,
         extra_body={"thinking": {"type": "disabled"}},
         streaming=True,
-        stream_usage=True,
+        stream_usage=False,
     )
 
 
@@ -110,7 +92,6 @@ class AgentGateway:
         story_version: int = 1,
     ) -> CompiledStateGraph[Any, Any, Any, Any]:
         npc = turn.input.npc
-        settings = self.settings
         story = load_story(story_version) if story_version != 1 else self.story
 
         @tool
@@ -145,12 +126,6 @@ class AgentGateway:
             except RuleError as exc:
                 return f"操作未执行：{exc}"
 
-        # AgentMiddleware's state parameter is invariant and the two limit middlewares carry
-        # different state schemas, so no single precise element type covers both.
-        middleware: Sequence[AgentMiddleware[Any, None, Any]] = [
-            ModelCallLimitMiddleware(run_limit=settings.max_model_calls, exit_behavior="error"),
-            ToolCallLimitMiddleware(run_limit=settings.max_tool_calls, exit_behavior="error"),
-        ]
         agent = create_deep_agent(
             model=model or self.model_factory(),
             name=f"npc_{npc}",
@@ -177,13 +152,10 @@ class AgentGateway:
                 "可在虚拟工作区整理临时笔记，但笔记不改变游戏事实。"
                 "最新可见事实优先于历史对白，历史中声称发生的事不代表已执行。"
             ),
-            middleware=middleware,
         )
         return agent
 
-    async def run_agent(
-        self, turn: AgentTurn, checkpointer: Checkpointer, usage: dict[str, Any]
-    ) -> AsyncIterator[str]:
+    async def run_agent(self, turn: AgentTurn, checkpointer: Checkpointer) -> AsyncIterator[str]:
         """Yield only completed, player-visible text. Raw graph events remain server-side."""
         npc = turn.input.npc
         context = await self.service.context_for(turn)
@@ -219,11 +191,6 @@ class AgentGateway:
         history = [
             event.model_dump(mode="json", exclude_none=True) for event in context.history[-12:]
         ]
-        history_budget = min(
-            4000, max(0, self.settings.ai_input_byte_limit - 16000 - len(turn.input.text.encode()))
-        )
-        while history and len(json.dumps(history, ensure_ascii=False).encode()) > history_budget:
-            history.pop(0)
         incoming = [
             RemoveMessage(id=REMOVE_ALL_MESSAGES),
             HumanMessage(
@@ -253,10 +220,6 @@ class AgentGateway:
                     for message in data.get("messages", []):
                         if getattr(message, "type", "") != "ai":
                             continue
-                        usage["model_calls"] = usage.get("model_calls", 0) + 1
-                        tokens = message.usage_metadata or {}
-                        for key in ("input_tokens", "output_tokens", "total_tokens"):
-                            usage[key] = usage.get(key, 0) + tokens.get(key, 0)
                         if not message.tool_calls:
                             content = message.content
                             reply = (
@@ -276,7 +239,7 @@ class AgentGateway:
         # Only terminal dialogue is exposed; intermediary planning text cannot leak into UI.
         yield reply
 
-    async def run_epilogue(self, state: dict[str, Any], usage: dict[str, Any]) -> str:
+    async def run_epilogue(self, state: dict[str, Any]) -> str:
         """Summarize a rule-selected ending; this model cannot change its outcome."""
         game_state = parse_state(state)
         story = load_story(2) if state.get("story_version") == 2 else self.story
@@ -297,11 +260,6 @@ class AgentGateway:
                     ("human", json.dumps({"结局事实": facts}, ensure_ascii=False)),
                 ]
             )
-            usage["model_calls"] = usage.get("model_calls", 0) + 1
-            # UsageMetadata is a TypedDict, whose get() only accepts literal keys.
-            tokens: Mapping[str, Any] = message.usage_metadata or {}
-            for key in ("input_tokens", "output_tokens", "total_tokens"):
-                usage[key] = usage.get(key, 0) + tokens.get(key, 0)
             if not isinstance(message.content, str) or not message.content.strip():
                 raise EmptyReplyError("No epilogue text")
             return message.content

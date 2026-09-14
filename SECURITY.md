@@ -21,7 +21,7 @@ The following constraints are enforced in code, not merely recommended in docume
 - **Session tokens are not stored in plaintext.** `backend/app/auth.py` stores SHA-256 digests of `secrets.token_urlsafe(32)` tokens. Sessions expire after seven days; cookies use `httponly` and `samesite=lax`, plus `secure` in production.
 - **Same-origin deployment and Origin validation replace CORS.** Middleware in `backend/app/factory.py` validates Origin and requires JSON for mutation requests as a CSRF defense. See [architecture](docs/architecture.md) for process, transaction, and API boundaries.
 - **Redacted logs.** Authentication failures log exception types, not credentials or personal information. `backend/tests/test_logging.py` contains regression assertions.
-- **Restricted Agent capabilities.** `backend/app/agents.py` disables generic deepagents subagents, excludes `task` and `execute`, and confines file tools to `StateBackend`, without access to the host filesystem or shell. `MAX_MODEL_CALLS` and `MAX_TOOL_CALLS` bound execution.
+- **Restricted Agent capabilities.** `backend/app/agents.py` disables generic deepagents subagents, excludes `task` and `execute`, and confines file tools to `StateBackend`, without access to the host filesystem or shell. Timeouts, bounded retries and a graph recursion guard protect execution; model/tool-call usage quotas are removed.
 - **Server-derived checkpoint thread IDs** use `{user}:{save}:{npc}`. Clients cannot choose them, preventing cross-user checkpoint access.
 - **Locked supply chain.** Backend dependencies are installed from `backend/requirements.lock` with `--require-hashes`. GitHub Actions are pinned to commit SHAs; downloaded gitleaks and trivy binaries are verified with checksums.
 

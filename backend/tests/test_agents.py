@@ -95,15 +95,13 @@ async def test_deep_agent_tool_loop_isolation_and_fixed_model(
             save_id="s",
             input=SimpleNamespace(npc="sun", text="请登记这笔采购的材料要求。"),
         )
-        usage = {}
-        replies = [reply async for reply in gateway.run_agent(turn, InMemorySaver(), usage)]
+        replies = [reply async for reply in gateway.run_agent(turn, InMemorySaver())]
     assert replies == ["请补充报价单和用途说明。"]
     assert len(requests) == 2
     system = next(m["content"] for m in requests[0]["messages"] if m["role"] == "system")
     assert f"与研发专员{load_story(story_version).player_name}交谈" in system
     player_message = next(m for m in reversed(requests[0]["messages"]) if m["role"] == "user")
     assert json.loads(player_message["content"])["本轮玩家对白"] == turn.input.text
-    assert usage["input_tokens"] == 40
     assert operations == ([("t", "sun", "request_materials")] if tool_name == "act_on_work" else [])
     assert any(m["role"] == "tool" for m in requests[1]["messages"])
 
@@ -115,3 +113,78 @@ def test_model_factory_has_no_other_provider(monkeypatch):
     assert model.model_name == "deepseek-flash"
     assert model.extra_body["thinking"]["type"] == "disabled"
     assert model.max_retries == 0
+
+
+async def test_long_requests_and_extended_tool_loops_have_no_accounting_ceiling(monkeypatch):
+    """Use the production model factory and real graph over a local HTTP transport."""
+    from app import mock_llm
+
+    requests, operations = [], []
+
+    async def transport(request):
+        payload = json.loads(request.content)
+        requests.append(payload)
+        assert "max_tokens" not in payload and "max_completion_tokens" not in payload
+        assert len(request.content) > 24000
+        if len(requests) <= 4:
+            message = {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": f"call_{len(requests)}_{index}",
+                        "type": "function",
+                        "function": {"name": "inspect_work", "arguments": "{}"},
+                    }
+                    for index in range(2)
+                ],
+            }
+            reason = "tool_calls"
+        else:
+            message = {"role": "assistant", "content": "已核对。"}
+            reason = "stop"
+        return httpx.Response(
+            200,
+            json={
+                "id": f"chat_{len(requests)}",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "deepseek-flash",
+                "choices": [{"index": 0, "message": message, "finish_reason": reason}],
+            },
+        )
+
+    async def context(turn):
+        operations.append(turn.id)
+        return AgentContext.model_validate(
+            {
+                "facts": {"act": 2, "procurement": "pending", "flags": []},
+                "history": [{"kind": "player", "text": "历史" * 600, "npc": "sun"}] * 12,
+            }
+        )
+
+    monkeypatch.setattr(mock_llm, "handle_request", transport)
+    settings = Settings(_env_file=None, agent_mode="mock")
+    model = agents.make_model(settings)
+    model.streaming = False
+    gateway = agents.AgentGateway(
+        settings, SimpleNamespace(context_for=context), load_story(), model_factory=lambda: model
+    )
+    turn = SimpleNamespace(
+        id="t", user_id="u", save_id="s", input=SimpleNamespace(npc="sun", text="请核对。")
+    )
+    assert [reply async for reply in gateway.run_agent(turn, InMemorySaver())] == ["已核对。"]
+    assert len(requests) == 5
+    assert len(operations) == 9  # Initial context plus eight tools, beyond both old limits.
+
+
+@pytest.mark.parametrize("mode", ["mock", "deepseek"])
+async def test_model_factory_omits_output_limits_and_usage_streams(mode):
+    model = agents.make_model(Settings(_env_file=None, agent_mode=mode, deepseek_api_key="fixture"))
+    try:
+        assert model.max_tokens is None
+        assert model.stream_usage is False
+        assert not model.http_async_client.event_hooks["request"]
+    finally:
+        await model.root_async_client.close()
+        model.root_client.close()

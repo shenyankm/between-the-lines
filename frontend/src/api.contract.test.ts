@@ -112,7 +112,6 @@ it("reads a running and a completed lookup", async () => {
     http.get("/api/saves/s/turns/r", () =>
       HttpResponse.json({
         id: "turn-1",
-        usage: {},
         status: "running",
         result: null,
       }),
@@ -123,7 +122,6 @@ it("reads a running and a completed lookup", async () => {
     http.get("/api/saves/s/turns/r", () =>
       HttpResponse.json({
         id: "turn-1",
-        usage: {},
         status: "completed",
         result,
       }),

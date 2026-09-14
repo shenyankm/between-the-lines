@@ -1,19 +1,18 @@
 import logging
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, cast
 
-from sqlalchemy import Numeric, case, func, select
+from sqlalchemy import case, func, select
 from sqlalchemy import text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .actions import CATALOG, MAJOR, PRIVATE, available_actions, effects, role_actions, transition
-from .budget import monthly_commitment, reservation, reserve_job, settle
+from .ai_tasks import create_job
 from .config import Settings
 from .context import AgentContext, AgentTurn
 from .db import (
     AIJob,
-    AISpend,
     Event,
     ProductEvent,
     Proposal,
@@ -32,35 +31,6 @@ from .schemas import PlayStateOut, SaveOut, TurnFailure, TurnInput
 from .story import load_story
 
 logger = logging.getLogger("btl.services")
-
-
-def _start_of_utc_month(now: datetime) -> datetime:
-    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-
-def _seconds_until_next_utc_month(now: datetime) -> int:
-    """Whole seconds until the cap's window rolls over; never less than one."""
-    year, month = (now.year + 1, 1) if now.month == 12 else (now.year, now.month + 1)
-    return max(
-        1, int((_start_of_utc_month(now).replace(year=year, month=month) - now).total_seconds())
-    )
-
-
-async def month_to_date_cost(db: AsyncSession) -> float:
-    """Estimated spend recorded since the start of the current UTC month.
-
-    Summed from `turns.usage` rather than held in a counter: that column is already
-    the billing record of truth, it survives restarts, and a process-local counter
-    would under-report after every deploy -- exactly when an overrun matters most.
-    """
-    # usage->>'x' is text, so it needs a cast before SUM will take it. Turns written
-    # before the field existed yield NULL, which SUM ignores rather than poisoning.
-    total = await db.scalar(
-        select(
-            func.coalesce(func.sum(Turn.usage["cost_estimate_usd"].astext.cast(Numeric)), 0)
-        ).where(Turn.created_at >= _start_of_utc_month(utcnow()))
-    )
-    return float(total or 0)
 
 
 def snapshot(save: Save) -> dict[str, Any]:
@@ -115,7 +85,7 @@ class GameService:
         reserve: Callable[[], None] = lambda: None,
     ) -> Turn:
         async with self.sessions.begin() as db:
-            # Lock user before save: serializes quota checks across the user's saves.
+            # Lock user before save to coordinate ownership migration with active turns.
             user = cast(
                 User, await db.scalar(select(User).where(User.id == user_id).with_for_update())
             )
@@ -152,9 +122,6 @@ class GameService:
                 raise ApiError(
                     422, "rule_violation", "第一幕已完成，绑定知乎后继续；试玩进度会保留。"
                 )
-            from .product import rate_limit
-
-            await rate_limit(db, "turn:" + user_id, self.settings.mutation_limit_per_minute, 60)
             if body.action == "speak" and not body.text.strip():
                 raise ApiError(422, "empty_message")
             try:
@@ -235,7 +202,7 @@ class GameService:
             db.add(turn)
             await db.flush()
             if body.action in {"speak", "epilogue"} and body.channel != "group":
-                await reserve_job(
+                await create_job(
                     db,
                     self.settings,
                     user,
@@ -411,24 +378,11 @@ class GameService:
         self,
         turn_id: str,
         text: str | None,
-        usage: dict[str, Any],
+        elapsed_ms: int | None,
         error: bool = False,
         failure: FailureCode | None = None,
         correlation_id: str | None = None,
     ) -> dict[str, Any] | None:
-        usage["billing_complete"] = not error
-        usage["cost_estimate_usd"] = (
-            0.0
-            if self.settings.agent_mode == "mock"
-            else round(
-                (
-                    usage.get("input_tokens", 0) * self.settings.deepseek_input_usd_per_million
-                    + usage.get("output_tokens", 0) * self.settings.deepseek_output_usd_per_million
-                )
-                / 1_000_000,
-                8,
-            )
-        )
         async with self.sessions.begin() as db:
             turn = cast(Turn, await db.get(Turn, turn_id))
             await db.scalar(select(User).where(User.id == turn.user_id).with_for_update())
@@ -438,10 +392,10 @@ class GameService:
                 return turn.result
             turn.status = "failed" if error else "completed"
             turn.updated_at = utcnow()
-            turn.usage = usage
+            turn.elapsed_ms = elapsed_ms
             job = await db.get(AIJob, turn.id)
             if job:
-                await settle(db, job, self.settings, usage, error)
+                job.status = "failed" if error else "completed"
             if not error and text:
                 epilogue = bool(save.state["ending"])
                 db.add(
@@ -535,12 +489,12 @@ class GameService:
                     Turn.created_at
                     < utcnow() - timedelta(seconds=self.settings.turn_timeout_seconds + 15)
                 )
-            stale = [(turn.id, dict(turn.usage)) for turn in (await db.scalars(query)).all()]
-        for turn_id, usage in stale:
+            stale = [(turn.id, turn.elapsed_ms) for turn in (await db.scalars(query)).all()]
+        for turn_id, elapsed_ms in stale:
             await self.finish_turn(
                 turn_id,
                 failure_message(FailureCode.INTERRUPTED),
-                usage,
+                elapsed_ms,
                 True,
                 FailureCode.INTERRUPTED,
             )
@@ -600,7 +554,7 @@ class GameService:
                     "reading": save.reading,
                     "contacts": contacts,
                     "proposal": await self.proposal_for(db, save),
-                    "ai": await self.ai_status(db, user_id),
+                    "ai": self.ai_status(),
                     "events": [{"id": event.id, **event.data} for event in events],
                     "events_cursor": events[0].id if len(events) == 50 else None,
                     "active_turn": {"id": active.id, "request_id": active.request_id}
@@ -630,38 +584,11 @@ class GameService:
             "effect": definition[4],
         }
 
-    async def ai_status(self, db: AsyncSession, user_id: str) -> dict[str, Any]:
-        user = cast(User, await db.get(User, user_id))
-        since = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        count = (
-            await db.scalar(
-                select(func.count())
-                .select_from(AISpend)
-                .where(
-                    AISpend.user_id == user_id,
-                    *([] if user.identity_type == "guest" else [AISpend.created_at >= since]),
-                )
-            )
-            or 0
-        )
-        remaining = max(
-            0,
-            (
-                self.settings.guest_ai_limit
-                if user.identity_type == "guest"
-                else self.settings.daily_turn_limit
-            )
-            - count,
-        )
+    def ai_status(self) -> dict[str, Any]:
         ready = self.settings.agent_mode == "mock" or bool(self.settings.deepseek_api_key)
-        if ready and self.settings.agent_mode != "mock" and self.settings.monthly_cost_cap_usd > 0:
-            ready = (await monthly_commitment(db)) + reservation(
-                self.settings, self.settings.max_model_calls
-            ) <= self.settings.monthly_cost_cap_usd
         return {
-            "available": remaining > 0 and ready,
-            "remaining": remaining,
-            "reason": None if remaining > 0 and ready else "AI 暂不可用，行动按钮和存档继续可用。",
+            "available": ready,
+            "reason": None if ready else "AI 暂不可用，行动按钮和存档继续可用。",
         }
 
     async def capture_snapshot(self, db: AsyncSession, save: Save) -> None:

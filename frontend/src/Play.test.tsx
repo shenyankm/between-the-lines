@@ -110,7 +110,6 @@ describe("Play: recovering an interrupted turn", () => {
         current = after;
         return HttpResponse.json({
           id: result.turn_id,
-          usage: {},
           status: "completed",
           result,
         });
@@ -133,7 +132,6 @@ describe("Play: recovering an interrupted turn", () => {
       http.get("/api/saves/:id/turns/:requestId", () =>
         HttpResponse.json({
           id: "turn-1",
-          usage: {},
           status: "failed",
           result: {
             status: "failed",
@@ -159,7 +157,6 @@ describe("Play: recovering an interrupted turn", () => {
       http.get("/api/saves/:id/turns/:requestId", () =>
         HttpResponse.json({
           id: "turn-1",
-          usage: {},
           status: "failed",
           result: {
             status: "failed",
@@ -185,7 +182,6 @@ describe("Play: recovering an interrupted turn", () => {
       http.get("/api/saves/:id/turns/:requestId", () =>
         HttpResponse.json({
           id: "turn-1",
-          usage: {},
           status: "running",
           result: null,
         }),
@@ -249,7 +245,6 @@ describe("Play: recovering an interrupted turn", () => {
       http.get("/api/saves/:id/turns/:requestId", () =>
         HttpResponse.json({
           id: "turn-1",
-          usage: {},
           status: "running",
           result: null,
         }),

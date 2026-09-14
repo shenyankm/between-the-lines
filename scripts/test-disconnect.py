@@ -20,10 +20,9 @@ child = """
 import asyncio
 import uvicorn
 from app.main import app
-async def reply(turn, checkpointer, usage):
+async def reply(turn, checkpointer):
     await app.state.runtime.service.npc_operation(turn.id, 'sun', 'request_materials')
     await asyncio.sleep(0.4)
-    usage['model_calls'] = 1
     yield '材料要求已记录。'
 app.state.dependencies.reply = reply
 uvicorn.run(app, host='127.0.0.1', port=8003, log_level='error')

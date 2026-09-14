@@ -192,7 +192,7 @@ async def get_turn(
         )
         if not turn:
             raise ApiError(404, "turn_not_found")
-        output = {"id": turn.id, "status": turn.status, "result": turn.result, "usage": turn.usage}
+        output = {"id": turn.id, "status": turn.status, "result": turn.result}
     if turn.status != "running":
         await record_product_event(
             runtime_for(request).sessions,

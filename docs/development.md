@@ -28,7 +28,7 @@ pnpm dev
 
 Open [http://localhost:5173](http://localhost:5173). Select “立即试玩 · 第一幕” (Try Act 1 now), or “开发环境试玩” (Development preview) to test all three acts. Each development login creates a separate identity. Refreshing preserves the session; logging out and back in does not recover the previous development identity. Member accounts use a stable Zhihu identity mapping.
 
-Mock mode still runs the Agent: `ChatDeepSeek → HTTPX mock DeepSeek SSE → Deep Agents tool loop → domain services → PostgreSQL`, including streamed tool-argument assembly, tool execution, and checkpoints. Mock token counts are test estimates, with zero cost; they do not represent real-model latency, semantic quality, or billing.
+Mock mode still runs the Agent: `ChatDeepSeek → HTTPX mock DeepSeek SSE → Deep Agents tool loop → domain services → PostgreSQL`, including streamed tool-argument assembly, tool execution, and checkpoints. Mock transport validates the provider protocol but does not establish real-model latency, semantic quality or billing.
 
 ## Development configuration
 
@@ -119,7 +119,7 @@ The production database exposes no host port. Only the local development overlay
 
 This example does not install a scheduled task. Replace the destination and verify backup success; retention is managed on the backup host. `verify-restore.sh` restores into a temporary database, checks business tables and checkpoints, then deletes that database without overwriting live data.
 
-Logs include turn IDs, NPCs, usage, duration, and failure types, but not keys, complete private conversations, or internal reasoning. External LangSmith tracing is disabled by default. Real costs are estimates based on configurable prices; DeepSeek billing is authoritative.
+Logs include turn IDs, NPCs, model/mode, duration, and failure types, but not keys, complete private conversations, or internal reasoning. External LangSmith tracing is disabled by default. Application token and cost accounting are disabled; billing is handled by DeepSeek.
 
 ### Dependency upgrades
 

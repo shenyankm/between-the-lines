@@ -18,7 +18,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 from app.actions import role_actions, transition  # noqa: E402
 from app.agents import AgentGateway  # noqa: E402
-from app.budget import reservation  # noqa: E402
 from app.config import Settings  # noqa: E402
 from app.context import AgentContext, AgentTurn  # noqa: E402
 from app.domain import RuleError, initial_state, visible_state  # noqa: E402
@@ -92,24 +91,15 @@ class World:
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--real", action="store_true")
-    parser.add_argument("--budget-usd", type=float, default=2.0)
     parser.add_argument("--output", type=Path, default=ROOT / "artifacts/semantic-v2-mock.json")
     args = parser.parse_args()
-    if not 0 < args.budget_usd <= 2:
-        parser.error("Budget must be positive and at most 2 USD")
     settings = Settings(environment="test", agent_mode="deepseek" if args.real else "mock")
     if args.real and not settings.deepseek_api_key:
         parser.error("Real evaluation requires DEEPSEEK_API_KEY")
     samples = json.loads((ROOT / "backend/evals/semantic-v2.json").read_text())
     results = []
-    spent = 0.0
-    held = 0.0
     for sample in samples:
-        reserve = reservation(settings, settings.max_model_calls) if args.real else 0
-        if spent + held + reserve > args.budget_usd:
-            break
         world = World(sample)
-        usage = {}
         reply = ""
         failure = None
         turn = AgentTurn(
@@ -121,22 +111,11 @@ async def main():
         try:
             async with asyncio.timeout(settings.turn_timeout_seconds):
                 async for chunk in AgentGateway(settings, world, load_story(2)).run_agent(
-                    turn, InMemorySaver(), usage
+                    turn, InMemorySaver()
                 ):
                     reply += chunk
         except Exception as exc:
             failure = type(exc).__name__
-            held += reserve
-        cost = (
-            (
-                usage.get("input_tokens", 0) * settings.deepseek_input_usd_per_million
-                + usage.get("output_tokens", 0) * settings.deepseek_output_usd_per_million
-            )
-            / 1_000_000
-            if args.real
-            else 0
-        )
-        spent += cost
         expected = [sample["expected_action"]] if sample["expected_action"] else []
         results.append(
             {
@@ -145,7 +124,6 @@ async def main():
                 "expected": expected,
                 "correct": world.actions == expected and not failure,
                 "failure": failure,
-                "usage": usage,
                 "reply": reply,
                 "major_auto_submit": bool(
                     set(world.actions)
@@ -183,8 +161,6 @@ async def main():
         "samples": len(samples),
         "completed": len(results),
         "remaining": [s["id"] for s in samples[len(results) :]],
-        "estimated_usd": spent,
-        "unknown_reserved_usd": held,
         "correctness": correctness,
         "gates": gates,
         "passed": len(results) == 90 and correctness >= 0.95 and not any(gates.values()),
