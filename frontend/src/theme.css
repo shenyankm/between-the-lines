@@ -7,6 +7,8 @@
 @import "@heroui/styles/components/button.css" layer(components);
 @import "@heroui/styles/components/card.css" layer(components);
 
+@import "@heroui/styles/components/textarea.css" layer(components);
+
 :root,
 .dark,
 [data-theme="dark"] {

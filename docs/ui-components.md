@@ -9,3 +9,11 @@ The saves page uses HeroUI Button and Card with separate header, metadata, and a
 Migration proceeds in independently reviewable page changes: saves, V3 panels and controls, ending, then legacy/shared states. Existing API, save and recovery behavior must remain intact. Keyboard, narrow viewport and long-content checks accompany each page.
 
 References: [HeroUI setup](https://heroui.com/en/docs/react/getting-started/quick-start), [Tailwind Variants lite](https://www.tailwind-variants.org/docs/quick-start).
+
+## V3 controls and panel exceptions
+
+V3 controls use HeroUI Button, Form and TextArea. Existing draft keys, submission callbacks and action permissions remain authoritative. The five panels share a fixed title/close region and an independently scrolling body with consistent form, list, evidence and empty/error styles.
+
+The overlay shell intentionally retains browser-native `dialog`: HeroUI Modal brought the combined production JS above the existing 150 KB gzip budget even with lite variants and minification. Native dialog preserves modal focus containment, Escape and focus restoration without another overlay runtime. The existing native selects, checkboxes and meters also retain their HTML semantics. These are explicit migration exceptions, not wrapper imitations of HeroUI controls.
+
+V3 follows system `prefers-reduced-motion` changes directly. The retired identity-specific override is removed, including when it conflicts with the system; storage access failures do not disable system preferences.

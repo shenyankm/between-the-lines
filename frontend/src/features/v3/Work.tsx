@@ -1,3 +1,4 @@
+import { Form, TextArea, Button } from "@heroui/react";
 import { useState } from "react";
 import { SupportForm } from "./SupportForm";
 import type { Action, Npc, TurnInput } from "../../types";
@@ -22,16 +23,17 @@ export function Actions({
   return (
     <div className={s.actions}>
       {options.map((a) => (
-        <button
+        <Button
+          variant="secondary"
           key={a.action}
-          disabled={busy || !a.enabled}
-          title={a.reason || a.effect}
+          isDisabled={busy || !a.enabled}
+          aria-description={a.reason || a.effect}
           onClick={() => act(a.action, a.target ?? "sun")}
         >
           {a.completed ? "✓ " : ""}
           {a.label}
           {!a.enabled && !a.completed && <small>{a.reason}</small>}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -83,9 +85,14 @@ export function Work({
             ["hr", "人事申请"],
           ] as const
         ).map(([id, label]) => (
-          <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
+          <Button
+            variant="secondary"
+            key={id}
+            aria-pressed={tab === id}
+            onClick={() => setTab(id)}
+          >
             {label}
-          </button>
+          </Button>
         ))}
       </nav>
       {tab === "purchase" ? (
@@ -105,7 +112,7 @@ export function Work({
             普通采购需报价及用途说明；加急依据仅在申请加急时使用。原始申请与每次处理意见分别保留。
           </p>
           {!state.work?.submissions?.length && (
-            <form
+            <Form
               onSubmit={(e) => {
                 e.preventDefault();
                 act("submit_purchase", "sun", { params: { purpose } });
@@ -113,17 +120,21 @@ export function Work({
             >
               <label>
                 实验用途
-                <textarea
+                <TextArea
                   value={purpose}
                   maxLength={1000}
                   required
                   onChange={(e) => setPurpose(e.target.value)}
                 />
               </label>
-              <button disabled={!enabled("submit_purchase")}>
+              <Button
+                variant="primary"
+                type="submit"
+                isDisabled={!enabled("submit_purchase")}
+              >
                 提交第一版申请
-              </button>
-            </form>
+              </Button>
+            </Form>
           )}
           <fieldset>
             <legend>游戏内材料附件</legend>
@@ -164,8 +175,9 @@ export function Work({
               </div>
             ))}
           </fieldset>
-          <button
-            disabled={
+          <Button
+            variant="secondary"
+            isDisabled={
               !enabled("supplement") ||
               !evidence.includes("quote") ||
               !evidence.includes("purpose")
@@ -173,7 +185,7 @@ export function Work({
             onClick={() => act("supplement", "sun", { params: { evidence } })}
           >
             提交所选材料与说明
-          </button>
+          </Button>
           <h3>处理时间线</h3>
           {state.work?.submissions?.length ? (
             <ol>
@@ -228,7 +240,7 @@ export function Work({
         <>
           <SupportForm state={state} options={options} act={act} busy={busy} />
           <h3>退出申请</h3>
-          <form
+          <Form
             onSubmit={(e) => {
               e.preventDefault();
               act("draft_exit", "sun", { params: { kind, reason } });
@@ -249,15 +261,21 @@ export function Work({
             </label>
             <label>
               申请理由
-              <textarea
+              <TextArea
                 required
                 maxLength={1000}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
             </label>
-            <button disabled={!enabled("draft_exit")}>保存并预览</button>
-          </form>
+            <Button
+              variant="primary"
+              type="submit"
+              isDisabled={!enabled("draft_exit")}
+            >
+              保存并预览
+            </Button>
+          </Form>
           {state.exit_draft && (
             <section className={s.notice}>
               <h4>

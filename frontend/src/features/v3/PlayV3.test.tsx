@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { expect, it } from "vitest";
+import { expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { Action, PlayState, Story } from "../../types";
 import { save } from "../../testing/fixtures";
 import authored from "../../testing/story-v3.json";
@@ -90,3 +90,15 @@ it("offers the follow-up responses and an explicit ending entry after reading", 
     screen.queryByRole("button", { name: "直接在群里澄清谣言。" }),
   ).toBeNull();
 });
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+});
+afterEach(() => vi.unstubAllGlobals());

@@ -44,7 +44,7 @@ a:focus-visible {
   outline: 2px solid #e3bf80;
   outline-offset: 4px;
 }
-button {
+button:not(.button) {
   color: inherit;
 }
 button svg {
@@ -56,7 +56,7 @@ h3,
 p {
   margin-top: 0;
 }
-button {
+button:not(.button) {
   border: 0;
 }
 textarea {
@@ -65,9 +65,9 @@ textarea {
 ::selection {
   background: #867052;
 }
-button,
-input,
-textarea {
+button:not(.button),
+input:not(.input),
+textarea:not(.textarea) {
   border-radius: 6px;
 }
 @media (prefers-reduced-motion: reduce) {

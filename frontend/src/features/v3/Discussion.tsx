@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../../api";
@@ -38,7 +39,9 @@ export function Discussion({
       {query.error && (
         <p role="alert">
           暂时无法读取。
-          <button onClick={() => void query.refetch()}>重试</button>
+          <Button variant="secondary" onClick={() => void query.refetch()}>
+            重试
+          </Button>
         </p>
       )}
       <p>{prose(result?.label)}</p>
@@ -69,13 +72,14 @@ export function Discussion({
               </p>
             ) : null;
           })}
-          <button
+          <Button
+            variant="secondary"
             onClick={() =>
               fill(prose(card.expression), query.data!.id, prose(card.id))
             }
           >
             带入输入框，再由我修改
-          </button>
+          </Button>
         </article>
       ))}
     </>

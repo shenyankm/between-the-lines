@@ -109,7 +109,11 @@ beforeEach(() => {
   ctrl.recover.mockReset();
   vi.stubGlobal(
     "matchMedia",
-    vi.fn(() => ({ matches: false })),
+    vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
   );
   server.use(
     http.post("/api/saves/save-1/reading", () =>
@@ -239,7 +243,14 @@ it("does not attach a previous act's source reference to a new expression", () =
   });
 });
 it("persists a reading position and retries a failed save without submitting a turn", async () => {
-  localStorage.setItem("reduced-motion:test-user", "true");
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
   let calls = 0;
   server.use(
     http.post("/api/saves/save-1/reading", async ({ request }) => {
@@ -269,8 +280,7 @@ it("persists a reading position and retries a failed save without submitting a t
     expect(screen.queryByText("重试保存阅读位置")).toBeNull(),
   );
   expect(ctrl.submit).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByLabelText("减少动态"));
-  expect(localStorage.getItem("reduced-motion:test-user")).toBe("false");
+  expect(screen.queryByLabelText("减少动态")).toBeNull();
 });
 it("waits for the matching scene version and honors storage restrictions", () => {
   vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
@@ -279,11 +289,14 @@ it("waits for the matching scene version and honors storage restrictions", () =>
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
     throw new Error("denied");
   });
+  vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+    throw new Error("denied");
+  });
   const p = play();
   p.performance_version = p.save.version - 1;
   mount(p);
   expect(screen.getByText("正在切换场景…")).toBeTruthy();
-  fireEvent.click(screen.getByLabelText("减少动态"));
+  expect(screen.queryByLabelText("减少动态")).toBeNull();
   expect(ctrl.submit).not.toHaveBeenCalled();
 });
 it("opens authored phone and work entries without pretending an action occurred", () => {
@@ -704,4 +717,40 @@ it("returns without logging out or clearing identity cache and drafts", () => {
     "下次继续",
   );
   expect(ctrl.submit).not.toHaveBeenCalled();
+});
+
+it("follows system motion changes and removes the retired stored override", () => {
+  let update: (() => void) | undefined;
+  const preference = {
+    matches: false,
+    addEventListener: vi.fn((_event: string, listener: () => void) => {
+      update = listener;
+    }),
+    removeEventListener: vi.fn(),
+  };
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => preference),
+  );
+  localStorage.setItem("reduced-motion:test-user", "true");
+  const scene = story();
+  scene.scenes = {
+    act_1: [
+      {
+        id: "motion-line",
+        speaker: "sun",
+        text: "系统减少动态时立即显示这段完整台词。",
+      },
+    ],
+  };
+  const view = mount(play(), scene);
+  expect(localStorage.getItem("reduced-motion:test-user")).toBeNull();
+  expect(screen.queryByLabelText("减少动态")).toBeNull();
+  act(() => {
+    preference.matches = true;
+    update?.();
+  });
+  expect(screen.getByText("系统减少动态时立即显示这段完整台词。")).toBeTruthy();
+  view.unmount();
+  expect(preference.removeEventListener).toHaveBeenCalledWith("change", update);
 });

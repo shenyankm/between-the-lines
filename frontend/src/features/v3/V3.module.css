@@ -13,7 +13,7 @@
 .root textarea {
   font: inherit;
 }
-.root button {
+.root button:not(:global(.button)) {
   cursor: pointer;
   border: 1px solid #b8bcb45c;
   background: #233b36;
@@ -22,7 +22,7 @@
   border-radius: 7px;
   min-height: 44px;
 }
-.root button:disabled {
+.root button:not(:global(.button)):disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -173,7 +173,7 @@
   min-height: 68px;
   max-height: 160px;
 }
-.root textarea,
+.root textarea:not(:global(.textarea)),
 .root select {
   background: #fff9ef;
   color: #1a2925;
@@ -222,59 +222,141 @@
   position: fixed;
   inset: 0 0 0 auto;
   margin: 0;
-  width: min(580px, 100vw);
+  border: 0;
+  flex-shrink: 0;
+  width: min(620px, 100vw);
+  max-width: 100vw;
   height: 100dvh;
   max-height: 100dvh;
-  max-width: 100vw;
-  box-sizing: border-box;
-  background: #f3eee4;
-  color: #21352e;
-  border: 0;
-  padding: 26px;
-  overflow: auto;
-  z-index: 20;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0;
+  border-radius: 0;
+  background: #142235;
+  color: #e7edf3;
 }
-.drawer::backdrop {
-  background: #061a19a6;
-  backdrop-filter: blur(5px);
-}
-.drawer > header {
+.drawerHeader {
+  flex-direction: row;
+  flex-shrink: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  position: sticky;
-  top: -26px;
-  background: #f3eee4;
-  padding: 10px 0;
-  z-index: 3;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #526379;
 }
-.drawer h2 {
-  font-family: serif;
+.drawerHeader h2 {
+  font-size: 24px;
+  margin: 0;
 }
-.drawer a {
-  color: #315d4b;
+.drawerBody {
+  padding: 24px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  line-height: 1.75;
 }
-.drawer small {
+.drawerBody > * + * {
+  margin-top: 20px;
+}
+.drawerBody h3 {
+  font-size: 20px;
+  margin: 24px 0 12px;
+  color: #ebc16c;
+}
+.drawerBody h4 {
+  font-weight: 600;
+  margin: 12px 0;
+}
+.drawerBody p {
+  margin: 10px 0;
+  white-space: pre-wrap;
+}
+.drawerBody small {
+  display: block;
+  color: #b4c0d0;
+  font-size: 12px;
+}
+.drawerBody a {
+  color: #ebc16c;
+  text-decoration: underline;
+}
+.drawerBody form {
+  display: grid;
+  gap: 16px;
+}
+.drawerBody label {
   display: block;
 }
-.drawer p {
-  line-height: 1.8;
+.drawerBody textarea,
+.drawerBody select {
+  width: 100%;
+  margin-top: 8px;
 }
-.drawer fieldset {
-  border: 1px solid #a4b0a6;
-  border-radius: 8px;
-  margin: 16px 0;
-}
-.drawer fieldset > div {
+.drawerBody select {
   padding: 10px;
+  border: 1px solid #526379;
+  background: #1d3045;
+  border-radius: 8px;
 }
-.drawer details {
-  padding: 10px 0;
+.drawerBody fieldset,
+.drawerBody article,
+.drawerBody section {
+  padding: 18px;
+  border: 1px solid #526379;
+  border-radius: 12px;
 }
-.drawer li {
-  border-left: 2px solid #708d7a;
-  padding: 8px 16px;
-  margin-bottom: 15px;
+.drawerBody fieldset > div + div {
+  border-top: 1px solid #526379;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+.drawerBody legend {
+  font-weight: 600;
+  padding: 0 8px;
+}
+.drawerBody details {
+  margin-top: 8px;
+}
+.drawerBody summary {
+  cursor: pointer;
+  color: #ebc16c;
+}
+.drawerBody input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #ebc16c;
+}
+.drawerBody ol {
+  padding-left: 24px;
+  list-style: decimal;
+}
+.drawerBody li {
+  margin: 12px 0;
+  padding: 12px;
+  background: #1d3045;
+  border-radius: 8px;
+}
+.drawerBody button {
+  white-space: normal;
+  height: auto;
+  min-height: 44px;
+}
+.drawerBody .notice,
+.drawerBody .messages p {
+  background: #1d3045;
+}
+.drawerBody .relationList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.drawerBody .relationList button {
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+.drawerBody [aria-pressed="true"] {
+  outline: 2px solid #ebc16c;
+  outline-offset: 2px;
 }
 .contact {
   display: block;
@@ -416,11 +498,9 @@
     font-size: 13px;
     min-width: 100px;
   }
-  .drawer {
-    padding: 18px;
-  }
-  .drawer > header {
-    top: -18px;
+  .drawerHeader,
+  .drawerBody {
+    padding: 16px;
   }
   .composer {
     position: sticky;
@@ -636,4 +716,30 @@
     display: grid;
     grid-template-columns: 1fr;
   }
+}
+
+.root :global(.button) {
+  white-space: normal;
+  height: auto;
+  min-height: 44px;
+}
+
+.drawerBody textarea {
+  background: #1d3045;
+  color: #e7edf3;
+  border: 1px solid #526379;
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 96px;
+}
+
+.drawer[open] {
+  display: flex;
+}
+.drawer::backdrop {
+  background: #05101aba;
+}
+.drawerBody {
+  min-height: 0;
+  flex: 1;
 }

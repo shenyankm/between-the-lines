@@ -1,3 +1,4 @@
+import { Form, TextArea, Button } from "@heroui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -57,29 +58,35 @@ export function PlayV3({
     state = save.state as StateV3;
   const [panel, setPanel] = useState<Panel>(null),
     [contact, setContact] = useState<Npc | "group" | null>(null);
-  const [reduced, setReduced] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`reduced-motion:${userId}`);
-      if (saved !== null) return saved === "true";
-    } catch {
-      /* Storage may be unavailable; honor the system preference. */
-    }
-    return matchMedia("(prefers-reduced-motion: reduce)").matches;
-  });
+  const [reduced, setReduced] = useState(
+    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    const preference = matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(preference.matches);
+    update();
+    preference.addEventListener?.("change", update);
+    return () => preference.removeEventListener?.("change", update);
+  }, []);
   useEffect(() => {
     try {
-      localStorage.setItem(`reduced-motion:${userId}`, String(reduced));
+      localStorage.removeItem(`reduced-motion:${userId}`);
     } catch {
-      /* Keep the in-memory setting. */
+      /* System preferences still work when storage is unavailable. */
     }
-  }, [reduced, userId]);
+  }, [userId]);
   const [positions, setPositions] = useState<Record<string, number>>(
     play.reading ?? {},
   );
   const [interlude, setInterlude] = useState(false);
   const [readError, setReadError] = useState("");
   const [savingReading, setSavingReading] = useState(false);
-  const dialog = useRef<HTMLDialogElement>(null);
+  const panelDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const element = panelDialog.current;
+    if (panel && !element?.open) element?.showModal();
+    if (!panel && element?.open) element.close();
+  }, [panel]);
   const confirmation = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (play.proposal && !confirmation.current?.open)
@@ -170,10 +177,6 @@ export function PlayV3({
       });
     } else void controller.submit(save, action, "", npc, metadata);
   };
-  useEffect(() => {
-    if (panel) dialog.current?.showModal();
-    else dialog.current?.close();
-  }, [panel]);
   async function mark(key: string, position: number) {
     setSavingReading(true);
     try {
@@ -233,7 +236,7 @@ export function PlayV3({
     system: "事件记录",
   };
   const composer = (dm = false) => (
-    <form
+    <Form
       className={s.composer}
       onSubmit={(e) => {
         e.preventDefault();
@@ -252,7 +255,7 @@ export function PlayV3({
       <label className={s.sr} htmlFor={dm ? "dm-input" : "scene-input"}>
         自由表达
       </label>
-      <textarea
+      <TextArea
         id={dm ? "dm-input" : "scene-input"}
         maxLength={1500}
         value={draft.text}
@@ -265,16 +268,18 @@ export function PlayV3({
             : "写下你真正想说的话…"
         }
       />
-      <button
-        disabled={
+      <Button
+        variant="primary"
+        type="submit"
+        isDisabled={
           busy ||
           !draft.text.trim() ||
           (channel !== "group" && (!play.ai?.available || controller.aiBlocked))
         }
       >
         发送
-      </button>
-    </form>
+      </Button>
+    </Form>
   );
   const conversation = useInfiniteQuery({
     queryKey: ["conversation", userId, save.id, contact, save.version],
@@ -398,7 +403,8 @@ export function PlayV3({
             ["discussion", "知乎众议"],
           ] as const
         ).map(([id, label]) => (
-          <button
+          <Button
+            variant="secondary"
             key={id}
             onClick={() => {
               setPanel(id);
@@ -409,36 +415,35 @@ export function PlayV3({
             {id === "work" && state.work?.purchase === "returned"
               ? " · 待处理"
               : ""}
-          </button>
+          </Button>
         ))}
-        <button onClick={() => setPanel("history")}>完整记录</button>
-        <button
-          disabled={
+        <Button variant="secondary" onClick={() => setPanel("history")}>
+          完整记录
+        </Button>
+        <Button
+          variant="secondary"
+          isDisabled={
             controller.busy ||
             !!controller.pending ||
             savingReading ||
             loggingOut
           }
           onClick={() => void navigate("/saves")}
-          title={
+          aria-description={
             controller.busy || controller.pending
               ? "当前回合处理完成后可返回存档"
               : undefined
           }
         >
           返回存档
-        </button>
-        <button disabled={loggingOut} onClick={() => void logout()}>
+        </Button>
+        <Button
+          variant="secondary"
+          isDisabled={loggingOut}
+          onClick={() => void logout()}
+        >
           退出登录
-        </button>
-        <label>
-          <input
-            type="checkbox"
-            checked={reduced}
-            onChange={(e) => setReduced(e.target.checked)}
-          />
-          减少动态
-        </label>
+        </Button>
       </nav>
       {state.ending ? (
         <Ending state={state} save={save} userId={userId} />
@@ -481,9 +486,10 @@ export function PlayV3({
                 ) && (
                   <div className={s.actions}>
                     {followUpChoices.map(([response, label]) => (
-                      <button
+                      <Button
+                        variant="secondary"
                         key={response}
-                        disabled={busy}
+                        isDisabled={busy}
                         onClick={() =>
                           act("follow_up", "sun", {
                             params: { boundary_response: response },
@@ -491,7 +497,7 @@ export function PlayV3({
                         }
                       >
                         {label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -499,14 +505,22 @@ export function PlayV3({
                 {state.act > 0 && composer()}
                 <div className={s.progressActions} aria-label="故事进度操作">
                   {sceneOptions.some((a) => a.action === "close_story") && (
-                    <button disabled={busy} onClick={() => act("close_story")}>
+                    <Button
+                      variant="secondary"
+                      isDisabled={busy}
+                      onClick={() => act("close_story")}
+                    >
                       按当前进度结束本局
-                    </button>
+                    </Button>
                   )}
                   {sceneOptions.some((a) => a.action === "next") && (
-                    <button disabled={busy} onClick={() => act("next")}>
+                    <Button
+                      variant="secondary"
+                      isDisabled={busy}
+                      onClick={() => act("next")}
+                    >
                       带着当前进度进入下一幕 →
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -515,13 +529,14 @@ export function PlayV3({
           {readError && (
             <p role="alert">
               {readError}
-              <button
+              <Button
+                variant="secondary"
                 onClick={() =>
                   void mark(state.node ?? "prologue", position + 1)
                 }
               >
                 重试保存阅读位置
-              </button>
+              </Button>
             </p>
           )}
           {state.quiet_turns >= 3 && (
@@ -539,9 +554,9 @@ export function PlayV3({
           disabled={loggingOut}
         />
         {controller.pending && (
-          <button onClick={() => void controller.recover()}>
+          <Button variant="secondary" onClick={() => void controller.recover()}>
             恢复回合结果
-          </button>
+          </Button>
         )}
         {!play.ai?.available && <p>AI 暂不可用，工作和剧情行动仍可继续。</p>}
       </div>
@@ -573,8 +588,9 @@ export function PlayV3({
                 <p>提交表示开始申请，不代表手续已经完成。</p>
               </>
             )}
-          <button
-            disabled={busy}
+          <Button
+            variant="secondary"
+            isDisabled={busy}
             onClick={() =>
               act(
                 play.proposal!.action,
@@ -586,10 +602,14 @@ export function PlayV3({
             }
           >
             确认并提交
-          </button>
-          <button disabled={busy} onClick={() => act("cancel_proposal")}>
+          </Button>
+          <Button
+            variant="secondary"
+            isDisabled={busy}
+            onClick={() => act("cancel_proposal")}
+          >
             暂不执行
-          </button>
+          </Button>
         </dialog>
       )}
       {interlude && (
@@ -602,9 +622,14 @@ export function PlayV3({
           }}
         />
       )}
-      <dialog className={s.drawer} ref={dialog} onCancel={() => setPanel(null)}>
-        <header>
-          <h2>
+      <dialog
+        ref={panelDialog}
+        className={s.drawer}
+        aria-labelledby="story-panel-title"
+        onCancel={() => setPanel(null)}
+      >
+        <header className={s.drawerHeader}>
+          <h2 id="story-panel-title">
             {
               {
                 phone: "我的手机",
@@ -615,162 +640,143 @@ export function PlayV3({
               }[panel ?? "phone"]
             }
           </h2>
-          <button aria-label="关闭面板" onClick={() => setPanel(null)}>
+          <Button
+            variant="secondary"
+            aria-label="关闭面板"
+            onClick={() => setPanel(null)}
+          >
             关闭 ×
-          </button>
+          </Button>
         </header>
-        {panel === "phone" && (
-          <>
-            {contact ? (
-              <>
-                <button onClick={() => setContact(null)}>← 会话列表</button>
-                <h3>{contact === "group" ? "项目工作群" : names[contact]}</h3>
-                <div className={s.messages}>
-                  {conversation.hasNextPage && (
-                    <button
-                      disabled={conversation.isFetchingNextPage}
-                      onClick={() => void conversation.fetchNextPage()}
-                    >
-                      加载更早消息
-                    </button>
-                  )}
-                  {conversation.error && (
-                    <p role="alert">
-                      会话读取失败。
-                      <button onClick={() => void conversation.refetch()}>
-                        重试读取
-                      </button>
-                    </p>
-                  )}
-                  {npcEvents.map((e) => (
-                    <p key={e.id}>
-                      <strong>
-                        {e.speaker === "system"
-                          ? "事件记录"
-                          : e.kind === "npc"
-                            ? names[e.npc]
-                            : "我"}
-                        ：
-                      </strong>
-                      {e.text}
-                    </p>
-                  ))}
-                  {!npcEvents.length && (
-                    <p>
-                      {contact === "group"
-                        ? "群内只发布已核实的工作事实。"
-                        : story.npcs[contact]?.greeting}
-                    </p>
-                  )}
-                </div>
-                {contact === "group" && (
-                  <Actions
-                    options={(play.available_actions ?? []).filter((a) =>
-                      [
-                        "clarify",
-                        "review_clarification",
-                        "trace_rumor",
-                      ].includes(a.action),
+        <div className={s.drawerBody}>
+          {panel === "phone" && (
+            <>
+              {contact ? (
+                <>
+                  <Button variant="secondary" onClick={() => setContact(null)}>
+                    ← 会话列表
+                  </Button>
+                  <h3>{contact === "group" ? "项目工作群" : names[contact]}</h3>
+                  <div className={s.messages}>
+                    {conversation.hasNextPage && (
+                      <Button
+                        variant="secondary"
+                        isDisabled={conversation.isFetchingNextPage}
+                        onClick={() => void conversation.fetchNextPage()}
+                      >
+                        加载更早消息
+                      </Button>
                     )}
-                    act={act}
-                    busy={busy}
-                  />
-                )}
-                {composer(true)}
-              </>
-            ) : (
-              <>
-                {[...contacts, "group" as const].map((n) => {
-                  const messages = play.events.filter(
-                    (e) =>
-                      e.channel === (n === "group" ? "group" : "dm") &&
-                      (n === "group" || e.npc === n),
-                  );
-                  const unread =
-                    play.contacts?.[n]?.unread ??
-                    messages.length >
-                      (positions[n === "group" ? "group" : `dm_${n}`] ?? 0);
-                  return (
-                    <button
-                      className={s.contact}
-                      key={n}
-                      onClick={() => {
-                        setContact(n);
-                        void mark(
-                          n === "group" ? "group" : `dm_${n}`,
-                          play.contacts?.[n]?.count ?? messages.length,
-                        );
-                      }}
-                    >
-                      <strong>
-                        {n === "group" ? "项目工作群" : names[n]}
-                        {unread ? " · 未读" : ""}
-                      </strong>
-                      <small>
-                        {play.contacts?.[n]?.preview ||
-                          messages.at(-1)?.text ||
-                          "打开会话"}
-                      </small>
-                    </button>
-                  );
-                })}
-              </>
-            )}
-          </>
-        )}
-        {panel === "work" && (
-          <Work
-            state={state}
-            options={play.available_actions ?? []}
-            act={act}
-            busy={busy}
-          />
-        )}
-        {panel === "relations" && (
-          <Relations
-            save={save}
-            userId={userId}
-            options={play.available_actions ?? []}
-            act={act}
-            busy={busy}
-          />
-        )}
-        {panel === "discussion" && (
-          <Discussion
-            save={save}
-            userId={userId}
-            fill={(text, job, card) => {
-              writeDraft(
-                userId,
-                save.id,
-                "sun",
-                {
-                  text,
-                  act: state.act,
-                  discussion_id: job,
-                  perspective_id: card,
-                },
-                "scene:sun",
-              );
-              refresh((n) => n + 1);
-              setPanel(null);
-            }}
-          />
-        )}
-        {panel === "history" && (
-          <>
-            <EventHistory
-              userId={userId}
-              saveId={save.id}
-              version={save.version}
+                    {conversation.error && (
+                      <p role="alert">
+                        会话读取失败。
+                        <Button
+                          variant="secondary"
+                          onClick={() => void conversation.refetch()}
+                        >
+                          重试读取
+                        </Button>
+                      </p>
+                    )}
+                    {npcEvents.map((e) => (
+                      <p key={e.id}>
+                        <strong>
+                          {e.speaker === "system"
+                            ? "事件记录"
+                            : e.kind === "npc"
+                              ? names[e.npc]
+                              : "我"}
+                          ：
+                        </strong>
+                        {e.text}
+                      </p>
+                    ))}
+                    {!npcEvents.length && (
+                      <p>
+                        {contact === "group"
+                          ? "群内只发布已核实的工作事实。"
+                          : story.npcs[contact]?.greeting}
+                      </p>
+                    )}
+                  </div>
+                  {contact === "group" && (
+                    <Actions
+                      options={(play.available_actions ?? []).filter((a) =>
+                        [
+                          "clarify",
+                          "review_clarification",
+                          "trace_rumor",
+                        ].includes(a.action),
+                      )}
+                      act={act}
+                      busy={busy}
+                    />
+                  )}
+                  {composer(true)}
+                </>
+              ) : (
+                <>
+                  {[...contacts, "group" as const].map((n) => {
+                    const messages = play.events.filter(
+                      (e) =>
+                        e.channel === (n === "group" ? "group" : "dm") &&
+                        (n === "group" || e.npc === n),
+                    );
+                    const unread =
+                      play.contacts?.[n]?.unread ??
+                      messages.length >
+                        (positions[n === "group" ? "group" : `dm_${n}`] ?? 0);
+                    return (
+                      <Button
+                        variant="secondary"
+                        className={s.contact}
+                        key={n}
+                        onClick={() => {
+                          setContact(n);
+                          void mark(
+                            n === "group" ? "group" : `dm_${n}`,
+                            play.contacts?.[n]?.count ?? messages.length,
+                          );
+                        }}
+                      >
+                        <strong>
+                          {n === "group" ? "项目工作群" : names[n]}
+                          {unread ? " · 未读" : ""}
+                        </strong>
+                        <small>
+                          {play.contacts?.[n]?.preview ||
+                            messages.at(-1)?.text ||
+                            "打开会话"}
+                        </small>
+                      </Button>
+                    );
+                  })}
+                </>
+              )}
+            </>
+          )}
+          {panel === "work" && (
+            <Work
+              state={state}
+              options={play.available_actions ?? []}
+              act={act}
+              busy={busy}
             />
-            <ProductPanel
+          )}
+          {panel === "relations" && (
+            <Relations
               save={save}
               userId={userId}
-              events={play.events}
-              disabled={busy}
-              initiallyOpen
-              fillDraft={(text, job, card) => {
+              options={play.available_actions ?? []}
+              act={act}
+              busy={busy}
+            />
+          )}
+          {panel === "discussion" && (
+            <Discussion
+              save={save}
+              userId={userId}
+              fill={(text, job, card) => {
                 writeDraft(
                   userId,
                   save.id,
@@ -787,8 +793,40 @@ export function PlayV3({
                 setPanel(null);
               }}
             />
-          </>
-        )}
+          )}
+          {panel === "history" && (
+            <>
+              <EventHistory
+                userId={userId}
+                saveId={save.id}
+                version={save.version}
+              />
+              <ProductPanel
+                save={save}
+                userId={userId}
+                events={play.events}
+                disabled={busy}
+                initiallyOpen
+                fillDraft={(text, job, card) => {
+                  writeDraft(
+                    userId,
+                    save.id,
+                    "sun",
+                    {
+                      text,
+                      act: state.act,
+                      discussion_id: job,
+                      perspective_id: card,
+                    },
+                    "scene:sun",
+                  );
+                  refresh((n) => n + 1);
+                  setPanel(null);
+                }}
+              />
+            </>
+          )}
+        </div>
       </dialog>
     </main>
   );
