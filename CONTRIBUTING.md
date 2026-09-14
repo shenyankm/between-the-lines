@@ -16,7 +16,9 @@ Discuss new features, large refactors, story-direction changes, and model-bounda
 
 ### Pull requests
 
-Submit changes through GitHub PRs for maintainer review before merging.
+All changes must be submitted through a GitHub PR for maintainer review before merging, including documentation, tests, configuration, dependency updates, and urgent fixes. Work on a separate branch; do not push changes directly to `main`.
+
+Merge only after CI has passed for the PR's latest commit and all required checks are successful. Pending, failed, cancelled, or missing checks block merging. After adding commits or updating the branch, wait for CI to pass again; an earlier commit's successful run is not sufficient. Do not bypass this process with direct pushes, force pushes, or administrator overrides.
 
 - Keep each PR focused on one problem or complete feature. Separate unrelated formatting, dependency upgrades, and refactors.
 - Link an existing issue, or provide enough background and reproduction details in the PR itself.
