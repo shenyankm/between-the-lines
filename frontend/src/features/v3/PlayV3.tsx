@@ -381,7 +381,11 @@ export function PlayV3({
             : sceneOptions.filter((a) => a.enabled).slice(0, 3);
   const feedback = (
     <div className={s.status} aria-label="操作反馈">
-      <ActionReceipt play={play} openActions={() => setPanel("work")} />
+      <ActionReceipt
+        play={play}
+        openActions={() => setPanel("work")}
+        act={act}
+      />
       {controller.status && <p role="status">{controller.status}</p>}
       <ErrorNotice error={controller.issue} message={controller.error} />
       <ErrorNotice

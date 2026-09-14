@@ -373,6 +373,7 @@ class GameService:
                         "text": text,
                         "npc": npc,
                         "act": state.act,
+                        "action": operation,
                         "effects": effects(before, state, text),
                     },
                 )
