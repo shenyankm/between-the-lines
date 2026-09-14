@@ -13,7 +13,7 @@ Public entry point: `https://www.openwook.cloud`. Register this callback with Zh
 - `ZHIHU_ACCESS_SECRET` is a separate open-platform credential. Developer content endpoints receive both it and `X-OAuth-Token`. Native `openapi.zhihu.com/user` uses the current user's OAuth token as `Authorization: Bearer`; Access Secret is not a user token.
 - Accept `authorization_code` or compatible `code`; reject duplicate or conflicting parameters.
 - Returned `state` must match the browser-initiated record and be no more than ten minutes old. Missing, expired, or consumed state fails. Never infer the source guest from the current callback-time identity.
-- Real verification on 2026-09-13 found top-level `uid` (number) and `fullname` (string) in `/user`. Configure `ZHIHU_SUBJECT_FIELD=uid` and `ZHIHU_NAME_FIELD=fullname`. Do not use nicknames or content authors as identity, and do not store other profile fields. Missing fields prevent session issuance.
+- Real verification on 2026-09-13 found top-level `uid` (number) and `fullname` (string) in `/user`. Configure `ZHIHU_SUBJECT_FIELD=uid` and `ZHIHU_NAME_FIELD=fullname`. Do not use nicknames or content authors as identity. Beyond the subject and name, only the avatar URL (`ZHIHU_AVATAR_FIELD`, persisted since migration 0011) is stored for display; no other profile fields are. A missing subject or name prevents session issuance.
 - Token and profile requests do not follow redirects or log response bodies or credentials.
 
 Source: the user-provided `https://zhstatic.zhihu.com/skill/zhihu-hackathon-skill_v2026s2.zip`, containing `zhihu/references/oauth.md` and `user-api.md`. The demo initializer was not executed, and the application architecture was not replaced.
@@ -50,7 +50,7 @@ Check `/api/ready`, rejection of guest creation, authorization redirects, error 
 
 - App ID 499's public callback returned state and passed binding validation; authorization-code exchange succeeded.
 - The package example's mixed `/user` authentication was corrected: it uses OAuth Bearer; dual credentials belong to developer content endpoints.
-- Native profile fields were verified as `uid` / `fullname`. Only these two fields are used for accounts; other profile data is not persisted.
+- Native profile fields were verified as `uid` / `fullname`. Identity uses only these two fields; the avatar URL is additionally persisted for display (migration 0011), and no other profile data is stored.
 - The final real callback returned 303. The trial save became member-owned, guest merged_into was set, and binding status became completed.
 - The proxy uses dynamic Docker DNS. After API replacement, readiness returned 200 without rebuilding Nginx.
 - Caddy, Nginx, and Uvicorn logs did not contain probe authorization codes or state query values.

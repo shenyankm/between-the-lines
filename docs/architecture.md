@@ -18,7 +18,7 @@ The admission transaction locks the user and save, checks request_id and the ori
 
 Model calls do not hold business transactions. Tools use separate short transactions to recheck turn status and role permissions, with operation-ID deduplication. Successfully committed facts must survive later model failures. Success, failure, timeout, and restart recovery all call `finish_turn`; only running can transition to terminal, and repeated finalization returns the stored terminal state. Dialogue is sent only after it is complete and committed; failures do not save partial dialogue.
 
-The storage boundary validates `state_schema_version=1` and `GameState`. Migration 0003 only adds fields, constraints, and indexes; it does not rewrite state, original turn payloads, events, or checkpoint identifiers. Missing retryable in legacy results defaults to false; `TurnUsage` explicitly supplies missing usage fields. These read-time defaults do not change idempotency comparison data. Events are ordered stably by `(created_at, id)`.
+The storage boundary accepts `state_schema_version` in `{1, 2, 3}` and requires it to equal `story_version`. The later migrations only add fields, constraints, and indexes; they do not rewrite state, original turn payloads, events, or checkpoint identifiers. Missing retryable in legacy results defaults to false; `TurnUsage` explicitly supplies missing usage fields. These read-time defaults do not change idempotency comparison data. Events are ordered stably by `(created_at, id)`.
 
 ## Public protocol and story
 
@@ -26,7 +26,7 @@ The storage boundary validates `state_schema_version=1` and `GameState`. Migrati
 
 Turn states are running, completed, and failed. SSE retains status (`StatusEvent`), dialogue (`DialogueEvent`), and done (`TurnResult`), all declared in OpenAPI components. done must be completed or failed. Terminal HTTP queries and SSE both supply legacy defaults.
 
-In this refactor, `app/story.json` is the single story-presentation definition: acts, scenes, characters, default dialogue, interludes, and action buttons. Pydantic validates structure, character references, and asset paths; tests check that assets exist. Internal `StoryDefinition` contains persona; public `StoryOut` projects fields explicitly instead of spreading internal objects. Frontend story fixtures are generated from the public projection, not maintained as a second copy. Python continues to adjudicate story values.
+Story presentation is defined in versioned files under `app/`: `story.json` (v1), `story-v2.json`, and `story-v3.json` together with its `story-v3-r1.json` revision-1 variant. `load_story(version, revision)` selects one from the save's `story_version` and `content_revision`; new saves are created as v3 only, while v1/v2 saves stay readable and continuable. Each file holds acts, scenes, characters, default dialogue, interludes, and action buttons. Pydantic validates structure, character references, and asset paths; tests check that assets exist. Internal `StoryDefinition` contains persona; public `StoryOut` projects fields explicitly instead of spreading internal objects. Frontend story fixtures are generated from the public projection, not maintained as a second copy. Python continues to adjudicate story values.
 
 ## Frontend recovery
 

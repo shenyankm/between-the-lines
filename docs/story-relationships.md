@@ -12,7 +12,7 @@ This iteration uses the user-provided relationship diagram for the source novel 
 
 ## Actions and projections
 
-Once both `clarified` and `delivered` are present in Act 3, the player can choose `cut_ties` or `keep_distance`. These mutually exclusive actions do not score repeatedly and store `sun_cut` / `sun_observe`. Only then can `next` enter the ending. The endings are “找回自我 · 只留工作往来” (Rediscovering Yourself · Work Contact Only, the main route) and “保持距离 · 继续观察” (Keeping Distance · Continue Observing, a game branch). `leave` can still end early and summarizes only events that have already happened.
+In the current v3 release, Act 3 offers the final private-relationship choices that set `relationship.intention`: `cut_ties` (retain work-only contact, stores `sun_cut`), `keep_distance` (defer, stores `sun_observe`), and `repair_friendship` (offer to keep the friendship). These do not score repeatedly. The ending itself is not a button the player clicks but one of six outcomes the server adjudicates from the committed work and relationship facts at close, shown as posters E01–E06: `rules_rewritten` (改写规则), `professional_boundary` (各自为界), `limited_repair` (有限修复), `active_exit` (主动转身), `career_cost` (付出代价), and the `unresolved` (尚未破局) fallback. A submitted exit resolves to `active_exit` and summarizes only events that have already happened; the earlier “只留工作往来 / 继续观察” two-ending framing was superseded by this fact-based set.
 
 `relationship_story` marks saves using these rules; `reflection` / `personal_resolved` track interlude progress. Existing flags are retained, with no new table or `state_schema_version` change.
 

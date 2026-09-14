@@ -29,7 +29,7 @@ Existing guest players must sign in with Zhihu before continuing. Link from the 
 
 ## Make room for another response
 
-Each save is a separate experience. You can start again to explore another approach, return to completed stories, or archive saves you want to keep out of your active list. Saves moved to the recycle bin can be restored within thirty days.
+Each save is a separate experience. You can start again to explore another approach, return to completed stories, or delete saves you no longer need. A deleted save is removed from your story list and cleared on the server after thirty days.
 
 At the end, revisit what happened and reflect on your choices. You do not have to preserve every friendship or respond the same way every time.
 

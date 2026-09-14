@@ -17,7 +17,7 @@ Only the latest tag is supported. This is a single-maintainer project deployed o
 
 The following constraints are enforced in code, not merely recommended in documentation:
 
-- **Production refuses unsafe startup.** The `production_guards` validator in `backend/app/config.py` rejects `ENVIRONMENT=production` configurations with development login, mock agents, a `SESSION_SECRET` shorter than 32 characters or beginning with `development`, a non-HTTPS `PUBLIC_ORIGIN`, a missing `DEEPSEEK_API_KEY`, a non-HTTPS model endpoint, or no positive monthly cost cap.
+- **Production refuses unsafe startup.** The `production_guards` validator in `backend/app/config.py` rejects `ENVIRONMENT=production` configurations with development login or mock agents, a `SESSION_SECRET` shorter than 32 characters or beginning with `development`, a non-HTTPS `PUBLIC_ORIGIN`, a missing `DEEPSEEK_API_KEY`, a non-HTTPS `DEEPSEEK_API_BASE`, or incomplete Zhihu OAuth configuration. There is no application cost/spend cap to configure; the account-level billing was removed with migration 0009.
 - **Session tokens are not stored in plaintext.** `backend/app/auth.py` stores SHA-256 digests of `secrets.token_urlsafe(32)` tokens. Sessions expire after seven days; cookies use `httponly` and `samesite=lax`, plus `secure` in production.
 - **Same-origin deployment and Origin validation replace CORS.** Middleware in `backend/app/factory.py` validates Origin and requires JSON for mutation requests as a CSRF defense. See [architecture](docs/architecture.md) for process, transaction, and API boundaries.
 - **Redacted logs.** Authentication failures log exception types, not credentials or personal information. `backend/tests/test_logging.py` contains regression assertions.
@@ -29,7 +29,7 @@ The following constraints are enforced in code, not merely recommended in docume
 
 | Data                           | Location                       | Description                                                                                                                                                                   |
 | ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Zhihu user ID and nickname     | `public.users`                 | Created through real Zhihu OAuth. Initial verification predates configured endpoints; see `docs/verification.md` and `docs/zhihu-oauth-deployment.md` for subsequent records. |
+| Zhihu user ID, nickname, and avatar | `public.users`                 | Created through real Zhihu OAuth. Initial verification predates configured endpoints; see `docs/verification.md` and `docs/zhihu-oauth-deployment.md` for subsequent records. |
 | Session token digests          | `public.login_sessions`        | SHA-256 digests, not plaintext                                                                                                                                                |
 | Saves and turn content         | `public.saves`, `public.turns` | Player input and model replies                                                                                                                                                |
 | Agent conversation checkpoints | `agent_checkpoints` schema     | LangGraph checkpoints containing conversation history                                                                                                                         |

@@ -1,6 +1,6 @@
 # 章外回声 v2 product upgrade and release guide
 
-This iteration retains React, FastAPI, PostgreSQL, Deep Agents, existing DeepSeek configuration, and one API process. New stories default to v2; existing stories continue as v1. Production launch separately requires real Zhihu OAuth, real-model semantic evaluation, off-host deployment, and target-player testing. Mock tests cannot replace these.
+This iteration retains React, FastAPI, PostgreSQL, Deep Agents, existing DeepSeek configuration, and one API process. It introduced the v2 story; the current release now creates v3 stories only, while v1 and v2 saves remain readable and continuable. Production launch separately requires real Zhihu OAuth, real-model semantic evaluation, off-host deployment, and target-player testing. Mock tests cannot replace these.
 
 ## Implementation map
 
@@ -29,6 +29,8 @@ In v2, partner decisions require an explicit choice after Act 2 work is complete
 | 0007      | Historical AI accounting ledger; removed by migration 0009                                                                                                          |
 | 0008      | Reading positions and public search cache                                                                                                                           |
 | 0009      | Remove AI accounting and obsolete request-rate buckets; retain valid turn duration in elapsed_ms                                                                    |
+| 0010      | Retire the save archive state machine (drop `saves.archived_at`); formerly archived saves return to the active list, leaving only active and deleted states        |
+| 0011      | Persist authorized Zhihu avatars (`users.avatar_url`)                                                                                                              |
 
 Migration 0009 deletes accounting data without rewriting v1 state JSON or existing turn payload/result. Legacy five-field inputs still compare their original fields for idempotency; omitted new fields do not participate. v1 cannot upgrade mid-story or gain fabricated historical snapshots. Branches copy facts, dialogue, and private narrative within the snapshot boundary using new event IDs, history groups, and checkpoint namespaces. They do not copy tool checkpoints or later content. Parent saves are provenance only; deleting one does not delete independent branches.
 
@@ -90,7 +92,7 @@ python scripts/product-admin.py cleanup --apply
 
 Changed source content invalidates the old hash and requires a new review export. Card caches are isolated by story version, act, content, prompt version, and model/runtime configuration, without private player context. Models return only supplied content IDs; the server fills authors, titles, and URLs. Unknown, cross-save, cross-act, revoked-review, and changed-content references are rejected.
 
-Archiving frees slots from the member limit of twenty active saves. Recycled saves are retained for thirty days; expired unbound guests receive seven additional days. cleanup reports counts by default. Explicit apply removes expired saves, derived business data, and each NPC's checkpoint records. Running or pending-binding saves are excluded. Minimal identity tombstones remain for identity lifecycle handling; accounting ledgers no longer exist. Proactive checkpoint compaction for normally completed stories is not enabled.
+The member save limit counts twenty active (non-deleted) saves; the earlier archive state machine was retired in migration 0010. Deleting a save frees its slot immediately and, with derived data, is purged after thirty days; expired unbound guests receive seven additional days. cleanup reports counts by default. Explicit apply removes expired saves, derived business data, and each NPC's checkpoint records. Running or pending-binding saves are excluded. Minimal identity tombstones remain for identity lifecycle handling; accounting ledgers no longer exist. Proactive checkpoint compaction for normally completed stories is not enabled.
 
 Raw product events are retained thirty days, aggregates 180 days. Diagnostics accept only allowlisted fields and static-asset stack locations; raw chats, names, and OAuth code/state are not collected by default. Feedback is explicitly submitted player text. metrics reports funnels, failures and mean/p95 execution durations.
 
