@@ -23,12 +23,14 @@ test("completed choices cannot be resubmitted after refresh", async ({
     p.available_actions?.find((a) => a.action === "boundary"),
   ).toMatchObject({ enabled: false, completed: true });
   const button = page.getByRole("button", { name: /既然知道我可能会生气/ });
-  await expect(button).toBeDisabled();
+  await expect(button).toHaveCount(0);
   let posts = 0;
   page.on("request", (r) => {
     if (r.method() === "POST" && r.url().endsWith("/turns")) posts++;
   });
-  await button.evaluate((b: HTMLButtonElement) => b.click());
+  await expect(
+    page.getByRole("button", { name: /没事，你们继续聊|欢送会的名单/ }),
+  ).toHaveCount(0);
   expect(posts).toBe(0);
 });
 test("procurement prerequisites and actual role permissions remain authoritative", async ({
@@ -41,6 +43,7 @@ test("procurement prerequisites and actual role permissions remain authoritative
     p.available_actions?.find((a) => a.action === "approve_purchase")?.enabled,
   ).toBe(false);
   await page.getByRole("button", { name: /^工作系统/ }).click();
+  await page.getByText("后续工作事项", { exact: true }).click();
   await expect(
     page.getByRole("button", { name: /提交李姐审核/ }),
   ).toBeDisabled();
@@ -188,7 +191,8 @@ test("two tabs reconcile a stale version without losing drafts or duplicating fa
   await expect(dialogue(second)).toHaveValue("保留这段草稿");
   await expect(
     second.getByRole("button", { name: /既然知道我可能会生气/ }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
+  await readScene(second);
   await say(second, "保留这段草稿");
   expect(
     (await state(second)).events.filter((e) => e.action === "boundary"),

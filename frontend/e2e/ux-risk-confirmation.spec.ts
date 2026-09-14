@@ -16,6 +16,7 @@ test("review warns before loss; cancellation preserves facts; extension avoids t
   await perform(page, "next");
   const before = (await state(page)).save.state;
   await page.getByRole("button", { name: /^工作系统/ }).click();
+  await page.getByText("后续工作事项", { exact: true }).click();
   await expect(
     page.getByRole("region", { name: "项目复核后果" }),
   ).toContainText("专业信用 -20");

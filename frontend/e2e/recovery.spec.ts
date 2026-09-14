@@ -75,7 +75,10 @@ for (const operation of ["login", "create"]) {
     if (operation === "create") await readScene(page);
     await expect(
       page.getByRole("button", {
-        name: operation === "login" ? "开始新的故事" : "进入故事",
+        name:
+          operation === "login"
+            ? "开始新的故事"
+            : "既然知道我可能会生气，为什么不直接问我？",
       }),
     ).toBeVisible();
     await expect(page.getByRole("alert")).toHaveCount(0);

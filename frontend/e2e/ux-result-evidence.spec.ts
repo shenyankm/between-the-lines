@@ -7,6 +7,7 @@ test("results explain deltas, read back their source and offer the next actual a
   await start(page);
   await perform(page, "next");
   await perform(page, "dispute_return");
+  await page.getByRole("button", { name: "完整记录", exact: true }).click();
   const receipt = page.getByRole("region", { name: "最近一轮记录" });
   await expect(receipt).toContainText("专业信用 +10");
   await receipt.getByRole("button", { name: "查看原始事件" }).click();
@@ -21,5 +22,6 @@ test("results explain deltas, read back their source and offer the next actual a
     fullPage: true,
   });
   await page.reload();
+  await page.getByRole("button", { name: "完整记录", exact: true }).click();
   await expect(receipt).toContainText("最近一轮 · 已保存记录");
 });

@@ -13,11 +13,31 @@ export async function readScene(page: Page) {
   await expect.poll(async () => (await state(page)).active_turn).toBeNull();
   const p = await state(page);
   const node = "node" in p.save.state ? p.save.state.node : "prologue";
+  const renderedLine = page
+    .getByRole("button")
+    .filter({ hasText: /点击继续 →|点击显示全文|进入故事/ });
+  const shown =
+    (await renderedLine.count()) === 1
+      ? ((await renderedLine.textContent()) ?? "").replace(/\s+/g, "")
+      : "";
+  const visibleIndex = shown
+    ? (p.performance ?? []).findIndex((line) =>
+        shown.includes(line.text.replace(/\s+/g, "")),
+      )
+    : -1;
   for (
-    let index = p.reading?.[node] ?? 0;
+    let index = visibleIndex >= 0 ? visibleIndex : (p.reading?.[node] ?? 0);
     index < (p.performance?.length ?? 0);
     index++
   ) {
+    if (p.save.state.act === 0 && index === p.performance!.length - 1) {
+      const entry = page.getByRole("button").filter({ hasText: "进入故事" });
+      await expect(entry).toBeVisible();
+      await commitClick(page, () => entry.click());
+      await expect.poll(async () => (await state(page)).save.state.act).toBe(1);
+      await readScene(page);
+      return;
+    }
     const next = page.getByRole("button").filter({ hasText: "点击继续 →" });
     await expect(next).toBeVisible();
     // A response can arrive before React renders the next line. Wait for that
@@ -52,7 +72,6 @@ export async function start(page: Page, guest = false) {
   if (!guest) await page.getByRole("button", { name: "开始新的故事" }).click();
   await expect(page).toHaveURL(/\/play\//);
   await readScene(page);
-  await perform(page, "begin");
   await expect(dialogue(page)).toBeVisible();
 }
 export async function closePanel(page: Page) {
@@ -91,6 +110,7 @@ export async function perform(page: Page, action: Action) {
     ].includes(action)
   ) {
     await page.getByRole("button", { name: /^工作系统/ }).click();
+    await page.getByText("后续工作事项", { exact: true }).click();
   } else if (
     [
       "cut_ties",
@@ -105,7 +125,7 @@ export async function perform(page: Page, action: Action) {
     ["clarify", "review_clarification", "trace_rumor"].includes(action)
   ) {
     await page.getByRole("button", { name: "我的手机", exact: true }).click();
-    await page.getByRole("button", { name: /项目工作群/ }).click();
+    await page.getByRole("button", { name: /研发部工作群/ }).click();
   }
   const label =
     action === "begin"

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dialogue, start } from "./v3-helpers";
+import { dialogue, start, state } from "./v3-helpers";
 
 test("the reading hint stays pinned to the dialogue panel's bottom-right corner", async ({
   page,
@@ -8,6 +8,21 @@ test("the reading hint stays pinned to the dialogue panel's bottom-right corner"
   await page.getByRole("button", { name: "开发环境试玩" }).click();
   await page.getByRole("button", { name: "开始新的故事" }).click();
   await page.waitForURL(/\/play\//);
+  // Compare two lines in the same layout, not the distinct prologue identity card.
+  const openingSave = (await state(page)).save;
+  const response = await page.request.post(
+    `/api/saves/${openingSave.id}/turns`,
+    {
+      data: {
+        request_id: crypto.randomUUID(),
+        version: openingSave.version,
+        action: "begin",
+        npc: "sun",
+      },
+    },
+  );
+  expect(response.ok()).toBe(true);
+  await page.reload();
   // Force the typewriter so the pinning is checked while the line reveals.
   await page.emulateMedia({ reducedMotion: "no-preference" });
   const script = page
@@ -85,7 +100,7 @@ test("stage controls and grouped metrics fit narrow and wide screens", async ({
         (el) =>
           getComputedStyle(el.parentElement!.parentElement!).backgroundColor,
       ),
-    ).toBe("rgba(16, 32, 51, 0.95)");
+    ).toBe("rgba(16, 32, 51, 0.4)");
     await page.screenshot({
       path: `../artifacts/stage-layout/${width}.jpg`,
       fullPage: true,
@@ -174,16 +189,15 @@ test("speaker names anchor to the speaker's side of the dialogue panel", async (
     return anchor();
   };
 
-  // The opening line belongs to 周菱菱, the character shown on the left.
-  const opening = await anchor();
+  // The identity card has its own layout; compare the dialogue layout only.
+  await advance();
+  const opening = await advance();
   expect(opening.text).toBe("周菱菱");
   expect(opening.side).toBe("left");
   expect(opening.leftGap).toBeLessThan(opening.rightGap);
   expect(opening.names).toBe(1);
 
   // 旁白 and 周菱菱 stay left; 孙淼, shown on the right, answers from the right.
-  await advance();
-  await advance();
   const reply = await advance();
   expect(reply.text).toBe("孙淼");
   expect(reply.side).toBe("right");

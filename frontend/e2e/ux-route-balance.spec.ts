@@ -11,6 +11,7 @@ test("new saves reward correcting a qualified return instead of copying its atta
   expect((await state(page)).save.state.credit).toBe(before);
   await perform(page, "dispute_return");
   expect((await state(page)).save.state.credit).toBe(before + 10);
+  await page.getByRole("button", { name: "完整记录", exact: true }).click();
   await expect(
     page.getByRole("region", { name: "最近一轮记录" }),
   ).toContainText("专业信用 +10");

@@ -17,6 +17,7 @@ test("a polite boundary expression has a visible recipient and persisted action 
       );
     })
     .toBe(true);
+  await page.getByRole("button", { name: "完整记录", exact: true }).click();
   await expect(
     page.getByRole("region", { name: "最近一轮记录" }),
   ).toContainText("不接受别人代替决定");
