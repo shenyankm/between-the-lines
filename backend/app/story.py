@@ -95,6 +95,7 @@ class StoryOut(BaseModel):
 
 class StoryDefinition(BaseModel):
     story_version: int = 1
+    player_name: str = "周凌"
     title: str
     subtitle: str
     acts: list[Act] = Field(min_length=5, max_length=5)

@@ -268,7 +268,15 @@ def test_ending_job_includes_confirmed_facts_without_inventing_player_quotes(app
 
     with TestClient(app) as client:
         save = login(client)
-        for action in [*BASE, "close_story"]:
+        for action in [
+            *BASE,
+            "repair_friendship",
+            "acknowledge_harm",
+            "complete_remedy",
+            "project_review",
+            "follow_up",
+            "close_story",
+        ]:
             save = step(client, save, action)
         request = {"request_id": str(uuid4()), "version": save["version"], "kind": "ending"}
         response = client.post(f"/api/saves/{save['id']}/jobs", json=request)
@@ -291,6 +299,10 @@ def test_ending_job_includes_confirmed_facts_without_inventing_player_quotes(app
                 "SELECT payload FROM ai_jobs WHERE id=%s", (job["id"],)
             ).fetchone()[0]
         assert payload["confirmed_facts"]["work"] == save["state"]["work"]["facts"]
+        assert "friendship_offer" in save["state"]["relationship"]["facts"]
+        assert "friendship_offer" not in payload["confirmed_facts"]["relationship"]
+        assert "friendship" in payload["confirmed_facts"]["relationship"]
+        assert payload["relationship_intention"] == "friendship"
         assert len(payload["facts"]) <= 3
         assert all(
             fact["actual_expression"] == "" and fact["event_summary"] for fact in payload["facts"]

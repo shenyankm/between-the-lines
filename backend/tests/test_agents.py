@@ -15,7 +15,10 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.mark.parametrize("tool_name", ["act_on_work", "execute", "task"])
-async def test_deep_agent_tool_loop_isolation_and_fixed_model(monkeypatch, tool_name):
+@pytest.mark.parametrize("story_version", [1, 3])
+async def test_deep_agent_tool_loop_isolation_and_fixed_model(
+    monkeypatch, tool_name, story_version
+):
     requests, operations = [], []
 
     async def transport(request):
@@ -62,6 +65,7 @@ async def test_deep_agent_tool_loop_isolation_and_fixed_model(monkeypatch, tool_
     async def context(turn):
         return AgentContext.model_validate(
             {
+                "story_version": story_version,
                 "facts": {"act": 2, "procurement": "pending", "flags": []},
                 "history": [{"kind": "player", "text": "需要哪些材料？", "npc": "sun"}],
             }
@@ -95,6 +99,8 @@ async def test_deep_agent_tool_loop_isolation_and_fixed_model(monkeypatch, tool_
         replies = [reply async for reply in gateway.run_agent(turn, InMemorySaver(), usage)]
     assert replies == ["请补充报价单和用途说明。"]
     assert len(requests) == 2
+    system = next(m["content"] for m in requests[0]["messages"] if m["role"] == "system")
+    assert f"与研发专员{load_story(story_version).player_name}交谈" in system
     player_message = next(m for m in reversed(requests[0]["messages"]) if m["role"] == "user")
     assert json.loads(player_message["content"])["本轮玩家对白"] == turn.input.text
     assert usage["input_tokens"] == 40

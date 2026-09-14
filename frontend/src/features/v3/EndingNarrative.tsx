@@ -37,7 +37,9 @@ export function EndingNarrative({
           record(v) &&
           v.kind === "ending" &&
           typeof v.id === "string" &&
-          ["running", "completed", "failed"].includes(String(v.status)) &&
+          ["running", "completed", "failed", "unknown"].includes(
+            String(v.status),
+          ) &&
           (v.result == null || record(v.result)),
       ),
     retry: false,
@@ -60,7 +62,7 @@ export function EndingNarrative({
           <button onClick={() => void job.refetch()}>重试读取</button>
         </p>
       )}
-      {job.data?.status === "failed" && (
+      {(job.data?.status === "failed" || job.data?.status === "unknown") && (
         <p>本次生成未完成，展示已保存事实，不补写新的经历。</p>
       )}
       {typeof result?.text === "string" && (

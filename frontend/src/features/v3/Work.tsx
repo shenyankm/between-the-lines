@@ -260,7 +260,14 @@ export function Work({
           </form>
           {state.exit_draft && (
             <section className={s.notice}>
-              <h4>申请预览 · 尚未提交</h4>
+              <h4>
+                {state.exit_draft.submitted
+                  ? "退出申请 · 已提交"
+                  : "申请预览 · 尚未提交"}
+              </h4>
+              {state.exit_draft.submitted && (
+                <p>手续仍待后续办理，不代表已获批准或完成交接。</p>
+              )}
               <p>
                 {
                   { resign: "离职", transfer: "调岗", withdraw: "退出合作" }[

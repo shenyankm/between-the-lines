@@ -160,6 +160,41 @@ it("shows completed and unavailable actions with their reasons, honoring the rev
   view.rerender(<Actions options={[option("report")]} act={submit} busy />);
   expect(screen.getByText<HTMLButtonElement>("report").disabled).toBe(true);
 });
+it("shows a submitted exit as submitted while leaving an unsubmitted draft distinct", () => {
+  const draft = {
+    kind: "transfer" as const,
+    reason: "希望转岗",
+    event_id: "exit",
+    submitted: false,
+  };
+  const view = render(
+    <Work
+      state={{ ...state, exit_draft: draft }}
+      options={[]}
+      act={vi.fn()}
+      busy={false}
+    />,
+  );
+  fireEvent.click(screen.getByText("人事申请"));
+  expect(screen.getByText("申请预览 · 尚未提交")).toBeTruthy();
+  view.rerender(
+    <Work
+      state={{
+        ...state,
+        ending: "主动转身",
+        exit_draft: { ...draft, submitted: true },
+      }}
+      options={[]}
+      act={vi.fn()}
+      busy={false}
+    />,
+  );
+  expect(screen.queryByText("申请预览 · 尚未提交")).toBeNull();
+  expect(screen.getByText("退出申请 · 已提交")).toBeTruthy();
+  expect(
+    screen.getByText("手续仍待后续办理，不代表已获批准或完成交接。"),
+  ).toBeTruthy();
+});
 it("saves a support draft with an editable handover plan", () => {
   const submit = vi.fn();
   render(<SupportForm state={state} options={[]} act={submit} busy={false} />);

@@ -57,30 +57,39 @@ it("renders narrative and actual key interactions using the same request after r
   expect(ids[1]).toBe(ids[0]);
 });
 
-it("keeps a failed generation's saved facts visible", async () => {
-  server.use(
-    http.post("/api/saves/save-1/jobs", () =>
-      HttpResponse.json({
-        id: "failed",
-        kind: "ending",
-        status: "failed",
-        result: { label: "已保存事实", text: "项目尚未交付", interactions: [] },
-      }),
-    ),
-  );
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  render(
-    <QueryClientProvider client={client}>
-      <EndingNarrative save={save()} userId="fallback-user" />
-    </QueryClientProvider>,
-  );
-  expect(await screen.findByText("项目尚未交付")).toBeTruthy();
-  expect(
-    screen.getByText("本次生成未完成，展示已保存事实，不补写新的经历。"),
-  ).toBeTruthy();
-});
+it.each(["failed", "unknown"])(
+  "keeps a %s generation's saved facts visible",
+  async (status) => {
+    server.use(
+      http.post("/api/saves/save-1/jobs", () =>
+        HttpResponse.json({
+          id: "failed",
+          kind: "ending",
+          status,
+          result: {
+            label: "已保存事实",
+            text: "项目尚未交付",
+            interactions: [],
+          },
+        }),
+      ),
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <EndingNarrative save={save()} userId="fallback-user" />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("项目尚未交付")).toBeTruthy();
+    expect(
+      screen.getByText("本次生成未完成，展示已保存事实，不补写新的经历。"),
+    ).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+  },
+);
 
 it("recovers a failed read and displays event summaries when there was no player quote", async () => {
   let calls = 0;

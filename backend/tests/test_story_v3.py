@@ -229,6 +229,22 @@ def test_friendship_offer_does_not_create_mutual_willingness():
     assert ending_for(state).id != "limited_repair"
 
 
+def test_repair_remembers_actual_farewell_attendance():
+    state = play(
+        "begin",
+        "join_farewell",
+        "attend_farewell",
+        "next",
+        "next",
+        "repair_friendship",
+        "acknowledge_harm",
+    )
+    state, text = transition_v3(state, "complete_remedy", event_id="remedy-after-attendance")
+    assert "已经参加" in text
+    assert "错过" not in text
+    assert "错过" not in state.relationship.facts["remedy"].detail
+
+
 @pytest.mark.parametrize(
     "response,expected",
     [("decline", "尊重你的安排"), ("agree", "以后也会先问"), ("ask_details", "等你决定")],

@@ -34,6 +34,8 @@ def test_original_story_remains_addressable():
         == "王会计的欢送会，你会来吗？我想着你可能不喜欢这种场合，就没再问。"
     )
     assert load_story(3, 2) is not original
+    assert original.player_name == "周凌"
+    assert load_story(3, 2).player_name == "周菱菱"
 
 
 def test_relationship_projection_uses_current_intention_not_old_flag_order():
