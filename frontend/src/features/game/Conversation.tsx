@@ -1,3 +1,4 @@
+import { Button, Form, Input } from "@heroui/react";
 import {
   ArrowRight,
   Check,
@@ -109,13 +110,14 @@ export function Conversation({
           </p>
           {save.story_version !== 2 &&
             !events.some((e) => e.kind === "epilogue") && (
-              <button
+              <Button
+                variant="secondary"
                 className={s.secondary}
-                disabled={disabled || aiDisabled}
+                isDisabled={disabled || aiDisabled}
                 onClick={() => void act("epilogue")}
               >
                 生成故事回顾
-              </button>
+              </Button>
             )}
           <Link className={s.primary} to="/saves">
             回看我的故事 <ArrowRight size={18} />
@@ -195,10 +197,11 @@ export function Conversation({
                     }
                   : choiceProgress(state, action);
               return (
-                <button
+                <Button
+                  variant="secondary"
                   key={action}
-                  disabled={disabled || progress.disabled}
-                  title={progress.reason || undefined}
+                  isDisabled={disabled || progress.disabled}
+                  aria-description={progress.reason || undefined}
                   onClick={() => void act(action, "", target ?? undefined)}
                 >
                   <span>
@@ -210,12 +213,12 @@ export function Conversation({
                   ) : (
                     <ChevronRight size={16} />
                   )}
-                </button>
+                </Button>
               );
             })}
           </div>
           {state.act > 0 && (
-            <form
+            <Form
               className={s.composer}
               onSubmit={(e) => {
                 e.preventDefault();
@@ -223,7 +226,7 @@ export function Conversation({
               }}
             >
               <MessageSquare size={18} />
-              <input
+              <Input
                 aria-label="对角色说的话"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -231,20 +234,22 @@ export function Conversation({
                 placeholder="也可以用自己的话回应…"
                 disabled={disabled}
               />
-              <button
+              <Button
+                variant="secondary"
                 type="submit"
                 aria-label="发送"
-                disabled={disabled || aiDisabled || !input.trim()}
+                isDisabled={disabled || aiDisabled || !input.trim()}
               >
                 <Send size={18} />
-              </button>
-            </form>
+              </Button>
+            </Form>
           )}
           <div className={s.conversationFooter}>
             <span>{busy ? status : "你的表达，会成为故事的一部分。"}</span>
             {state.act > 0 && (
-              <button
-                disabled={
+              <Button
+                variant="secondary"
+                isDisabled={
                   disabled ||
                   !(
                     next.ready ||
@@ -256,7 +261,7 @@ export function Conversation({
                 onClick={() => onNext()}
               >
                 继续故事 <ArrowRight size={16} />
-              </button>
+              </Button>
             )}
           </div>
         </>
@@ -267,14 +272,15 @@ export function Conversation({
         onRetry={pending ? undefined : refresh}
       />
       {pending && !busy && (
-        <button
-          disabled={recoveryDisabled}
+        <Button
+          variant="secondary"
+          isDisabled={recoveryDisabled}
           className={s.textButton}
           onClick={() => void recover()}
         >
           <RefreshCw size={16} />
           恢复回合结果
-        </button>
+        </Button>
       )}
     </section>
   );

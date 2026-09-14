@@ -21,3 +21,9 @@ V3 follows system `prefers-reduced-motion` changes directly. The retired identit
 ## Ending page
 
 HeroUI Card separates the ending header, responsive narrative/facts columns and action footer. Paragraph breaks are rendered as text nodes, not HTML. Facts, outcome lists, copy text and the share canvas keep their existing data sources. On ending screens the navigation returns to normal document flow so the wide card cannot cover the work/history controls.
+
+## Legacy and shared UI
+
+Legacy conversations, menus, result panels and interludes use the same HeroUI buttons and form controls; shared errors use Surface while retaining `role="alert"`, retry delays and diagnostic-copy behavior. Router links, authored story artwork, share canvas, native dialogs, select/checkbox/meter and disclosure details are deliberate semantic exceptions. The native dialog shell remains shared in design conventions across versions, with existing focus and close behavior preserved.
+
+The migration does not change account identity, per-save draft storage, turn idempotency, recovery or server facts. Validation includes a legacy save fixture with a rejected submission to ensure the input and shared error remain usable.
