@@ -1,5 +1,12 @@
+import { Form, TextArea, Button } from "@heroui/react";
 import { useState } from "react";
-import { Actions, type Act, type Option, type StateV3 } from "./Work";
+import {
+  Actions,
+  unavailableReason,
+  type Act,
+  type Option,
+  type StateV3,
+} from "./Work";
 
 export function SupportForm({
   state,
@@ -17,12 +24,16 @@ export function SupportForm({
   const [plan, setPlan] = useState("");
   const current = state.support_requests?.at(-1);
   const processing = !!current?.submitted && !current.completion;
+  const disabledReason = processing
+    ? "申请已提交，等待处理完成。"
+    : unavailableReason(options, "draft_support", busy);
   return (
     <section aria-label="请假与求助申请">
       <h3>请假与求助</h3>
-      <form
+      <Form
         onSubmit={(event) => {
           event.preventDefault();
+          if (disabledReason) return;
           act("draft_support", "sun", {
             params: { support_kind: kind, reason, plan },
           });
@@ -43,7 +54,7 @@ export function SupportForm({
         </label>
         <label>
           原因
-          <textarea
+          <TextArea
             required
             maxLength={1000}
             value={reason}
@@ -53,7 +64,7 @@ export function SupportForm({
         </label>
         <label>
           交接或分工安排
-          <textarea
+          <TextArea
             required
             maxLength={1000}
             value={plan}
@@ -61,8 +72,16 @@ export function SupportForm({
             onChange={(event) => setPlan(event.target.value)}
           />
         </label>
-        <button disabled={busy || processing}>保存并预览申请</button>
-      </form>
+        <Button
+          variant="primary"
+          type="submit"
+          isDisabled={!!disabledReason}
+          aria-describedby={disabledReason ? "support-hint" : undefined}
+        >
+          保存并预览申请
+        </Button>
+        {disabledReason && <p id="support-hint">{disabledReason}</p>}
+      </Form>
       {current && (
         <article>
           <h4>{current.kind === "leave" ? "请假" : "求助"}申请预览</h4>

@@ -1,0 +1,37 @@
+@import "tailwindcss";
+@import "@heroui/styles/base" layer(base);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+@import "@heroui/styles/themes/shared/theme.css" layer(theme);
+@import "@heroui/styles/themes/default/variables.css" layer(theme);
+@import "@heroui/styles/components/button.css" layer(components);
+@import "@heroui/styles/components/card.css" layer(components);
+@import "@heroui/styles/components/surface.css" layer(components);
+
+@import "@heroui/styles/components/textarea.css" layer(components);
+@import "@heroui/styles/components/input.css" layer(components);
+
+:root,
+.dark,
+[data-theme="dark"] {
+  --background: #0b1421;
+  --foreground: #e7edf3;
+  --surface: #142235;
+  --surface-foreground: #e7edf3;
+  --surface-secondary: #1d3045;
+  --surface-secondary-foreground: #e7edf3;
+  --surface-tertiary: #263b50;
+  --surface-tertiary-foreground: #e7edf3;
+  --accent: #ebc16c;
+  --accent-foreground: #15243a;
+  --default: #263b50;
+  --default-foreground: #e7edf3;
+  --muted: #b4c0d0;
+  --border: #526379;
+  --focus: #ebc16c;
+  --field-background: #1d3045;
+  --field-foreground: #e7edf3;
+  --field-placeholder: #b4c0d0;
+  --ui-radius: 12px;
+  --ui-font-story: "Songti SC", "STSong", serif;
+}

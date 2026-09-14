@@ -343,3 +343,21 @@ def test_natural_invitation_request_uses_same_action_and_does_not_attend(app):
         facts = reply["save"]["state"]["work"]["facts"]
         assert "farewell_requested" in facts
         assert "farewell_attended" not in facts
+
+
+def test_reflection_without_player_actions_keeps_facts_and_request_identity(app):
+    with TestClient(app) as client:
+        save = login(client)
+        for action in ["begin", "next", "next", "close_story"]:
+            save = step(client, save, action)
+        body = {"kind": "reflection", "version": save["version"], "request_id": str(uuid4())}
+        response = client.post(f"/api/saves/{save['id']}/jobs", json=body)
+        assert response.status_code == 200
+        job = response.json()
+        assert job["status"] == "completed"
+        assert "仅保留事实回顾" in job["result"]["label"]
+        assert job["result"]["nodes"]
+        assert all(
+            "alternative" not in n and "role_context" not in n for n in job["result"]["nodes"]
+        )
+        assert client.post(f"/api/saves/{save['id']}/jobs", json=body).json() == job

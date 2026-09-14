@@ -21,6 +21,11 @@ export default tseslint.config(
   },
   jsxA11y.flatConfigs.recommended,
   {
+    settings: {
+      "jsx-a11y": { components: { TextArea: "textarea", Input: "input" } },
+    },
+  },
+  {
     // Plain JS files (this config) live outside every tsconfig project, so
     // type-aware linting cannot run on them; keep them syntax-checked only.
     files: ["**/*.js"],

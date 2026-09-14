@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Routes, Route } from "react-router";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../../testing/server";
@@ -28,7 +28,8 @@ const ctrl = vi.hoisted(() => ({
   error: "",
   completed: undefined as ((input: Partial<TurnInput>) => void) | undefined,
 }));
-vi.mock("../game/useTurnController", () => ({
+vi.mock("../game/useTurnController", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../game/useTurnController")>()),
   useTurnController: (
     _u: unknown,
     _s: unknown,
@@ -108,7 +109,11 @@ beforeEach(() => {
   ctrl.recover.mockReset();
   vi.stubGlobal(
     "matchMedia",
-    vi.fn(() => ({ matches: false })),
+    vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
   );
   server.use(
     http.post("/api/saves/save-1/reading", () =>
@@ -238,7 +243,14 @@ it("does not attach a previous act's source reference to a new expression", () =
   });
 });
 it("persists a reading position and retries a failed save without submitting a turn", async () => {
-  localStorage.setItem("reduced-motion:test-user", "true");
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
   let calls = 0;
   server.use(
     http.post("/api/saves/save-1/reading", async ({ request }) => {
@@ -268,8 +280,7 @@ it("persists a reading position and retries a failed save without submitting a t
     expect(screen.queryByText("重试保存阅读位置")).toBeNull(),
   );
   expect(ctrl.submit).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByLabelText("减少动态"));
-  expect(localStorage.getItem("reduced-motion:test-user")).toBe("false");
+  expect(screen.queryByLabelText("减少动态")).toBeNull();
 });
 it("waits for the matching scene version and honors storage restrictions", () => {
   vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
@@ -278,11 +289,14 @@ it("waits for the matching scene version and honors storage restrictions", () =>
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
     throw new Error("denied");
   });
+  vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+    throw new Error("denied");
+  });
   const p = play();
   p.performance_version = p.save.version - 1;
   mount(p);
   expect(screen.getByText("正在切换场景…")).toBeTruthy();
-  fireEvent.click(screen.getByLabelText("减少动态"));
+  expect(screen.queryByLabelText("减少动态")).toBeNull();
   expect(ctrl.submit).not.toHaveBeenCalled();
 });
 it("opens authored phone and work entries without pretending an action occurred", () => {
@@ -653,4 +667,135 @@ it("uses the persisted ending instead of an active scene", async () => {
   mount(p);
   await screen.findByText("已保存的结局正文");
   expect(screen.queryByLabelText("自由表达")).toBeNull();
+});
+
+it.each(["busy", "pending"] as const)(
+  "prevents leaving during %s without discarding the draft",
+  (phase) => {
+    if (phase === "busy") ctrl.busy = true;
+    else ctrl.pending = "unfinished-request";
+    mount();
+    fireEvent.change(screen.getByLabelText("自由表达"), {
+      target: { value: "保留我的草稿" },
+    });
+    const leave = screen.getByRole<HTMLButtonElement>("button", {
+      name: "返回存档",
+    });
+    expect(leave.disabled).toBe(true);
+    fireEvent.click(leave);
+    expect(readDraft("test-user", "save-1", "sun", "scene:sun").text).toBe(
+      "保留我的草稿",
+    );
+    expect(ctrl.submit).not.toHaveBeenCalled();
+  },
+);
+it("returns without logging out or clearing identity cache and drafts", () => {
+  const client = new QueryClient();
+  client.setQueryData(["user"], { id: "test-user" });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={["/play/save-1"]}>
+        <Routes>
+          <Route
+            path="/play/:id"
+            element={
+              <PlayV3 userId="test-user" play={play()} story={story()} />
+            }
+          />
+          <Route path="/saves" element={<h1>存档列表</h1>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  fireEvent.change(screen.getByLabelText("自由表达"), {
+    target: { value: "下次继续" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "返回存档" }));
+  expect(screen.getByRole("heading", { name: "存档列表" })).toBeTruthy();
+  expect(client.getQueryData(["user"])).toEqual({ id: "test-user" });
+  expect(readDraft("test-user", "save-1", "sun", "scene:sun").text).toBe(
+    "下次继续",
+  );
+  expect(ctrl.submit).not.toHaveBeenCalled();
+});
+
+it("follows system motion changes and removes the retired stored override", () => {
+  let update: (() => void) | undefined;
+  const preference = {
+    matches: false,
+    addEventListener: vi.fn((_event: string, listener: () => void) => {
+      update = listener;
+    }),
+    removeEventListener: vi.fn(),
+  };
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => preference),
+  );
+  localStorage.setItem("reduced-motion:test-user", "true");
+  const scene = story();
+  scene.scenes = {
+    act_1: [
+      {
+        id: "motion-line",
+        speaker: "sun",
+        text: "系统减少动态时立即显示这段完整台词。",
+      },
+    ],
+  };
+  const view = mount(play(), scene);
+  expect(localStorage.getItem("reduced-motion:test-user")).toBeNull();
+  expect(screen.queryByLabelText("减少动态")).toBeNull();
+  act(() => {
+    preference.matches = true;
+    update?.();
+  });
+  expect(screen.getByText("系统减少动态时立即显示这段完整台词。")).toBeTruthy();
+  view.unmount();
+  expect(preference.removeEventListener).toHaveBeenCalledWith("change", update);
+});
+
+it("moves turn errors and recovery into the open panel without duplicating feedback or clearing drafts", () => {
+  ctrl.error = "提交未完成，请检查安排。";
+  ctrl.pending = "accepted-request";
+  mount();
+  fireEvent.change(screen.getByLabelText("自由表达"), {
+    target: { value: "现场保留" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: /孙淼/ }));
+  const panel = screen.getByRole("dialog");
+  fireEvent.change(within(panel).getByLabelText("自由表达"), {
+    target: { value: "私聊保留" },
+  });
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(within(panel).getByRole("alert").textContent).toContain(ctrl.error);
+  fireEvent.click(within(panel).getByRole("button", { name: "恢复回合结果" }));
+  expect(ctrl.recover).toHaveBeenCalledOnce();
+  expect(
+    within(panel).getByLabelText<HTMLTextAreaElement>("自由表达").value,
+  ).toBe("私聊保留");
+  fireEvent.click(within(panel).getByRole("button", { name: "关闭面板" }));
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(screen.getByLabelText<HTMLTextAreaElement>("自由表达").value).toBe(
+    "现场保留",
+  );
+});
+it("focuses the decision title before a long confirmation and shows errors inside it", () => {
+  const p = play();
+  p.proposal = {
+    id: "proposal",
+    version: 2,
+    action: "submit_exit",
+    label: "确认退出申请",
+    effect: "申请需要后续办理",
+  };
+  ctrl.error = "申请暂未提交";
+  mount(p);
+  const dialog = screen.getByRole("alertdialog");
+  expect(document.activeElement).toBe(
+    within(dialog).getByRole("heading", { name: "确认退出申请" }),
+  );
+  expect(within(dialog).getByRole("alert").textContent).toContain(ctrl.error);
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
 });

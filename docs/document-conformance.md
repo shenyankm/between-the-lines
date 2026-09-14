@@ -4,6 +4,12 @@ Reference: https://ccnoz23f7y98.feishu.cn/wiki/Ka47wg91jiUW1ekAcbFc9Fuonqe
 
 The source was read at version 1011. Eleven blue Feishu callout notes added on 2026-09-13 produced version 1022; rewriting them in plain language for a product manager produced version 1033. Full decisions are in `conformance-decisions.json`. Every note was read back; image and attachment blocks were unchanged before and after writing.
 
+## 2026-09-14 · 1064 版结局海报与生成质量
+
+本次以 1064 版六张海报为素材基线。已完成清理素材、E01–E06 映射、结局页与分享卡、众议多样性及复盘角色归属调整。按用户追加要求，桌面也采用原图的纵向海报布局，替代最初计划中的左右栏；中文宋体、居中标题、编号、字距与正文留白一并对齐。
+
+本次没有修改六结局判定、剧情分支、存档内容、接口或数据库结构，也没有向飞书回写或部署生产。以下历史检查项保留原时间点含义；本次范围的最新证据见[交付报告](ending-posters-2026-09-14.md)。
+
 ## Acceptance checklist (unchecked means incomplete or insufficient evidence)
 
 - [x] R01–R11 conflicts and implementation supplements recorded beside the source, preserving original text.

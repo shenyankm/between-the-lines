@@ -75,10 +75,12 @@ async def test_artifact_generations_continue_past_minute_and_daily_limits(app, m
             return {
                 "nodes": [
                     {
-                        "event_id": payload["facts"][0]["event_id"],
+                        "event_id": fact["event_id"],
+                        "actor": "player",
                         "alternative": "先说明需要。",
                         "possible_cost": "需要时间。",
                     }
+                    for fact in payload["facts"]
                 ]
             }
 

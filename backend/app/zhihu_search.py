@@ -10,13 +10,14 @@ import httpx
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from .artifact_quality import diverse_sources
 from .db import SearchCache, utcnow
 from .zhihu_import import normalize
 
 TOPICS = {
     0: "职场 人际关系 内耗 自我成长",
     1: "同事 开玩笑 如何建立边界",
-    2: "采购审批 流程受阻 向领导汇报",
+    2: "采购审批被退回 原因不明确 沟通具体依据 流程留痕 协调处理",
     3: "同事造谣 如何澄清",
     4: "职场 人际关系 边界",
 }
@@ -46,18 +47,19 @@ async def search(
         for item in data["Items"][:10]
         if isinstance(item, dict) and (row := normalize(item, query))
     ]
-    unique = {(r["content_type"], r["content_id"]): r for r in rows}
-    return [
-        {
-            "id": f"{r['content_type']}:{r['content_id']}",
-            "title": r["title"],
-            "author": r["author_name"],
-            "url": r["source_url"],
-            "summary": r["summary"][:1500],
-            "hash": hashlib.sha256(r["summary"].encode()).hexdigest(),
-        }
-        for r in list(unique.values())[:6]
-    ]
+    return diverse_sources(
+        [
+            {
+                "id": f"{r['content_type']}:{r['content_id']}",
+                "title": r["title"],
+                "author": r["author_name"],
+                "url": r["source_url"],
+                "summary": r["summary"][:1500],
+                "hash": hashlib.sha256(r["summary"].encode()).hexdigest(),
+            }
+            for r in rows
+        ]
+    )
 
 
 async def topic_sources(
