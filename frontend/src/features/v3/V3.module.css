@@ -1078,10 +1078,10 @@
   .portraits img {
     max-height: 140px;
   }
-  .root:has(.composer:focus-within) .portraits {
+  .root[data-composing="true"] .portraits {
     height: 48px;
   }
-  .root:has(.composer:focus-within) .portraits img {
+  .root[data-composing="true"] .portraits img {
     max-height: 64px;
   }
   .composer textarea {
