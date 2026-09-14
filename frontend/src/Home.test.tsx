@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
@@ -6,6 +12,9 @@ import { http, HttpResponse } from "msw";
 import { Home, Saves } from "./features/Home";
 import { server } from "./testing/server";
 import { save } from "./testing/fixtures";
+import { deferred } from "./testing/handlers";
+import type { Save } from "./types";
+import { saveMetrics, saveTitle } from "./features/savePresentation";
 import { apiError } from "./testing/errors";
 
 afterEach(() => vi.restoreAllMocks());
@@ -241,4 +250,74 @@ it("binding completion clears only the guest cache and refreshes inherited saves
   expect(sessionStorage.getItem("pending:v1:guest:s")).toBeNull();
   expect(sessionStorage.getItem("draft:v2:guest:s:sun")).toBeNull();
   expect(sessionStorage.getItem("draft:v2:other:s:sun")).toBe("other");
+});
+
+it("locks only the changing save and keeps a failed operation next to that save", async () => {
+  setup();
+  const hold = deferred();
+  let calls = 0;
+  server.use(
+    http.get("/api/saves", () =>
+      HttpResponse.json([save({ id: "first" }), save({ id: "second" })]),
+    ),
+    http.post("/api/saves/first/manage", async () => {
+      calls++;
+      await hold.promise;
+      return HttpResponse.json(apiError("此存档暂时无法归档"), { status: 422 });
+    }),
+  );
+  mount(true);
+  await screen.findByText("存档 first");
+  const [first, second] = screen
+    .getAllByRole<HTMLButtonElement>("button", { name: "归档" })
+    .filter((button) => !button.hasAttribute("aria-pressed"));
+  fireEvent.click(first!);
+  fireEvent.click(first!);
+  await waitFor(() => expect(calls).toBe(1));
+  expect(first!.disabled).toBe(true);
+  expect(second!.disabled).toBe(false);
+  expect(screen.getByText("正在处理此存档…")).toBeTruthy();
+  hold.resolve();
+  await screen.findByText("此存档暂时无法归档");
+  expect(
+    within(first!.closest(".card") as HTMLElement).getByRole("alert"),
+  ).toBeTruthy();
+  expect(first!.disabled).toBe(false);
+});
+it("presents versioned save facts and readable ending labels without rewriting them", () => {
+  const legacy = save({ state: { ending: "旧故事的结局" } });
+  expect(saveTitle(legacy)).toBe("旧故事的结局");
+  expect(saveMetrics(legacy)).toBe("专业信用 60 · 心绪消耗 20");
+  const modern: Save = {
+    ...legacy,
+    story_version: 3,
+    state: {
+      ...legacy.state,
+      story_version: 3,
+      content_revision: 2,
+      node: "act_3",
+      tick: 3,
+      quiet_turns: 0,
+      partner_choice: null,
+      exit_draft: null,
+      rumination: 32,
+      pressure: 46,
+      ending: "cut_ties",
+      outcome: {
+        id: "professional_boundary",
+        key_event_ids: [],
+        title: "本局已保存标题",
+        achievements: [],
+        unresolved: [],
+      },
+    },
+  };
+  expect(saveTitle(modern)).toBe("本局已保存标题");
+  expect(saveMetrics(modern)).toBe("专业信用 60 · 内耗 32 · 工作压力 46");
+  if ("outcome" in modern.state) modern.state.outcome = null;
+  expect(saveTitle(modern)).toBe("各自为界");
+  expect(saveTitle(save({ state: { ending: "future_code" } }))).toBe(
+    "故事已结束",
+  );
+  expect(saveTitle(save())).toBe("第 1 幕");
 });

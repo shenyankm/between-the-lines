@@ -11,6 +11,17 @@ export type Act = (
   npc?: Npc,
   extra?: Partial<TurnInput>,
 ) => void;
+export function unavailableReason(
+  options: Option[],
+  action: Action,
+  busy: boolean,
+): string {
+  if (busy) return "当前行动正在处理，请稍候。";
+  const option = options.find((item) => item.action === action);
+  return option?.enabled
+    ? ""
+    : option?.reason || "当前故事进度暂不能执行此操作。";
+}
 export function Actions({
   options,
   act,
@@ -76,6 +87,11 @@ export function Work({
   const [tab, setTab] = useState("purchase");
   const enabled = (name: Action) =>
     !busy && options.some((a) => a.action === name && a.enabled);
+  const materialReason =
+    unavailableReason(options, "supplement", busy) ||
+    (!evidence.includes("quote") || !evidence.includes("purpose")
+      ? "请同时选择报价单和用途说明。"
+      : "");
   return (
     <>
       <nav className={s.tabs}>
@@ -115,6 +131,7 @@ export function Work({
             <Form
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!enabled("submit_purchase")) return;
                 act("submit_purchase", "sun", { params: { purpose } });
               }}
             >
@@ -131,9 +148,17 @@ export function Work({
                 variant="primary"
                 type="submit"
                 isDisabled={!enabled("submit_purchase")}
+                aria-describedby={
+                  !enabled("submit_purchase") ? "purchase-hint" : undefined
+                }
               >
                 提交第一版申请
               </Button>
+              {!enabled("submit_purchase") && (
+                <p id="purchase-hint">
+                  {unavailableReason(options, "submit_purchase", busy)}
+                </p>
+              )}
             </Form>
           )}
           <fieldset>
@@ -177,6 +202,7 @@ export function Work({
           </fieldset>
           <Button
             variant="secondary"
+            aria-describedby={materialReason ? "materials-hint" : undefined}
             isDisabled={
               !enabled("supplement") ||
               !evidence.includes("quote") ||
@@ -186,6 +212,7 @@ export function Work({
           >
             提交所选材料与说明
           </Button>
+          {materialReason && <p id="materials-hint">{materialReason}</p>}
           <h3>处理时间线</h3>
           {state.work?.submissions?.length ? (
             <ol>
@@ -243,6 +270,7 @@ export function Work({
           <Form
             onSubmit={(e) => {
               e.preventDefault();
+              if (!enabled("draft_exit")) return;
               act("draft_exit", "sun", { params: { kind, reason } });
             }}
           >
@@ -272,9 +300,17 @@ export function Work({
               variant="primary"
               type="submit"
               isDisabled={!enabled("draft_exit")}
+              aria-describedby={
+                !enabled("draft_exit") ? "exit-hint" : undefined
+              }
             >
               保存并预览
             </Button>
+            {!enabled("draft_exit") && (
+              <p id="exit-hint">
+                {unavailableReason(options, "draft_exit", busy)}
+              </p>
+            )}
           </Form>
           {state.exit_draft && (
             <section className={s.notice}>

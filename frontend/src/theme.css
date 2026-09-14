@@ -32,4 +32,6 @@
   --field-background: #1d3045;
   --field-foreground: #e7edf3;
   --field-placeholder: #b4c0d0;
+  --ui-radius: 12px;
+  --ui-font-story: "Songti SC", "STSong", serif;
 }

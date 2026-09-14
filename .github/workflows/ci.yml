@@ -186,7 +186,7 @@ jobs:
       - name: Install browser test dependencies
         run: |
           pnpm --dir frontend install --frozen-lockfile
-          pnpm --dir frontend exec playwright install --with-deps chromium
+          pnpm --dir frontend exec playwright install --with-deps chromium firefox webkit
       - name: Build and start isolated mock stack
         run: |
           docker compose config --quiet
@@ -197,6 +197,8 @@ jobs:
         run: sh scripts/test-web-runtime.sh
       - name: Desktop and mobile end-to-end tests
         run: pnpm --dir frontend test:e2e
+      - name: Cross-browser responsive and interaction checks
+        run: pnpm --dir frontend exec playwright test --config=playwright.responsive.config.ts
       # Run inside the api container: this job installs no Python toolchain, and
       # the container already has the locked httpx. Its default base URL
       # (127.0.0.1:8000) is uvicorn from the inside, so the measurement excludes

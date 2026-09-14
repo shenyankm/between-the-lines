@@ -42,6 +42,7 @@ export function GameDrawer({
       <dialog
         ref={dialogRef}
         className={s.drawer}
+        aria-labelledby="legacy-panel-title"
         onCancel={() => setPanel(null)}
         onClick={(e) => {
           if (e.target === dialogRef.current) setPanel(null);
@@ -49,7 +50,7 @@ export function GameDrawer({
       >
         <div className={s.drawerInside}>
           <div className={s.drawerHeader}>
-            <h2>
+            <h2 id="legacy-panel-title">
               {
                 {
                   phone: "手机",
@@ -67,164 +68,168 @@ export function GameDrawer({
               <X />
             </Button>
           </div>
-          {panel === "phone" && (
-            <>
-              <p className={s.muted}>联系人</p>
-              {(Object.keys(story.npcs) as Npc[]).map((key) => (
-                <Button
-                  variant="secondary"
-                  className={`${s.contact} ${key === npc ? s.selectedContact : ""}`}
-                  key={key}
-                  onClick={() => {
-                    selectNpc(key);
-                    setPanel(null);
-                  }}
-                >
-                  <img
-                    className={s.avatar}
-                    src={imageSource(
-                      (story.npcs[key] ?? story.npcs.sun).portrait,
-                      256,
-                    )}
-                    alt=""
-                  />
-                  <span>
-                    <strong>{(story.npcs[key] ?? story.npcs.sun).name}</strong>
-                    <small>{(story.npcs[key] ?? story.npcs.sun).role}</small>
-                  </span>
-                  <ChevronRight size={18} />
-                </Button>
-              ))}
-              <article className={s.note}>
-                <span className={s.overline}>朋友圈 · 王会计</span>
-                <p>感谢大家的祝福，正式开启退休生活！</p>
-                <small>
-                  {state.flags.includes("wang_contacted")
-                    ? "已发送私人祝福"
-                    : "你还没有联系王会计"}
-                </small>
-                {state.flags.includes("wang_contacted") && (
-                  <p>{story.wang_reply}</p>
-                )}
-              </article>
-              <h3>人物关系 · 当前进展</h3>
-              <p className={s.muted}>{story.adaptation_note}</p>
-              {relationships?.map((person) => (
-                <article className={s.note} key={person.id}>
-                  <h4>{person.name}</h4>
-                  <small>{person.role}</small>
-                  <p>{person.description}</p>
-                </article>
-              ))}
-            </>
-          )}
-          {panel === "work" && (
-            <>
-              <span className={s.overline}>RD-2026-017</span>
-              <h3>催化剂优化 · 加急采购</h3>
-              <p className={s.muted}>
-                {state.procurement === "approved"
-                  ? "审核已通过，材料可以进入采购。"
-                  : "当前状态：等待财务审核"}
-              </p>
-              {[
-                { key: "requirements", label: "确认材料要求" },
-                { key: "materials", label: "提交报价与用途说明" },
-                { key: "reported", label: "同步项目进度风险" },
-                { key: "supported", label: "获得研发支持" },
-              ].map((item) => (
-                <div className={s.checkRow} key={item.key}>
-                  <span
-                    className={
-                      state.flags.includes(item.key) ? s.checked : s.unchecked
-                    }
-                  >
-                    {state.flags.includes(item.key) ? (
-                      <Check size={14} />
-                    ) : null}
-                  </span>
-                  {item.label}
-                </div>
-              ))}
-              <div className={s.note}>
-                确认要求、补齐材料、请李姐审核。可直接使用行动按钮，张工只提供项目支持和协调。
-              </div>
-              {availableActions
-                ?.filter((a) =>
-                  [
-                    "request_materials",
-                    "supplement",
-                    "report",
-                    "support_project",
-                    "approve_purchase",
-                    "joint_review",
-                  ].includes(a.action),
-                )
-                .map((a) => (
+          <div className={s.drawerBody}>
+            {panel === "phone" && (
+              <>
+                <p className={s.muted}>联系人</p>
+                {(Object.keys(story.npcs) as Npc[]).map((key) => (
                   <Button
                     variant="secondary"
-                    key={a.action}
-                    isDisabled={disabled || !a.enabled}
-                    aria-description={a.reason}
+                    className={`${s.contact} ${key === npc ? s.selectedContact : ""}`}
+                    key={key}
                     onClick={() => {
-                      void act(a.action, "", a.target ?? undefined);
+                      selectNpc(key);
                       setPanel(null);
                     }}
                   >
-                    {a.label}
-                    {a.completed ? " · 已完成" : ""}
+                    <img
+                      className={s.avatar}
+                      src={imageSource(
+                        (story.npcs[key] ?? story.npcs.sun).portrait,
+                        256,
+                      )}
+                      alt=""
+                    />
+                    <span>
+                      <strong>
+                        {(story.npcs[key] ?? story.npcs.sun).name}
+                      </strong>
+                      <small>{(story.npcs[key] ?? story.npcs.sun).role}</small>
+                    </span>
+                    <ChevronRight size={18} />
                   </Button>
                 ))}
-              {state.act > 0 && !state.ending && (
-                <Button
-                  variant="secondary"
-                  className={s.textButton}
-                  isDisabled={disabled}
-                  onClick={() => {
-                    if (
-                      availableActions?.length ||
-                      window.confirm("确定让这段故事以主动离开结束吗？")
-                    ) {
-                      void act("leave");
-                      setPanel(null);
-                    }
-                  }}
-                >
-                  选择离开当前环境
-                </Button>
-              )}
-            </>
-          )}
-          {panel === "tips" &&
-            story.tips.map((tip) => (
-              <article className={s.note} key={tip.title}>
-                <Sparkles size={20} />
-                <h3>{tip.title}</h3>
-                <p>{tip.text}</p>
-                <small>{tip.source}</small>
-              </article>
-            ))}
-          {panel === "history" && (
-            <>
-              {events.length === 0 && <p>还没有记录。</p>}
-              {events.map((event) => (
-                <article className={s.historyItem} key={event.id}>
+                <article className={s.note}>
+                  <span className={s.overline}>朋友圈 · 王会计</span>
+                  <p>感谢大家的祝福，正式开启退休生活！</p>
                   <small>
-                    {event.kind === "player"
-                      ? "周凌"
-                      : event.kind === "personal"
-                        ? "王叔 · 私人回复"
-                        : event.kind === "work"
-                          ? "工作记录"
-                          : event.kind === "epilogue"
-                            ? "结局回顾"
-                            : (story.npcs[event.npc] ?? story.npcs.sun)?.name}
+                    {state.flags.includes("wang_contacted")
+                      ? "已发送私人祝福"
+                      : "你还没有联系王会计"}
                   </small>
-                  <p>{event.text}</p>
+                  {state.flags.includes("wang_contacted") && (
+                    <p>{story.wang_reply}</p>
+                  )}
+                </article>
+                <h3>人物关系 · 当前进展</h3>
+                <p className={s.muted}>{story.adaptation_note}</p>
+                {relationships?.map((person) => (
+                  <article className={s.note} key={person.id}>
+                    <h4>{person.name}</h4>
+                    <small>{person.role}</small>
+                    <p>{person.description}</p>
+                  </article>
+                ))}
+              </>
+            )}
+            {panel === "work" && (
+              <>
+                <span className={s.overline}>RD-2026-017</span>
+                <h3>催化剂优化 · 加急采购</h3>
+                <p className={s.muted}>
+                  {state.procurement === "approved"
+                    ? "审核已通过，材料可以进入采购。"
+                    : "当前状态：等待财务审核"}
+                </p>
+                {[
+                  { key: "requirements", label: "确认材料要求" },
+                  { key: "materials", label: "提交报价与用途说明" },
+                  { key: "reported", label: "同步项目进度风险" },
+                  { key: "supported", label: "获得研发支持" },
+                ].map((item) => (
+                  <div className={s.checkRow} key={item.key}>
+                    <span
+                      className={
+                        state.flags.includes(item.key) ? s.checked : s.unchecked
+                      }
+                    >
+                      {state.flags.includes(item.key) ? (
+                        <Check size={14} />
+                      ) : null}
+                    </span>
+                    {item.label}
+                  </div>
+                ))}
+                <div className={s.note}>
+                  确认要求、补齐材料、请李姐审核。可直接使用行动按钮，张工只提供项目支持和协调。
+                </div>
+                {availableActions
+                  ?.filter((a) =>
+                    [
+                      "request_materials",
+                      "supplement",
+                      "report",
+                      "support_project",
+                      "approve_purchase",
+                      "joint_review",
+                    ].includes(a.action),
+                  )
+                  .map((a) => (
+                    <Button
+                      variant="secondary"
+                      key={a.action}
+                      isDisabled={disabled || !a.enabled}
+                      aria-description={a.reason}
+                      onClick={() => {
+                        void act(a.action, "", a.target ?? undefined);
+                        setPanel(null);
+                      }}
+                    >
+                      {a.label}
+                      {a.completed ? " · 已完成" : ""}
+                    </Button>
+                  ))}
+                {state.act > 0 && !state.ending && (
+                  <Button
+                    variant="secondary"
+                    className={s.textButton}
+                    isDisabled={disabled}
+                    onClick={() => {
+                      if (
+                        availableActions?.length ||
+                        window.confirm("确定让这段故事以主动离开结束吗？")
+                      ) {
+                        void act("leave");
+                        setPanel(null);
+                      }
+                    }}
+                  >
+                    选择离开当前环境
+                  </Button>
+                )}
+              </>
+            )}
+            {panel === "tips" &&
+              story.tips.map((tip) => (
+                <article className={s.note} key={tip.title}>
+                  <Sparkles size={20} />
+                  <h3>{tip.title}</h3>
+                  <p>{tip.text}</p>
+                  <small>{tip.source}</small>
                 </article>
               ))}
-            </>
-          )}
+            {panel === "history" && (
+              <>
+                {events.length === 0 && <p>还没有记录。</p>}
+                {events.map((event) => (
+                  <article className={s.historyItem} key={event.id}>
+                    <small>
+                      {event.kind === "player"
+                        ? "周凌"
+                        : event.kind === "personal"
+                          ? "王叔 · 私人回复"
+                          : event.kind === "work"
+                            ? "工作记录"
+                            : event.kind === "epilogue"
+                              ? "结局回顾"
+                              : (story.npcs[event.npc] ?? story.npcs.sun)?.name}
+                    </small>
+                    <p>{event.text}</p>
+                  </article>
+                ))}
+              </>
+            )}
+          </div>
         </div>
       </dialog>
     </>

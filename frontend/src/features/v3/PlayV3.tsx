@@ -88,10 +88,18 @@ export function PlayV3({
     if (!panel && element?.open) element.close();
   }, [panel]);
   const confirmation = useRef<HTMLDialogElement>(null);
+  const confirmationOrigin = useRef<HTMLElement | null>(null);
+  const proposalId = play.proposal?.id;
   useEffect(() => {
-    if (play.proposal && !confirmation.current?.open)
-      confirmation.current?.showModal();
-  }, [play.proposal]);
+    const dialog = confirmation.current;
+    if (!proposalId || !dialog) return;
+    if (!dialog.open) dialog.showModal();
+    dialog.querySelector<HTMLElement>("#decision-title")?.focus();
+    return () => {
+      if (confirmationOrigin.current?.isConnected)
+        confirmationOrigin.current.focus();
+    };
+  }, [proposalId]);
   const [, refresh] = useState(0);
   const channel =
     panel === "phone" && contact
@@ -170,6 +178,11 @@ export function PlayV3({
       ...extra,
     };
     if (option?.requires_confirmation && !extra.proposal_id) {
+      confirmationOrigin.current = panel
+        ? document.querySelector<HTMLElement>(`[data-panel="${panel}"]`)
+        : document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
       setPanel(null);
       void controller.submit(save, "propose", "", npc, {
         ...metadata,
@@ -343,6 +356,39 @@ export function PlayV3({
           : authoredChoices.length
             ? authoredChoices
             : sceneOptions.filter((a) => a.enabled).slice(0, 3);
+  const feedback = (
+    <div className={s.status} aria-label="操作反馈">
+      {controller.status && <p role="status">{controller.status}</p>}
+      <ErrorNotice error={controller.issue} message={controller.error} />
+      <ErrorNotice
+        error={logoutError}
+        onRetry={() => void logout()}
+        retryLabel="重试退出"
+        disabled={loggingOut}
+      />
+      {controller.pending && (
+        <Button
+          variant="secondary"
+          isDisabled={controller.busy}
+          onClick={() => void controller.recover()}
+        >
+          恢复回合结果
+        </Button>
+      )}
+      {readError && (
+        <p role="alert">
+          {readError}
+          <Button
+            variant="secondary"
+            onClick={() => void mark(state.node ?? "prologue", position + 1)}
+          >
+            重试保存阅读位置
+          </Button>
+        </p>
+      )}
+      {!play.ai?.available && <p>AI 暂不可用，工作和剧情行动仍可继续。</p>}
+    </div>
+  );
   return (
     <main
       className={s.root}
@@ -394,56 +440,65 @@ export function PlayV3({
           player
         />
       )}
-      <nav className={s.toolbar}>
-        {(
-          [
-            ["phone", "我的手机"],
-            ["work", "工作系统"],
-            ["relations", "关系图"],
-            ["discussion", "知乎众议"],
-          ] as const
-        ).map(([id, label]) => (
+      <nav className={s.toolbar} aria-label="故事工具与账户">
+        <div className={s.storyTools}>
+          {(
+            [
+              ["phone", "我的手机"],
+              ["work", "工作系统"],
+              ["relations", "关系图"],
+              ["discussion", "知乎众议"],
+            ] as const
+          ).map(([id, label]) => (
+            <Button
+              variant="secondary"
+              key={id}
+              data-panel={id}
+              onClick={() => {
+                setPanel(id);
+                setContact(null);
+              }}
+            >
+              {label}
+              {id === "work" && state.work?.purchase === "returned"
+                ? " · 待处理"
+                : ""}
+            </Button>
+          ))}
           <Button
             variant="secondary"
-            key={id}
-            onClick={() => {
-              setPanel(id);
-              setContact(null);
-            }}
+            data-panel="history"
+            onClick={() => setPanel("history")}
           >
-            {label}
-            {id === "work" && state.work?.purchase === "returned"
-              ? " · 待处理"
-              : ""}
+            完整记录
           </Button>
-        ))}
-        <Button variant="secondary" onClick={() => setPanel("history")}>
-          完整记录
-        </Button>
-        <Button
-          variant="secondary"
-          isDisabled={
-            controller.busy ||
-            !!controller.pending ||
-            savingReading ||
-            loggingOut
-          }
-          onClick={() => void navigate("/saves")}
-          aria-description={
-            controller.busy || controller.pending
-              ? "当前回合处理完成后可返回存档"
-              : undefined
-          }
-        >
-          返回存档
-        </Button>
-        <Button
-          variant="secondary"
-          isDisabled={loggingOut}
-          onClick={() => void logout()}
-        >
-          退出登录
-        </Button>
+        </div>
+        <div className={s.accountTools}>
+          <Button
+            variant="secondary"
+            isDisabled={
+              controller.busy ||
+              !!controller.pending ||
+              savingReading ||
+              loggingOut
+            }
+            onClick={() => void navigate("/saves")}
+            aria-description={
+              controller.busy || controller.pending
+                ? "当前回合处理完成后可返回存档"
+                : undefined
+            }
+          >
+            返回存档
+          </Button>
+          <Button
+            variant="secondary"
+            isDisabled={loggingOut}
+            onClick={() => void logout()}
+          >
+            退出登录
+          </Button>
+        </div>
       </nav>
       {state.ending ? (
         <Ending state={state} save={save} userId={userId} />
@@ -526,40 +581,12 @@ export function PlayV3({
               </div>
             </>
           )}
-          {readError && (
-            <p role="alert">
-              {readError}
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  void mark(state.node ?? "prologue", position + 1)
-                }
-              >
-                重试保存阅读位置
-              </Button>
-            </p>
-          )}
           {state.quiet_turns >= 3 && (
             <p>这几轮没有新增进展。可以查看工作事项、表达边界，或继续故事。</p>
           )}
         </section>
       )}
-      <div className={s.status} role="status">
-        {controller.status}
-        <ErrorNotice error={controller.issue} message={controller.error} />
-        <ErrorNotice
-          error={logoutError}
-          onRetry={() => void logout()}
-          retryLabel="重试退出"
-          disabled={loggingOut}
-        />
-        {controller.pending && (
-          <Button variant="secondary" onClick={() => void controller.recover()}>
-            恢复回合结果
-          </Button>
-        )}
-        {!play.ai?.available && <p>AI 暂不可用，工作和剧情行动仍可继续。</p>}
-      </div>
+      {!panel && !play.proposal && !interlude && feedback}
       {play.proposal && (
         <dialog
           ref={confirmation}
@@ -570,50 +597,63 @@ export function PlayV3({
           className={s.confirm}
           role="alertdialog"
           aria-label="确认重要决定"
+          aria-describedby="decision-title"
         >
-          <strong>{play.proposal.label}</strong>
-          <p>{play.proposal.effect}</p>
-          {["leave", "submit_exit"].includes(play.proposal.action) &&
-            state.exit_draft && (
-              <>
-                <p>
-                  申请类型：
-                  {
-                    { resign: "离职", transfer: "调岗", withdraw: "退出合作" }[
-                      state.exit_draft.kind
-                    ]
-                  }
-                </p>
-                <p>{state.exit_draft.reason}</p>
-                <p>提交表示开始申请，不代表手续已经完成。</p>
-              </>
-            )}
-          <Button
-            variant="secondary"
-            isDisabled={busy}
-            onClick={() =>
-              act(
-                play.proposal!.action,
-                play.available_actions?.find(
-                  (a) => a.action === play.proposal!.action,
-                )?.target ?? "sun",
-                { proposal_id: play.proposal!.id },
-              )
-            }
-          >
-            确认并提交
-          </Button>
-          <Button
-            variant="secondary"
-            isDisabled={busy}
-            onClick={() => act("cancel_proposal")}
-          >
-            暂不执行
-          </Button>
+          <header className={s.confirmHeader}>
+            <h2 id="decision-title" tabIndex={-1}>
+              {play.proposal.label}
+            </h2>
+          </header>
+          <div className={s.confirmBody}>
+            <p>{play.proposal.effect}</p>
+            {["leave", "submit_exit"].includes(play.proposal.action) &&
+              state.exit_draft && (
+                <>
+                  <p>
+                    申请类型：
+                    {
+                      {
+                        resign: "离职",
+                        transfer: "调岗",
+                        withdraw: "退出合作",
+                      }[state.exit_draft.kind]
+                    }
+                  </p>
+                  <p>{state.exit_draft.reason}</p>
+                  <p>提交表示开始申请，不代表手续已经完成。</p>
+                </>
+              )}
+          </div>
+          {!panel && !interlude && feedback}
+          <footer className={s.confirmActions}>
+            <Button
+              variant="secondary"
+              isDisabled={busy}
+              onClick={() =>
+                act(
+                  play.proposal!.action,
+                  play.available_actions?.find(
+                    (a) => a.action === play.proposal!.action,
+                  )?.target ?? "sun",
+                  { proposal_id: play.proposal!.id },
+                )
+              }
+            >
+              确认并提交
+            </Button>
+            <Button
+              variant="secondary"
+              isDisabled={busy}
+              onClick={() => act("cancel_proposal")}
+            >
+              暂不执行
+            </Button>
+          </footer>
         </dialog>
       )}
       {interlude && (
         <SceneInterlude
+          feedback={feedback}
           scene={story.acts[state.act]?.interlude ?? null}
           onClose={() => setInterlude(false)}
           onContinue={() => {
@@ -648,6 +688,7 @@ export function PlayV3({
             关闭 ×
           </Button>
         </header>
+        {panel && !play.proposal && !interlude && feedback}
         <div className={s.drawerBody}>
           {panel === "phone" && (
             <>

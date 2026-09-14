@@ -47,6 +47,7 @@ export function EventHistory({
         </Button>
       )}
       {history.isPending && <p role="status">正在读取历史…</p>}
+      {history.isSuccess && rows.length === 0 && <p>本局还没有记录。</p>}
       {rows.map((event) => (
         <article key={event.id}>
           <small>

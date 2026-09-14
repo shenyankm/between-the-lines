@@ -1,13 +1,14 @@
 import { Button, Card } from "@heroui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Bookmark, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ErrorNotice } from "../ErrorNotice";
 import { ApiError, api, gameApi } from "../api";
 import { isSave } from "../contracts";
 import { clearIdentityDrafts } from "./game/drafts";
 import s from "../App.module.css";
+import { saveMetrics, saveTitle } from "./savePresentation";
 
 export function Home() {
   const navigate = useNavigate(),
@@ -231,13 +232,27 @@ export function Home() {
 export function Saves() {
   const client = useQueryClient();
   const [category, setCategory] = useState("active"),
-    [manageError, setManageError] = useState<unknown>(null);
+    [manageErrors, setManageErrors] = useState<Record<string, unknown>>({});
+  const activeOperations = useRef(new Set<string>());
+  const [pending, setPending] = useState<string[]>([]);
+  const [managed, setManaged] = useState("");
   async function manage(id: string, operation: string) {
+    if (activeOperations.current.has(id)) return;
+    activeOperations.current.add(id);
+    setPending([...activeOperations.current]);
+    setManageErrors((errors) => ({ ...errors, [id]: null }));
+    setManaged("");
     try {
       await api(`/saves/${id}/manage`, { operation }, undefined, false, isSave);
       await client.invalidateQueries({ queryKey: ["saves"] });
+      setManaged(
+        `存档 ${id.slice(0, 8)} ${operation === "delete" ? "已移入回收站" : operation === "archive" ? "已归档" : "已恢复"}`,
+      );
     } catch (e) {
-      setManageError(e);
+      setManageErrors((errors) => ({ ...errors, [id]: e }));
+    } finally {
+      activeOperations.current.delete(id);
+      setPending([...activeOperations.current]);
     }
   }
   const user = useQuery({
@@ -272,13 +287,13 @@ export function Saves() {
       </Link>
       <h1>我的故事</h1>
       <p className={s.muted}>每个存档都是独立的一段经历。</p>
-      {saves.isLoading && <p>正在读取…</p>}
+      {saves.isLoading && <p role="status">正在读取…</p>}
       <ErrorNotice
         error={user.error || saves.error}
         onRetry={() => void (user.error ? user.refetch() : saves.refetch())}
       />
       {saves.data?.length === 0 && <p>还没有故事，从第一句话开始。</p>}
-      <ErrorNotice error={manageError} />
+      <p role="status">{managed}</p>
       <nav className={s.saveFilters} aria-label="存档分类">
         {[
           ["active", "进行中与已完成"],
@@ -315,10 +330,8 @@ export function Saves() {
               {item.parent_save_id && (
                 <p>分支来自存档 {item.parent_save_id.slice(0, 8)}</p>
               )}
-              <p>{item.state.ending || `第 ${item.state.act} 幕`}</p>
-              <span>
-                专业信用 {item.state.credit} · 心绪消耗 {item.state.stress}
-              </span>
+              <p>{saveTitle(item)}</p>
+              <span>{saveMetrics(item)}</span>
             </Card.Content>
             <Card.Footer className={s.saveActions}>
               {!item.deleted_at && (
@@ -328,6 +341,7 @@ export function Saves() {
               )}
               <Button
                 variant="secondary"
+                isDisabled={pending.includes(item.id)}
                 onClick={() =>
                   void manage(
                     item.id,
@@ -348,12 +362,15 @@ export function Saves() {
               {!item.deleted_at && (
                 <Button
                   variant="secondary"
+                  isDisabled={pending.includes(item.id)}
                   onClick={() => void manage(item.id, "delete")}
                 >
                   移入回收站（30 天）
                 </Button>
               )}
             </Card.Footer>
+            {pending.includes(item.id) && <p role="status">正在处理此存档…</p>}
+            <ErrorNotice error={manageErrors[item.id]} />
           </Card>
         ))}
       </div>
