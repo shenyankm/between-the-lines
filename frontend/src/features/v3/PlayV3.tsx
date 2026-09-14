@@ -18,6 +18,7 @@ import { Actions, Work, type StateV3 } from "./Work";
 import { followUpChoices } from "./followUp";
 import { Relations } from "./Relations";
 import { Discussion } from "./Discussion";
+import { MetricsGuide } from "./MetricsGuide";
 import { ClosingPreview } from "./ClosingPreview";
 import { ActionReceipt } from "./ActionReceipt";
 import { Ending } from "./Ending";
@@ -441,26 +442,29 @@ export function PlayV3({
             {scene.time} · {scene.location}
           </small>
         </div>
-        <div className={s.metrics}>
-          {[
-            ["舆论温度", state.heat],
-            ["专业信用", state.credit],
-            ["内耗", state.rumination],
-            ["工作压力", state.pressure],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <span>{label}</span>
-              <strong>{value}</strong>
-              <meter
-                min={0}
-                max={100}
-                low={30}
-                high={70}
-                value={Number(value)}
-                aria-label={String(label)}
-              />
-            </div>
-          ))}
+        <div>
+          <div className={s.metrics}>
+            {[
+              ["舆论温度", state.heat],
+              ["专业信用", state.credit],
+              ["内耗", state.rumination],
+              ["工作压力", state.pressure],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+                <meter
+                  min={0}
+                  max={100}
+                  low={30}
+                  high={70}
+                  value={Number(value)}
+                  aria-label={String(label)}
+                />
+              </div>
+            ))}
+          </div>
+          <MetricsGuide state={state} saveId={save.id} />
         </div>
       </header>
       {!state.ending && (
