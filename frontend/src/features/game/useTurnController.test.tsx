@@ -537,3 +537,29 @@ it("keeps terminal completion visible when page refresh fails and does not resub
   expect(api.sendTurn).toHaveBeenCalledTimes(1);
   expect(api.gameApi.turn).not.toHaveBeenCalled();
 });
+
+it("keeps committed action evidence through a failed page refresh without inventing missing text", async () => {
+  vi.spyOn(api, "sendTurn").mockResolvedValue(
+    result({
+      status: "failed",
+      text: "",
+      effects: [
+        { text: "已提交说明。" },
+        { text: "" },
+        { changes: { credit: 10 } },
+      ],
+    }),
+  );
+  const h = mount();
+  vi.spyOn(h.client, "invalidateQueries").mockRejectedValue(
+    new Error("刷新断网"),
+  );
+  await act(async () => {
+    await h.result.current.submit(save(), "speak", "说明", "sun");
+  });
+  expect(h.result.current.savedStatus).toContain("行动已保存，角色回复未完成");
+  expect(h.result.current.savedEffects).toEqual(["已提交说明。"]);
+  expect(h.result.current.error).toContain("进度刷新未完成");
+  expect(h.result.current.pending).toBeNull();
+  expect(api.sendTurn).toHaveBeenCalledTimes(1);
+});
