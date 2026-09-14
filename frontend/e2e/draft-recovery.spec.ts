@@ -1,3 +1,4 @@
+import { restoreHistoryPanel } from "./v3-helpers";
 import { start } from "./v3-helpers";
 import { test, expect } from "@playwright/test";
 
@@ -27,7 +28,7 @@ test("successful background recovery clears only the submitted draft", async ({
   await expect(input).toBeEnabled();
   await expect(input).toHaveValue("");
   expect(posts).toBe(1);
-  await page.getByRole("button", { name: "完整记录", exact: true }).click();
+  await restoreHistoryPanel(page);
   await expect(
     page
       .getByRole("region", { name: "完整历史记录" })

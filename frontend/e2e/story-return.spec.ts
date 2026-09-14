@@ -29,7 +29,10 @@ test("returning preserves progress and draft, while logout ends the session", as
   expect(resumed.save.version).toBe(initial.save.version);
   expect(resumed.save.state).toEqual(initial.save.state);
   expect(resumed.reading).toEqual(initial.reading);
-  await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.getByRole("button", { name: "返回首页", exact: true }).click();
+  await page.getByRole("button", { name: "确认返回", exact: true }).click();
+  await page.getByRole("button", { name: "用户菜单" }).click();
+  await page.getByRole("menuitem", { name: "退出登录" }).click();
   await page.getByRole("button", { name: "确认退出", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   expect(logouts).toBe(1);

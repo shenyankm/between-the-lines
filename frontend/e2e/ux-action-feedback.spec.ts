@@ -1,3 +1,4 @@
+import { restoreHistoryPanel } from "./v3-helpers";
 import { test, expect } from "@playwright/test";
 import { start, dialogue, state } from "./v3-helpers";
 
@@ -17,7 +18,7 @@ test("a polite boundary expression has a visible recipient and persisted action 
       );
     })
     .toBe(true);
-  await page.getByRole("button", { name: "完整记录", exact: true }).click();
+  await restoreHistoryPanel(page);
   await expect(
     page.getByRole("region", { name: "最近一轮记录" }),
   ).toContainText("不接受别人代替决定");

@@ -1,3 +1,4 @@
+import { restoreHistoryPanel } from "./v3-helpers";
 import { test, expect } from "@playwright/test";
 import {
   start,
@@ -85,7 +86,7 @@ test("refresh recovers an accepted reply without repeating the request", async (
       ),
     )
     .toBe(0);
-  await page.getByRole("button", { name: "完整记录" }).click();
+  await restoreHistoryPanel(page);
   await expect(
     page
       .getByRole("region", { name: "完整历史记录" })

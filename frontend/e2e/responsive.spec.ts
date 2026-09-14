@@ -1,3 +1,4 @@
+import { restoreHistoryPanel } from "./v3-helpers";
 import {
   expect,
   test,
@@ -78,18 +79,12 @@ test("stage regions never overlap at supported widths and breakpoint boundaries"
   await page.keyboard.press("Escape");
 });
 
-test("all five panels keep close controls and feedback reachable", async ({
+test("all four panels keep close controls and feedback reachable", async ({
   page,
 }, info) => {
   await (await responsiveFixture(page)).stage();
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const name of [
-    "我的手机",
-    "工作系统",
-    "关系图",
-    "知乎众议",
-    "完整记录",
-  ]) {
+  for (const name of ["我的手机", "工作系统", "关系图", "知乎众议"]) {
     const trigger = page.getByRole("button", { name, exact: true });
     await trigger.focus();
     await page.keyboard.press("Enter");
@@ -146,8 +141,6 @@ test("all five panels keep close controls and feedback reachable", async ({
       ).toHaveValue("请求协作支持");
       await capture(page, info, "hr-error");
     } else {
-      if (name === "完整记录")
-        await expect(dialog.getByText("本局还没有记录。")).toBeVisible();
       if (name === "知乎众议")
         await expect(
           dialog.getByText("先核实，再回应", { exact: true }),
@@ -161,13 +154,17 @@ test("all five panels keep close controls and feedback reachable", async ({
     // Native dialog may move focus to browser chrome, but never to inert page controls.
     await dialog.getByRole("button", { name: "关闭面板" }).focus();
     await page.keyboard.press("Shift+Tab");
-    expect(
-      await page.evaluate(
-        () =>
-          document.activeElement === document.body ||
-          !!document.activeElement?.closest("dialog"),
-      ),
-    ).toBe(true);
+    if (name !== "知乎众议") {
+      expect(
+        await page.evaluate(
+          () =>
+            document.activeElement === document.body ||
+            !!document.activeElement?.closest("dialog"),
+        ),
+      ).toBe(true);
+    } else {
+      expect(await dialog.evaluate((el) => el.matches(":modal"))).toBe(false);
+    }
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
@@ -328,8 +325,7 @@ test("long stage history and interlude remain usable with terminal discussion st
     await fixture.stage();
     await noOverflow(page);
     await capture(page, info, `long-stage-${width}`);
-    const trigger = page.getByRole("button", { name: "完整记录", exact: true });
-    await trigger.press("Space");
+    await restoreHistoryPanel(page);
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("article")).toHaveCount(30);
     await dialog
@@ -339,7 +335,7 @@ test("long stage history and interlude remain usable with terminal discussion st
     await noOverflow(page);
     await capture(page, info, `long-history-${width}`);
     await page.keyboard.press("Escape");
-    await expect(trigger).toBeFocused();
+    await expect(dialog).toBeHidden();
     await page
       .getByRole("button", { name: "带着当前进度进入下一幕 →", exact: true })
       .click();
@@ -365,6 +361,7 @@ test("long stage history and interlude remain usable with terminal discussion st
     );
     await noOverflow(page);
     await capture(page, info, `discussion-${status}`);
+    await page.keyboard.press("Escape");
   }
 });
 
@@ -411,7 +408,7 @@ test("phone reference layout preserves context, portraits, and a reachable compo
     await expect(
       dialog.getByText("暂无聊天记录", { exact: true }),
     ).toBeVisible();
-    await expect(dialog.getByText(/当前情景.*第一幕/)).toBeVisible();
+    await expect(dialog.getByText(/当前情景.*第一幕/)).toHaveCount(0);
     await expect(dialog.getByText(/项目最近怎么样/)).toHaveCount(0);
     await dialog
       .getByRole("textbox", { name: "自由表达" })
@@ -424,6 +421,7 @@ test("phone reference layout preserves context, portraits, and a reachable compo
     await page.screenshot({
       path: `../artifacts/phone-reference/${info.project.name}-${width}-empty.png`,
     });
+    await dialog.getByRole("button", { name: "返回会话列表" }).click();
     await dialog.getByRole("button", { name: "关闭面板" }).click();
     await expect(
       page.getByRole("button", { name: "我的手机", exact: true }),
@@ -590,7 +588,7 @@ test("completed scene receipts leave no blank block above phone contacts", async
   await page.screenshot({
     path: "../artifacts/phone-reference/clean-stage.png",
   });
-  await page.getByRole("button", { name: "完整记录", exact: true }).click();
+  await restoreHistoryPanel(page);
   await expect(
     page
       .getByRole("dialog")
@@ -611,13 +609,7 @@ test("tool modals dismiss on the backdrop without dismissing inside clicks or dr
   page,
 }) => {
   await (await responsiveFixture(page)).stage();
-  for (const name of [
-    "我的手机",
-    "工作系统",
-    "关系图",
-    "知乎众议",
-    "完整记录",
-  ]) {
+  for (const name of ["我的手机", "工作系统", "关系图", "知乎众议"]) {
     await page.getByRole("button", { name, exact: true }).click();
     const dialog = page.getByRole("dialog");
     await dialog.locator("#story-panel-title").click();
@@ -630,6 +622,14 @@ test("tool modals dismiss on the backdrop without dismissing inside clicks or dr
     await expect(dialog).toBeVisible();
     await page.mouse.click(2, 2);
     await expect(dialog).toBeHidden();
-    await expect(page.getByRole("button", { name, exact: true })).toBeFocused();
+    if (name === "知乎众议") {
+      await expect(
+        page.getByRole("button", { name, exact: true }),
+      ).toHaveAttribute("aria-expanded", "false");
+    } else {
+      await expect(
+        page.getByRole("button", { name, exact: true }),
+      ).toBeFocused();
+    }
   }
 });

@@ -75,6 +75,8 @@ export async function start(page: Page, guest = false) {
   await expect(dialogue(page)).toBeVisible();
 }
 export async function closePanel(page: Page) {
+  const back = page.getByRole("button", { name: "返回会话列表" });
+  if (await back.isVisible()) await back.click();
   const close = page.getByRole("button", { name: "关闭面板" });
   if (await close.isVisible()) await close.click();
 }
@@ -180,4 +182,28 @@ export async function exitStory(page: Page) {
     page.getByRole("button", { name: "确认提交退出申请", exact: true }).click(),
   );
   await expect(page.getByRole("alertdialog")).toBeVisible();
+}
+
+// The sidebar history entry was removed. Keep coverage for existing tabs whose
+// saved navigation still points at history, without restoring a product entry.
+export async function restoreHistoryPanel(page: Page) {
+  await expect(
+    page.getByRole("button", { name: "我的手机", exact: true }),
+  ).toBeVisible();
+  await closePanel(page);
+  await page.getByRole("button", { name: "我的手机", exact: true }).click();
+  await closePanel(page);
+  await page.evaluate(() => {
+    const saveId = location.pathname.split("/").pop();
+    const key = Object.keys(sessionStorage).find((key) =>
+      key.endsWith(`:form:${saveId}:panel-navigation`),
+    );
+    if (!key) throw new Error("Missing saved panel navigation");
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({ panel: "history", contact: "" }),
+    );
+  });
+  await page.reload();
+  await expect(page.getByRole("dialog")).toBeVisible();
 }

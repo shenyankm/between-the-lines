@@ -1,3 +1,4 @@
+import { restoreHistoryPanel } from "./v3-helpers";
 import { start, readScene, exitStory, commitClick } from "./v3-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import type { TurnInput } from "../src/types";
@@ -108,7 +109,7 @@ test("network loss before acceptance replays the same request once", async ({
     )
     .toBe(0);
   expect(bodies[0]).toEqual(bodies[1]);
-  await page.getByRole("button", { name: "完整记录", exact: true }).click();
+  await restoreHistoryPanel(page);
   await expect(
     page
       .getByRole("region", { name: "完整历史记录" })
@@ -142,7 +143,7 @@ test("malformed stream after acceptance recovers the original result without a s
     .toBe(0);
   await expect(input(page)).toBeEnabled();
   expect(posts).toBe(1);
-  await page.getByRole("button", { name: "完整记录", exact: true }).click();
+  await restoreHistoryPanel(page);
   await expect(
     page
       .getByRole("region", { name: "完整历史记录" })

@@ -1,3 +1,4 @@
+import { restoreHistoryPanel } from "./v3-helpers";
 import { test, expect } from "@playwright/test";
 import {
   start,
@@ -75,7 +76,7 @@ test("phone, private drafts, suggestions and history preserve unrelated progress
   await page.getByRole("button", { name: "我的手机" }).click();
   await page.getByRole("button", { name: /王会计/ }).click();
   await dialogue(page).fill("王会计你好，祝一切顺利。");
-  await page.getByRole("button", { name: "关闭面板" }).click();
+  await closePanel(page);
   expect(await dialogue(page).inputValue()).toBe("现场未发送的草稿");
   await page.getByRole("button", { name: "知乎众议" }).click();
   await expect(page.getByText(/私人对话不会用于搜索/)).toBeVisible();
@@ -86,7 +87,7 @@ test("phone, private drafts, suggestions and history preserve unrelated progress
   await expect(dialogue(page)).toHaveValue("王会计你好，祝一切顺利。");
   await say(page, "王会计你好，祝一切顺利。");
   await closePanel(page);
-  await page.getByRole("button", { name: "完整记录" }).click();
+  await restoreHistoryPanel(page);
   await expect(
     page
       .getByRole("region", { name: "完整历史记录" })
@@ -143,7 +144,10 @@ test("independent saves, continuation, logout and another identity do not mix", 
   await page.goto(first);
   await readScene(page);
   expect((await state(page)).save.state).toEqual(before.state);
-  await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.getByRole("button", { name: "返回首页", exact: true }).click();
+  await page.getByRole("button", { name: "确认返回", exact: true }).click();
+  await page.getByRole("button", { name: "用户菜单" }).click();
+  await page.getByRole("menuitem", { name: "退出登录" }).click();
   await page.getByRole("button", { name: "确认退出", exact: true }).click();
   await page.getByRole("button", { name: "开发环境试玩" }).click();
   await page.getByRole("button", { name: "用户菜单" }).click();

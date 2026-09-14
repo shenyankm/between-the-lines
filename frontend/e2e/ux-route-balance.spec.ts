@@ -1,3 +1,4 @@
+import { restoreHistoryPanel } from "./v3-helpers";
 import { test, expect } from "@playwright/test";
 import { start, perform, state, supplement } from "./v3-helpers";
 
@@ -11,7 +12,7 @@ test("new saves reward correcting a qualified return instead of copying its atta
   expect((await state(page)).save.state.credit).toBe(before);
   await perform(page, "dispute_return");
   expect((await state(page)).save.state.credit).toBe(before + 10);
-  await page.getByRole("button", { name: "完整记录", exact: true }).click();
+  await restoreHistoryPanel(page);
   await expect(
     page.getByRole("region", { name: "最近一轮记录" }),
   ).toContainText("专业信用 +10");

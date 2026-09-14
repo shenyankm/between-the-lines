@@ -174,12 +174,17 @@ test("failed terminal replies require explicit continuation and logout errors st
       json: envelope("internal_error", "退出暂未完成。", "retry"),
     }),
   );
-  await page.getByRole("button", { name: "退出登录" }).click();
+  await page.getByRole("button", { name: "返回首页", exact: true }).click();
+  await page.getByRole("button", { name: "确认返回", exact: true }).click();
+  await page.getByRole("button", { name: "用户菜单" }).click();
+  await page.getByRole("menuitem", { name: "退出登录" }).click();
   await page.getByRole("button", { name: "确认退出" }).click();
   await expect(page.getByText("退出暂未完成。")).toBeVisible();
-  await expect(input).toBeVisible();
+  await expect(
+    page.getByRole("alertdialog", { name: "退出登录？" }),
+  ).toBeVisible();
   await page.unroute("**/api/auth/logout");
-  await page.getByRole("button", { name: "重试退出" }).click();
+  await page.getByRole("button", { name: "确认退出" }).click();
   await expect(
     page.getByRole("button", { name: "开发环境试玩" }),
   ).toBeVisible();

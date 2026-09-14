@@ -29,13 +29,7 @@ test("narrow layouts keep tools and input reachable without horizontal overflow"
         ),
       )
       .toBe(true);
-    for (const name of [
-      "我的手机",
-      "关系图",
-      "完整记录",
-      "返回首页",
-      "退出登录",
-    ]) {
+    for (const name of ["我的手机", "关系图", "返回首页"]) {
       const control = page.getByRole("button", { name, exact: true });
       await control.scrollIntoViewIfNeeded();
       await expect(control).toBeVisible();

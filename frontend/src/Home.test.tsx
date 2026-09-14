@@ -433,3 +433,67 @@ it("shows the real avatar and both account menu entries", async () => {
   fireEvent.error(avatar);
   expect(screen.queryByRole("img", { name: "用户头像" })).toBeNull();
 });
+
+it("offers the configured OAuth link while AI is unavailable", async () => {
+  setup();
+  server.use(
+    http.get("/api/auth/me", () =>
+      HttpResponse.json(apiError("请先登录", { code: "not_authenticated" }), {
+        status: 401,
+      }),
+    ),
+    http.get("/api/config", () =>
+      HttpResponse.json({
+        dev_login: false,
+        zhihu_login: true,
+        agent_mode: "deepseek",
+        model_ready: false,
+      }),
+    ),
+  );
+  mount();
+  expect(
+    (await screen.findByRole("link", { name: "知乎授权登录" })).getAttribute(
+      "href",
+    ),
+  ).toBe("/api/auth/zhihu");
+  expect(
+    await screen.findByText("AI 对话尚未配置。可查看故事，角色对话暂不可用。"),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /开发环境试玩/ })).toBeNull();
+});
+
+it("shows guest binding progress without hiding its existing saves", async () => {
+  setup();
+  server.use(
+    http.get("/api/auth/me", () =>
+      HttpResponse.json({
+        id: "u",
+        name: "",
+        can_play: true,
+        identity_type: "guest",
+        binding_pending: true,
+      }),
+    ),
+    http.get("/api/config", () =>
+      HttpResponse.json({
+        dev_login: false,
+        zhihu_login: true,
+        agent_mode: "deepseek",
+        model_ready: true,
+      }),
+    ),
+  );
+  mount();
+  expect(
+    (
+      await screen.findByRole("link", { name: "绑定知乎，继承进度继续第二幕" })
+    ).getAttribute("href"),
+  ).toBe("/api/auth/zhihu");
+  expect((await screen.findByRole("status")).textContent).toContain(
+    "当前回合结束后将继承试玩存档",
+  );
+  expect(screen.getByRole("button", { name: "用户菜单" }).textContent).toBe(
+    "我",
+  );
+});
