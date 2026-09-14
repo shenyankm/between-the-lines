@@ -8,11 +8,9 @@ test("results explain deltas, read back their source and offer the next actual a
   await perform(page, "next");
   await perform(page, "dispute_return");
   const receipt = page.getByRole("region", { name: "最近一轮记录" });
-  await expect(receipt).toContainText("本次没有指标增减");
+  await expect(receipt).toContainText("专业信用 +10");
   await receipt.getByRole("button", { name: "查看原始事件" }).click();
-  await expect(receipt.locator("blockquote")).toContainText(
-    "李姐核对普通采购模板",
-  );
+  await expect(receipt.locator("blockquote")).toContainText("李姐核对本次申请");
   await receipt.getByText("事项记录的变化", { exact: true }).click();
   await expect(receipt).toContainText("原始材料有效");
   await expect(

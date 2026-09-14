@@ -69,6 +69,7 @@ it("requires both essential attachments and preserves the submitted application"
           purchase: "returned",
           submissions: [
             {
+              kind: "standard",
               version: 1,
               purpose: "原申请",
               evidence: ["quote", "purpose", "urgency", "原始附件"],
@@ -77,6 +78,7 @@ it("requires both essential attachments and preserves the submitted application"
               feedback: "缺少说明",
             },
             {
+              kind: "standard",
               version: 2,
               purpose: "补充",
               evidence: [],
@@ -292,4 +294,34 @@ it("does not submit support requests when the server withholds the action", () =
   expect(screen.getByText("先完成材料")).toBeTruthy();
   fireEvent.submit(button.closest("form")!);
   expect(submit).not.toHaveBeenCalled();
+});
+
+it("requires urgency evidence only when the player explicitly selects urgent procurement", () => {
+  const action = vi.fn();
+  render(
+    <Work
+      state={{ ...state, content_revision: 3 }}
+      options={[option("supplement")]}
+      act={action}
+      busy={false}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("本次采购类型"), {
+    target: { value: "urgent" },
+  });
+  fireEvent.click(screen.getByLabelText("报价单"));
+  fireEvent.click(screen.getByLabelText("用途说明"));
+  expect(
+    screen
+      .getByRole("button", { name: "提交所选材料与说明" })
+      .hasAttribute("disabled"),
+  ).toBe(true);
+  fireEvent.click(screen.getByLabelText("加急依据"));
+  fireEvent.click(screen.getByRole("button", { name: "提交所选材料与说明" }));
+  expect(action).toHaveBeenCalledWith("supplement", "sun", {
+    params: {
+      evidence: ["quote", "purpose", "urgency"],
+      purchase_kind: "urgent",
+    },
+  });
 });

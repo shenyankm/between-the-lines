@@ -76,6 +76,9 @@ export function Work({
   act: Act;
   busy: boolean;
 }) {
+  const [purchaseKind, setPurchaseKind] = useState<"standard" | "urgent">(
+    state.work?.submissions?.at(-1)?.kind ?? "standard",
+  );
   const [purpose, setPurpose] = useState("实验项目耗材采购");
   const [evidence, setEvidence] = useState<("quote" | "purpose" | "urgency")[]>(
     [],
@@ -89,8 +92,12 @@ export function Work({
     !busy && options.some((a) => a.action === name && a.enabled);
   const materialReason =
     unavailableReason(options, "supplement", busy) ||
-    (!evidence.includes("quote") || !evidence.includes("purpose")
-      ? "请同时选择报价单和用途说明。"
+    (!evidence.includes("quote") ||
+    !evidence.includes("purpose") ||
+    (purchaseKind === "urgent" && !evidence.includes("urgency"))
+      ? purchaseKind === "urgent"
+        ? "加急申请还需选择加急依据。"
+        : "请同时选择报价单和用途说明。"
       : "");
   return (
     <>
@@ -161,6 +168,20 @@ export function Work({
               )}
             </Form>
           )}
+          {state.content_revision >= 3 && (
+            <label>
+              本次采购类型
+              <select
+                value={purchaseKind}
+                onChange={(event) =>
+                  setPurchaseKind(event.target.value as "standard" | "urgent")
+                }
+              >
+                <option value="standard">普通采购</option>
+                <option value="urgent">加急采购（需加急依据）</option>
+              </select>
+            </label>
+          )}
           <fieldset>
             <legend>游戏内材料附件</legend>
             {(
@@ -206,9 +227,19 @@ export function Work({
             isDisabled={
               !enabled("supplement") ||
               !evidence.includes("quote") ||
-              !evidence.includes("purpose")
+              !evidence.includes("purpose") ||
+              (purchaseKind === "urgent" && !evidence.includes("urgency"))
             }
-            onClick={() => act("supplement", "sun", { params: { evidence } })}
+            onClick={() =>
+              act("supplement", "sun", {
+                params: {
+                  evidence,
+                  ...(state.content_revision >= 3
+                    ? { purchase_kind: purchaseKind }
+                    : {}),
+                },
+              })
+            }
           >
             提交所选材料与说明
           </Button>
@@ -218,7 +249,8 @@ export function Work({
             <ol>
               {state.work.submissions.map((row, i) => (
                 <li key={i}>
-                  材料第 {row.version} 版 ·{" "}
+                  {row.kind === "urgent" ? "加急采购" : "普通采购"} · 材料第{" "}
+                  {row.version} 版 ·{" "}
                   {row.version === 1 ? "昨日提交" : "本次补充"}
                   <p>{row.purpose}</p>
                   <p>

@@ -120,8 +120,9 @@ def test_no_repeat_score_or_chat_clock():
         "appease",
         "project_review",
     )
-    assert s.rumination >= 70
-    assert s.pressure >= 70
+    # Revision 3 scores restraint once, while project loss still has its cost.
+    assert s.rumination == 50
+    assert s.pressure == 65
     assert not s.ending
 
 

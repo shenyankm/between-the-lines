@@ -119,7 +119,7 @@ class JobRunner:
                 owned = await owned_save(lookup, save_id, user_id)
                 if (
                     owned.story_version == 3
-                    and owned.state.get("content_revision", 1) == 2
+                    and owned.state.get("content_revision", 1) >= 2
                     and self.service.settings.discussions_enabled
                 ):
                     from .zhihu_search import topic_sources

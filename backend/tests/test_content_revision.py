@@ -23,7 +23,7 @@ def test_missing_revision_stays_original_and_readonly():
 
 def test_new_content_revision_is_explicit_and_playable():
     state = initial_v3()
-    assert state.content_revision == 2
+    assert state.content_revision == 3
     assert not SaveOut(id=str(uuid4()), version=0, story_version=3, state=state).read_only
 
 

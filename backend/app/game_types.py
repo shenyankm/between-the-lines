@@ -113,6 +113,7 @@ class Fact(BaseModel):
 
 
 class Submission(BaseModel):
+    kind: Literal["standard", "urgent"] = "standard"
     event_id: str
     version: int
     purpose: str
@@ -170,7 +171,7 @@ class SupportApplication(BaseModel):
 
 class GameStateV3(GameState):
     story_version: Literal[3] = 3
-    content_revision: Literal[1, 2] = 1
+    content_revision: Literal[1, 2, 3] = 1
     support_requests: list[SupportApplication] = Field(default_factory=list)
     node: str = "prologue"
     tick: int = 0
@@ -187,7 +188,7 @@ class GameStateV3(GameState):
 
 def initial_v3() -> GameStateV3:
     return GameStateV3(
-        content_revision=2,
+        content_revision=3,
         act=0,
         credit=50,
         stress=25,

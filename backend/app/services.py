@@ -551,7 +551,7 @@ class GameService:
                 {
                     "save": snapshot(save),
                     "available_actions": available_actions(parse_state(save.state))
-                    if save.story_version == 3 and save.state.get("content_revision", 1) == 2
+                    if save.story_version == 3 and save.state.get("content_revision", 1) >= 2
                     else [],
                     "performance_version": save.version,
                     "performance": load_story(
