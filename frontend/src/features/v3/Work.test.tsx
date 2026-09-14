@@ -325,3 +325,72 @@ it("requires urgency evidence only when the player explicitly selects urgent pro
     },
   });
 });
+
+it("restores unsaved HR input on remount, separates forms, and can clear it explicitly", () => {
+  const props = {
+    state,
+    options: [option("draft_exit"), option("draft_support")],
+    act: vi.fn(),
+    busy: false,
+    draftIdentity: { userId: "hr-remount", saveId: "draft-save" },
+  };
+  const first = render(<Work {...props} />);
+  fireEvent.click(screen.getByRole("button", { name: "人事申请" }));
+  fireEvent.change(screen.getByLabelText("申请理由"), {
+    target: { value: "未保存的理由" },
+  });
+  fireEvent.change(screen.getByLabelText("原因", { exact: true }), {
+    target: { value: "请假原因" },
+  });
+  fireEvent.change(screen.getByLabelText("申请事项"), {
+    target: { value: "help" },
+  });
+  expect(
+    (screen.getByLabelText("原因", { exact: true }) as HTMLTextAreaElement)
+      .value,
+  ).toBe("");
+  first.unmount();
+  render(<Work {...props} />);
+  fireEvent.click(screen.getByRole("button", { name: "人事申请" }));
+  expect((screen.getByLabelText("申请理由") as HTMLTextAreaElement).value).toBe(
+    "未保存的理由",
+  );
+  fireEvent.change(screen.getByLabelText("申请事项"), {
+    target: { value: "leave" },
+  });
+  expect(
+    (screen.getByLabelText("原因", { exact: true }) as HTMLTextAreaElement)
+      .value,
+  ).toBe("请假原因");
+  fireEvent.click(screen.getByRole("button", { name: "清空退出申请输入" }));
+  expect((screen.getByLabelText("申请理由") as HTMLTextAreaElement).value).toBe(
+    "",
+  );
+  expect(props.act).not.toHaveBeenCalled();
+});
+
+it("rejects whitespace fields locally while retaining input for correction", () => {
+  const submit = vi.fn();
+  render(
+    <Work
+      state={state}
+      options={[option("draft_exit"), option("draft_support")]}
+      act={submit}
+      busy={false}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "人事申请" }));
+  fireEvent.change(screen.getByLabelText("申请理由"), {
+    target: { value: "   " },
+  });
+  fireEvent.submit(screen.getByLabelText("申请理由").closest("form")!);
+  expect(screen.getByText("请填写申请理由，不能只输入空格。")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("原因", { exact: true }), {
+    target: { value: "   " },
+  });
+  fireEvent.submit(
+    screen.getByLabelText("原因", { exact: true }).closest("form")!,
+  );
+  expect(screen.getByText("请填写交接或分工安排。")).toBeTruthy();
+  expect(submit).not.toHaveBeenCalled();
+});
