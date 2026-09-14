@@ -361,3 +361,35 @@ def test_reflection_without_player_actions_keeps_facts_and_request_identity(app)
             "alternative" not in n and "role_context" not in n for n in job["result"]["nodes"]
         )
         assert client.post(f"/api/saves/{save['id']}/jobs", json=body).json() == job
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["说清我的边界", "我不接受你替我决定，但是我愿意听你解释", "我希望你以后先问问我再替我作决定"],
+)
+def test_boundary_prose_and_button_commit_the_same_facts(app, text):
+    with TestClient(app) as client:
+        save = step(client, login(client), "begin")
+        value = result(
+            client.post(
+                f"/api/saves/{save['id']}/turns",
+                json={
+                    "request_id": str(uuid4()),
+                    "version": save["version"],
+                    "npc": "sun",
+                    "action": "speak",
+                    "channel": "scene",
+                    "text": text,
+                },
+            )
+        )
+        spoken = value["save"]["state"]
+        button = step(client, step(client, login(client), "begin"), "boundary")["state"]
+        assert (
+            spoken["relationship"]["facts"]["boundary"]["detail"]
+            == button["relationship"]["facts"]["boundary"]["detail"]
+        )
+        assert {k: spoken[k] for k in ("credit", "rumination", "pressure", "heat")} == {
+            k: button[k] for k in ("credit", "rumination", "pressure", "heat")
+        }
+        assert value["effects"]

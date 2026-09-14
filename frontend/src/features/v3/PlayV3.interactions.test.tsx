@@ -799,3 +799,14 @@ it("focuses the decision title before a long confirmation and shows errors insid
   expect(within(dialog).getByRole("alert").textContent).toContain(ctrl.error);
   expect(screen.getAllByRole("alert")).toHaveLength(1);
 });
+
+it("labels the recipient before sending and offers an explicit contact switch", () => {
+  mount();
+  expect(screen.getByText("现场 · 对孙淼说")).toBeTruthy();
+  expect(
+    screen.getByLabelText("自由表达").getAttribute("aria-describedby"),
+  ).toBe("scene-recipient");
+  fireEvent.click(screen.getByRole("button", { name: "切换对话对象" }));
+  fireEvent.click(screen.getByRole("button", { name: /张工/ }));
+  expect(screen.getByText("私聊 · 张工")).toBeTruthy();
+});

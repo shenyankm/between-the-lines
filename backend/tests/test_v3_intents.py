@@ -44,3 +44,17 @@ def test_materials_statement_is_not_a_second_request():
     assert not grounded_v3("材料齐全，请审核", "request_materials", "li", 2)
     assert grounded_v3("还缺哪些材料？", "request_materials", "li", 2)
     assert grounded_v3("请说明缺少材料", "request_materials", "sun", 2)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "我不接受你替我决定，但是我愿意听你解释",
+        "我希望你以后先问问我再替我作决定",
+    ],
+)
+def test_explicit_boundary_with_polite_contrast(text):
+    assert grounded_v3(text, "boundary", "sun", 1)
+    assert not grounded_v3(text, "boundary", "zhang", 1)
+    for wrapped in [f"她说“{text}”", f"如果{text}", f"{text}，但是算了", f"{text}，我要公开质问"]:
+        assert not grounded_v3(wrapped, "boundary", "sun", 1)

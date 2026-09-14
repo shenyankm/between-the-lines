@@ -184,7 +184,8 @@
   margin-top: 5px;
 }
 .composer {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
   gap: 10px;
   margin-top: 16px;
@@ -970,4 +971,22 @@
     gap: 8px 16px;
     padding: 12px;
   }
+}
+
+.recipient {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.recipient p {
+  margin: 0;
+}
+.composer textarea {
+  width: 100%;
+}
+.status > section {
+  padding: 12px 16px;
 }
