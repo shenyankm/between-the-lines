@@ -144,7 +144,7 @@ def create_app(settings: Settings, dependencies: Dependencies | None = None) -> 
 
     production = settings.environment == "production"
     app = FastAPI(
-        title="Between the Lines API",
+        title="章外回声 API",
         lifespan=lifespan,
         docs_url=None if production else "/docs",
         redoc_url=None if production else "/redoc",

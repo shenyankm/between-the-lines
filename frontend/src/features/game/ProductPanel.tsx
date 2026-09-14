@@ -119,7 +119,7 @@ export function ProductPanel({
     });
   }
   const share = [
-    "《言外之意》· 我的故事",
+    "《章外回声》· 我的故事",
     shareEnding && save.state.ending
       ? `${save.state.ending}\n${save.ending_summary ?? ""}`
       : "",

@@ -404,7 +404,7 @@ async def test_diagnostics_whitelist_and_save_management(v2):
             json={"kind": "query", "stack": "secret ?code=abc /assets/app-123.js:12:9"},
         )
     ).status_code == 200
-    for operation in ("archive", "unarchive", "delete", "restore"):
+    for operation in ("delete", "restore"):
         response = await client.post(
             f"/api/saves/{save['id']}/manage", json={"operation": operation}
         )

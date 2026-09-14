@@ -176,13 +176,12 @@ it.each([true, false])(
     await waitFor(() => expect(creates).toBe(existing ? 0 : 1));
   },
 );
-it("completed story continuation skips archived and deleted saves", async () => {
+it("completed story continuation skips deleted saves", async () => {
   setup();
   server.use(
     http.get("/api/saves", () =>
       HttpResponse.json([
         { ...save(), id: "deleted", deleted_at: "2026-09-13" },
-        { ...save(), id: "archive", archived_at: "2026-09-13" },
         { ...save({ state: { ending: "完结" } }), id: "completed" },
       ]),
     ),
@@ -191,39 +190,73 @@ it("completed story continuation skips archived and deleted saves", async () => 
   const link = await screen.findByText("回看最近的故事");
   expect(link.getAttribute("href")).toBe("/play/completed");
 });
-it("archive and recycle operations are explicit and recoverable", async () => {
+it("deleting a save requires an explicit confirmation", async () => {
   setup();
-  let current = {
+  let current: Save = {
     ...save(),
     story_version: 2,
     parent_save_id: "origin",
     last_played_at: "2026-09-13T00:00:00Z",
   };
+  let deletes = 0;
   server.use(
     http.get("/api/saves", () => HttpResponse.json([current])),
     http.post("/api/saves/:id/manage", async ({ request }) => {
       const { operation } = (await request.json()) as { operation: string };
-      current = {
-        ...current,
-        archived_at: operation === "archive" ? "2026-09-13" : null,
-        deleted_at: operation === "delete" ? "2026-09-13" : null,
-      };
+      expect(operation).toBe("delete");
+      deletes++;
+      current = { ...current, deleted_at: "2026-09-14" };
       return HttpResponse.json(current);
     }),
   );
   mount(true);
   await screen.findByRole("heading", { name: "重玩分支" });
-  fireEvent.click(screen.getAllByRole("button", { name: "归档" })[1]!);
+  fireEvent.click(screen.getByRole("button", { name: "删除" }));
+  const dialog = await screen.findByRole("alertdialog", { name: "删除存档" });
+  expect(deletes).toBe(0);
+  fireEvent.click(within(dialog).getByRole("button", { name: "取消" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("alertdialog", { name: "删除存档" })).toBeNull(),
+  );
+  expect(deletes).toBe(0);
+  fireEvent.click(screen.getByRole("button", { name: "删除" }));
+  fireEvent.click(
+    within(
+      await screen.findByRole("alertdialog", { name: "删除存档" }),
+    ).getByRole("button", { name: "确认删除" }),
+  );
+  await screen.findByText("存档 save-1 已删除");
   await waitFor(() =>
     expect(screen.queryByRole("heading", { name: "重玩分支" })).toBeNull(),
   );
-  fireEvent.click(screen.getByRole("button", { name: "归档" }));
-  fireEvent.click(await screen.findByText("恢复归档"));
-  fireEvent.click(screen.getByText("进行中与已完成"));
-  fireEvent.click(await screen.findByText("移入回收站（30 天）"));
-  fireEvent.click(screen.getByText("回收站"));
-  fireEvent.click(await screen.findByText("从回收站恢复"));
-  await waitFor(() => expect(screen.queryByText("从回收站恢复")).toBeNull());
+});
+it("paginates the unified save list six cards at a time", async () => {
+  setup();
+  let rows = Array.from({ length: 7 }, (_, i) => save({ id: `save-${i}` }));
+  server.use(
+    http.get("/api/saves", () => HttpResponse.json(rows)),
+    http.post("/api/saves/:id/manage", ({ params }) => {
+      rows = rows.filter((row) => row.id !== params.id);
+      return HttpResponse.json(save({ id: String(params.id) }));
+    }),
+  );
+  mount(true);
+  await screen.findByText("存档 save-0");
+  expect(screen.getAllByRole("link", { name: "打开故事" })).toHaveLength(6);
+  expect(screen.getByText("第 1 / 2 页")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+  await screen.findByText("存档 save-6");
+  expect(screen.queryByText("存档 save-0")).toBeNull();
+  expect(screen.getAllByRole("link", { name: "打开故事" })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "删除" }));
+  fireEvent.click(
+    within(
+      await screen.findByRole("alertdialog", { name: "删除存档" }),
+    ).getByRole("button", { name: "确认删除" }),
+  );
+  await screen.findByText("存档 save-0");
+  expect(screen.getAllByRole("link", { name: "打开故事" })).toHaveLength(6);
+  expect(screen.queryByRole("button", { name: "下一页" })).toBeNull();
 });
 it("binding completion clears only the guest cache and refreshes inherited saves", async () => {
   setup();
@@ -255,7 +288,7 @@ it("binding completion clears only the guest cache and refreshes inherited saves
   expect(sessionStorage.getItem("draft:v2:other:s:sun")).toBe("other");
 });
 
-it("locks only the changing save and keeps a failed operation next to that save", async () => {
+it("keeps a failed delete in the dialog and locks only that card", async () => {
   setup();
   const hold = deferred();
   let calls = 0;
@@ -266,26 +299,35 @@ it("locks only the changing save and keeps a failed operation next to that save"
     http.post("/api/saves/first/manage", async () => {
       calls++;
       await hold.promise;
-      return HttpResponse.json(apiError("此存档暂时无法归档"), { status: 422 });
+      return HttpResponse.json(apiError("此存档暂时无法删除"), { status: 422 });
     }),
   );
   mount(true);
   await screen.findByText("存档 first");
-  const [first, second] = screen
-    .getAllByRole<HTMLButtonElement>("button", { name: "归档" })
-    .filter((button) => !button.hasAttribute("aria-pressed"));
+  const [first, second] = screen.getAllByRole<HTMLButtonElement>("button", {
+    name: "删除",
+  });
   fireEvent.click(first!);
-  fireEvent.click(first!);
+  const dialog = await screen.findByRole("alertdialog", { name: "删除存档" });
+  const confirm = within(dialog).getByRole<HTMLButtonElement>("button", {
+    name: "确认删除",
+  });
+  fireEvent.click(confirm);
+  fireEvent.click(confirm);
   await waitFor(() => expect(calls).toBe(1));
   expect(first!.disabled).toBe(true);
   expect(second!.disabled).toBe(false);
-  expect(screen.getByText("正在处理此存档…")).toBeTruthy();
+  expect(within(dialog).getByText("正在删除…")).toBeTruthy();
   hold.resolve();
-  await screen.findByText("此存档暂时无法归档");
+  await within(dialog).findByText("此存档暂时无法删除");
+  expect(first!.disabled).toBe(false);
+  fireEvent.click(within(dialog).getByRole("button", { name: "取消" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("alertdialog", { name: "删除存档" })).toBeNull(),
+  );
   expect(
     within(first!.closest(".card") as HTMLElement).getByRole("alert"),
   ).toBeTruthy();
-  expect(first!.disabled).toBe(false);
 });
 it("presents versioned save facts and readable ending labels without rewriting them", () => {
   const legacy = save({ state: { ending: "旧故事的结局" } });

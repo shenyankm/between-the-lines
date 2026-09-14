@@ -110,7 +110,7 @@ export function drawShareCard(
   context.strokeRect(22, 18, 856, canvas.height - 36);
   context.fillStyle = "#455442";
   context.font = `26px ${posterFont}`;
-  context.fillText("言外之意", 53, 70);
+  context.fillText("章外回声", 53, 70);
   context.textAlign = "right";
   context.font = `40px ${posterFont}`;
   context.fillText(visual?.code ?? "", 847, 72);

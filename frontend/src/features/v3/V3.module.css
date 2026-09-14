@@ -1,6 +1,7 @@
 .root {
   display: grid;
-  grid-template-columns: minmax(0, 1000px) 180px;
+  /* The tools column fits 工作系统 · 待处理 (the longest label) plus padding. */
+  grid-template-columns: minmax(0, 1000px) 166px;
   grid-template-areas: "header header" "portraits tools" "dialogue tools" "status status";
   align-content: start;
   justify-content: center;
@@ -108,7 +109,9 @@
   width: min(45%, 340px);
   min-width: 0;
   object-fit: cover;
-  object-position: center 12%;
+  /* Anchor the top: cover overflow must fall to the masked bottom, or the head
+     gets sliced off inside the fixed-height band. */
+  object-position: top;
   mask-image: linear-gradient(#000 75%, transparent);
   filter: drop-shadow(0 8px 20px #0004);
 }
@@ -154,19 +157,30 @@
   width: 100%;
   text-align: left;
   display: grid;
+  /* One full-width track: short lines read from the left like long ones instead
+     of centering the whole block inside the button. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   background: transparent !important;
   border: 0 !important;
 }
-.script span {
+.script > span {
   font-family: serif;
   font-size: 23px;
   line-height: 1.85;
   min-height: 100px;
+  /* Keeps text clear of the hint pinned to the button's bottom-right corner. */
+  padding-bottom: 35px;
 }
 .script small {
+  position: absolute;
+  right: 16px;
+  bottom: 0;
   text-align: right;
   color: #e6ce9d;
+}
+.reserve {
+  visibility: hidden;
 }
 .actions {
   display: flex;
@@ -690,7 +704,15 @@
 }
 .dialogue > strong,
 .script > strong {
+  display: block;
   color: #efcb79;
+  text-align: left;
+  justify-self: start;
+}
+.dialogue > strong[data-side="right"],
+.script > strong[data-side="right"] {
+  text-align: right;
+  justify-self: end;
 }
 .dialogue button {
   background: #253349;
@@ -896,7 +918,7 @@
   .dialogue {
     padding: 16px;
   }
-  .script span,
+  .script > span,
   .current {
     font-size: 18px;
   }
@@ -998,16 +1020,6 @@
 .metricPanel .metrics {
   width: 100%;
 }
-.metricPanel > details {
-  margin-top: 8px;
-  padding: 12px 16px;
-  background: #102033f2;
-  border-radius: var(--ui-radius);
-  line-height: 1.7;
-}
-.metricPanel li {
-  margin-block: 8px;
-}
 @media (max-width: 760px) {
   .metricPanel {
     width: 100%;
@@ -1023,18 +1035,8 @@
     gap: 8px;
     padding: 8px 12px;
   }
-  .metricPanel > details {
-    margin-top: 4px;
-    padding: 8px 12px;
-  }
 }
 
-.metricPanel > summary,
-.readingSettings {
-  background: #102033f2;
-  border-radius: var(--ui-radius);
-  padding: 8px 16px;
-}
 .root summary,
 .root select {
   min-height: 44px;
@@ -1043,17 +1045,7 @@
   cursor: pointer;
   align-content: center;
 }
-.readingSettings {
-  min-width: 0;
-}
-.readingSettings label {
-  margin-block: 8px;
-}
-.readingSettings select {
-  display: block;
-  width: 100%;
-}
-.script span,
+.script > span,
 .current,
 .messages {
   font-size: var(--story-text-size, 18px);
@@ -1068,9 +1060,6 @@
   }
   .header {
     gap: 8px;
-  }
-  .readingSettings {
-    width: 100%;
   }
   .portraits {
     height: 100px;
@@ -1108,8 +1097,5 @@
   .header > div:first-child,
   .metricPanel {
     width: 100%;
-  }
-  .readingSettings {
-    grid-column: 1 / -1;
   }
 }

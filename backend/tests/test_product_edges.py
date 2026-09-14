@@ -182,15 +182,15 @@ async def test_cached_editorial_preserves_identity_and_rejects_cross_act_referen
     assert invalid.status_code == 422
 
 
-async def test_archive_capacity_pagination_and_catalogue_permissions(v2):
+async def test_delete_capacity_pagination_and_catalogue_permissions(v2):
     client, runtime = v2
     runtime.settings.active_save_limit = 1
     save = await create(client)
     assert (await client.post("/api/saves", json={})).status_code == 422
-    await client.post(f"/api/saves/{save['id']}/manage", json={"operation": "archive"})
+    await client.post(f"/api/saves/{save['id']}/manage", json={"operation": "delete"})
     other = await create(client)
     assert (
-        await client.post(f"/api/saves/{save['id']}/manage", json={"operation": "unarchive"})
+        await client.post(f"/api/saves/{save['id']}/manage", json={"operation": "restore"})
     ).status_code == 422
     await act(client, other, "begin")
     for invalid in (
@@ -394,12 +394,12 @@ async def test_oauth_binding_uses_recorded_state_not_callback_identity(
         assert len(tasks) == 1 and tasks[0].user_id == member["id"]
 
 
-async def test_guest_archive_trash_cannot_multiply_trial_saves(v2):
+async def test_guest_delete_cannot_multiply_trial_saves(v2):
     client, _runtime = v2
     await client.post("/api/auth/logout", json={})
     await client.post("/api/auth/guest", json={})
     save = await create(client)
-    for operation in ("archive", "unarchive", "delete", "restore"):
+    for operation in ("delete", "restore"):
         response = await client.post(
             f"/api/saves/{save['id']}/manage", json={"operation": operation}
         )

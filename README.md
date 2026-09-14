@@ -1,10 +1,10 @@
-# Between the Lines · 言外之意
+# 章外回声 · Between the Lines
 
 English | [简体中文](README.zh-CN.md)
 
 **Some words go unspoken. Their consequences do not.**
 
-Between the Lines is an interactive workplace novel about relationships, communication, and personal boundaries. Step into the life of an R&D specialist caught between a missed farewell gathering, a stalled procurement request, and office rumors. Listen to what people say, decide how to respond, and find your own way through.
+章外回声 is an interactive workplace novel about relationships, communication, and personal boundaries. Step into the life of an R&D specialist caught between a missed farewell gathering, a stalled procurement request, and office rumors. Listen to what people say, decide how to respond, and find your own way through.
 
 **[Play in your browser](https://www.openwook.cloud)** · No installation required · Chinese-language story and interface
 

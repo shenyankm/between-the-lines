@@ -175,6 +175,7 @@ test("failed terminal replies require explicit continuation and logout errors st
     }),
   );
   await page.getByRole("button", { name: "退出登录" }).click();
+  await page.getByRole("button", { name: "确认退出" }).click();
   await expect(page.getByText("退出暂未完成。")).toBeVisible();
   await expect(input).toBeVisible();
   await page.unroute("**/api/auth/logout");

@@ -74,7 +74,7 @@ export function EndingShare({ state }: { state: StateV3 }) {
           const url = URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = url;
-          link.download = `言外之意-${state.outcome?.title ?? "本局记录"}.png`;
+          link.download = `章外回声-${state.outcome?.title ?? "本局记录"}.png`;
           link.click();
           setTimeout(() => URL.revokeObjectURL(url), 1000);
           setMessage("分享图片已导出。");

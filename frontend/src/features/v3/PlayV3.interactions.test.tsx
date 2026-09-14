@@ -527,6 +527,7 @@ it("keeps logout errors local and clears only this identity's drafts after retry
     "scene:sun",
   );
   fireEvent.click(screen.getByText("退出登录"));
+  fireEvent.click(screen.getByText("确认退出"));
   await screen.findByText("重试退出");
   expect(readDraft("test-user", "save-1", "sun", "scene:sun").text).toBe(
     "待保留",
@@ -679,7 +680,7 @@ it.each(["busy", "pending"] as const)(
       target: { value: "保留我的草稿" },
     });
     const leave = screen.getByRole<HTMLButtonElement>("button", {
-      name: "返回存档",
+      name: "返回首页",
     });
     expect(leave.disabled).toBe(true);
     fireEvent.click(leave);
@@ -702,7 +703,7 @@ it("returns without logging out or clearing identity cache and drafts", () => {
               <PlayV3 userId="test-user" play={play()} story={story()} />
             }
           />
-          <Route path="/saves" element={<h1>存档列表</h1>} />
+          <Route path="/" element={<h1>故事首页</h1>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -710,8 +711,9 @@ it("returns without logging out or clearing identity cache and drafts", () => {
   fireEvent.change(screen.getByLabelText("自由表达"), {
     target: { value: "下次继续" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "返回存档" }));
-  expect(screen.getByRole("heading", { name: "存档列表" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
+  fireEvent.click(screen.getByRole("button", { name: "确认返回" }));
+  expect(screen.getByRole("heading", { name: "故事首页" })).toBeTruthy();
   expect(client.getQueryData(["user"])).toEqual({ id: "test-user" });
   expect(readDraft("test-user", "save-1", "sun", "scene:sun").text).toBe(
     "下次继续",
@@ -811,28 +813,23 @@ it("labels the recipient before sending and offers an explicit contact switch", 
   expect(screen.getByText("私聊 · 张工")).toBeTruthy();
 });
 
-it("restores reading preferences and rejects invalid stored options", () => {
-  vi.stubGlobal("innerWidth", 390);
+it("applies stored reading preferences and rejects invalid options", () => {
   writeFormDraft("test-user", "save-1", "reading-preferences", {
     size: "invalid",
     speed: "-1",
   });
   let view = mount();
-  expect(screen.getByLabelText<HTMLSelectElement>("文字大小").value).toBe("18");
-  expect(screen.getByLabelText<HTMLSelectElement>("对白显示").value).toBe("35");
-  expect(screen.getByText("四项指标与说明").closest("details")?.open).toBe(
-    false,
-  );
-  fireEvent.change(screen.getByLabelText("文字大小"), {
-    target: { value: "23" },
-  });
-  fireEvent.change(screen.getByLabelText("对白显示"), {
-    target: { value: "0" },
-  });
+  expect(
+    view.container
+      .querySelector("main")
+      ?.style.getPropertyValue("--story-text-size"),
+  ).toBe("18px");
   view.unmount();
+  writeFormDraft("test-user", "save-1", "reading-preferences", {
+    size: "23",
+    speed: "0",
+  });
   view = mount();
-  expect(screen.getByLabelText<HTMLSelectElement>("文字大小").value).toBe("23");
-  expect(screen.getByLabelText<HTMLSelectElement>("对白显示").value).toBe("0");
   expect(
     view.container
       .querySelector("main")

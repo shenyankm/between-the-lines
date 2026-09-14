@@ -222,8 +222,10 @@ test("home saves endings and legacy pages handle empty and long content", async 
       view.count = count;
       await page.goto("/saves");
       await expect(page.getByRole("link", { name: "打开故事" })).toHaveCount(
-        count,
+        Math.min(count, 6),
       );
+      if (count === 7)
+        await expect(page.getByText("第 1 / 2 页")).toBeVisible();
       if (!count)
         await expect(
           page.getByText("还没有故事，从第一句话开始。"),
@@ -255,9 +257,7 @@ test("home saves endings and legacy pages handle empty and long content", async 
     }
   }
   await page.goto("/saves");
-  await expect(page.getByText("各自为界", { exact: true })).toHaveCount(
-    view.count,
-  );
+  await expect(page.getByText("各自为界", { exact: true })).toHaveCount(6);
   await expect(
     page.getByText("professional_boundary", { exact: true }),
   ).toHaveCount(0);

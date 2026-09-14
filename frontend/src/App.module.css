@@ -180,15 +180,17 @@
   color: #b4c0d0;
   font-size: 14px;
 }
-.saveFilters {
+.pager {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 28px 0;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 32px;
 }
-.saveFilters [aria-pressed="true"] {
-  outline: 2px solid #ebc16c;
-  outline-offset: 2px;
+.pagerStatus {
+  font-size: 13px;
+  color: #b4c0d0;
+  letter-spacing: 1px;
 }
 .saveGrid {
   display: grid;
@@ -256,6 +258,61 @@
   color: #ebc16c;
   font-weight: 600;
 }
+/* Same native confirmation shell as the V3 proposal dialog: fixed geometry,
+   focused title, and actions kept outside the scrolling body. */
+.confirm {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(560px, calc(100% - 32px));
+  max-width: calc(100% - 32px);
+  max-height: calc(
+    100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius);
+  background: var(--surface);
+  color: var(--foreground);
+  overflow: hidden;
+}
+.confirm[open] {
+  display: flex;
+  flex-direction: column;
+}
+.confirm::backdrop {
+  background: #05101aba;
+}
+.confirmHeader,
+.confirmActions {
+  padding: 16px 20px;
+  flex-shrink: 0;
+}
+.confirmHeader {
+  border-bottom: 1px solid var(--border);
+}
+.confirmHeader h2 {
+  font-size: 22px;
+  margin: 0;
+}
+.confirmBody {
+  overflow-y: auto;
+  padding: 16px 20px;
+  min-height: 0;
+  line-height: 1.75;
+}
+.confirmBody p {
+  margin: 0 0 10px;
+}
+.confirmActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+}
+.confirmActions > button {
+  flex: 1;
+}
 @media (max-width: 900px) {
   .saveGrid {
     grid-template-columns: 1fr 1fr;
@@ -268,7 +325,10 @@
   .saveGrid {
     grid-template-columns: 1fr;
   }
-  .saveFilters > button {
+  .pager {
+    gap: 10px;
+  }
+  .pager button {
     flex-grow: 1;
   }
   .saveCard {

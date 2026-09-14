@@ -4,6 +4,13 @@ import type { Story } from "../../types";
 import { imageSource } from "../../images";
 import s from "./V3.module.css";
 
+export function speakerSide(speaker: string): "left" | "right" {
+  // 周菱菱 stands on the left of the stage and the others on the right; the
+  // current speaker's name stays on their own side of the dialogue panel.
+  return ["sun", "li", "zhang", "wang", "group"].includes(speaker)
+    ? "right"
+    : "left";
+}
 export function Script({
   lines,
   position,
@@ -41,7 +48,7 @@ export function Script({
         }
       }}
     >
-      <strong>
+      <strong data-side={speakerSide(line.speaker)}>
         {{
           sun: "孙淼",
           li: "李姐",
@@ -53,7 +60,16 @@ export function Script({
           player: "周菱菱",
         }[line.speaker] ?? "现场"}
       </strong>
-      <span>{full ? line.text : line.text.slice(0, count)}</span>
+      <span>
+        <span>{full ? line.text : line.text.slice(0, count)}</span>
+        {!full && (
+          // The hidden remainder keeps the finished line's height from the first
+          // frame so the pinned 点击继续 and the panel never move while revealing.
+          <span className={s.reserve} aria-hidden="true">
+            {line.text.slice(count)}
+          </span>
+        )}
+      </span>
       <small>{full ? "点击继续 →" : "点击显示全文"}</small>
     </Button>
   );

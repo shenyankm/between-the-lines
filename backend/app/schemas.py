@@ -66,7 +66,6 @@ class SaveOut(BaseModel):
     story_version: int = 1
     last_played_at: datetime | None = None
     parent_save_id: str | None = None
-    archived_at: datetime | None = None
     deleted_at: datetime | None = None
 
     @field_validator("state", mode="before")
@@ -273,7 +272,7 @@ class CreateSaveInput(BaseModel):
 
 class SaveManagement(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    operation: Literal["archive", "unarchive", "delete", "restore"]
+    operation: Literal["delete", "restore"]
 
 
 class BranchInput(BaseModel):

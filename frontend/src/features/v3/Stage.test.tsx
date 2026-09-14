@@ -47,6 +47,45 @@ it("finishes a short line automatically", () => {
   void act(() => vi.advanceTimersByTime(35));
   expect(screen.getByText("点击继续 →")).toBeTruthy();
 });
+it("reserves the finished line height from the first frame while revealing", () => {
+  vi.useFakeTimers();
+  const lines = [{ id: "line", speaker: "sun", text: "请先核对工作材料。" }];
+  render(
+    <Script lines={lines} position={0} reduced={false} advance={vi.fn()} />,
+  );
+  void act(() => vi.advanceTimersByTime(35));
+  expect(screen.getByText("请先")).toBeTruthy();
+  // The hidden remainder keeps the pinned hint and the panel from moving.
+  expect(screen.getByText("核对工作材料。")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button"));
+  expect(screen.queryByText("核对工作材料。")).toBeNull();
+  expect(screen.getByText(lines[0]!.text)).toBeTruthy();
+});
+it("keeps the speaker name on the speaker's own side of the panel", () => {
+  const view = render(
+    <Script
+      lines={[{ id: "line", speaker: "player", text: "我是周菱菱。" }]}
+      position={0}
+      reduced
+      advance={vi.fn()}
+    />,
+  );
+  const name = () => view.container.querySelector("strong")!;
+  expect(name().textContent).toBe("周菱菱");
+  expect(name().dataset.side).toBe("left");
+  view.rerender(
+    <Script
+      lines={[{ id: "line", speaker: "sun", text: "你买的啊？" }]}
+      position={0}
+      reduced
+      advance={vi.fn()}
+    />,
+  );
+  expect(name().textContent).toBe("孙淼");
+  expect(name().dataset.side).toBe("right");
+  // Only the current speaker's name is rendered.
+  expect(view.container.querySelectorAll("strong")).toHaveLength(1);
+});
 it("uses authored portrait presence, clothing, and speaker fallback", () => {
   const view = render(<Portraits story={story} speaker="sun" />);
   expect(view.container.querySelectorAll("img")).toHaveLength(2);

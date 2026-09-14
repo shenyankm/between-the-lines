@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Between the Lines API",
+    "title": "章外回声 API",
     "version": "0.1.0"
   },
   "paths": {
@@ -4439,8 +4439,6 @@
           "operation": {
             "type": "string",
             "enum": [
-              "archive",
-              "unarchive",
               "delete",
               "restore"
             ],
@@ -4517,19 +4515,6 @@
             ],
             "default": null,
             "title": "Parent Save Id"
-          },
-          "archived_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Archived At"
           },
           "deleted_at": {
             "anyOf": [

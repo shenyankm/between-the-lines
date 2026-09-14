@@ -48,7 +48,6 @@ def snapshot(save: Save) -> dict[str, Any]:
         story_version=save.story_version,
         last_played_at=save.last_played_at,
         parent_save_id=save.parent_save_id,
-        archived_at=save.archived_at,
         deleted_at=save.deleted_at,
     ).model_dump(mode="json")
 
@@ -116,8 +115,6 @@ class GameService:
                 raise ApiError(409, "save_busy")
             if save.version != body.version:
                 raise ApiError(409, "version_conflict")
-            if save.archived_at:
-                raise ApiError(422, "rule_violation", "请先恢复归档。")
             if user.identity_type == "guest" and body.action == "next" and save.state["act"] == 1:
                 raise ApiError(
                     422, "rule_violation", "第一幕已完成，绑定知乎后继续；试玩进度会保留。"

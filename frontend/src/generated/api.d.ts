@@ -1112,7 +1112,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "archive" | "unarchive" | "delete" | "restore";
+            operation: "delete" | "restore";
         };
         /** SaveOut */
         SaveOut: {
@@ -1147,11 +1147,6 @@ export interface components {
              * @default null
              */
             parent_save_id: string | null;
-            /**
-             * Archived At
-             * @default null
-             */
-            archived_at: string | null;
             /**
              * Deleted At
              * @default null

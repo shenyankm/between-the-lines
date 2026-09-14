@@ -40,7 +40,7 @@ export function Ending({
       >
         <Card.Header className={s.endingPosterHeader}>
           <div className={s.endingBrand}>
-            <span>言外之意</span>
+            <span>章外回声</span>
             <span>{visual?.code}</span>
           </div>
           <small className={s.endingClosed}>本局已收束</small>

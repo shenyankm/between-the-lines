@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions to Between the Lines are welcome: report problems, improve the story and interactions, add tests and documentation, or fix engineering issues. The project uses React, FastAPI, PostgreSQL, and Deep Agents. Start with the [README](README.md) for the player experience and product boundaries.
+Contributions to 章外回声 are welcome: report problems, improve the story and interactions, add tests and documentation, or fix engineering issues. The project uses React, FastAPI, PostgreSQL, and Deep Agents. Start with the [README](README.md) for the player experience and product boundaries.
 
 This guide follows the organization of the [Qwen Code contribution guide](https://github.com/QwenLM/qwen-code/blob/main/CONTRIBUTING.md), with commands and conventions adapted to this repository.
 

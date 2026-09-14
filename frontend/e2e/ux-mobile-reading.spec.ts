@@ -1,18 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { start, dialogue, commitClick } from "./v3-helpers";
 
-test("reading preferences survive refresh and narrow layouts keep tools and input reachable", async ({
+test("narrow layouts keep tools and input reachable without horizontal overflow", async ({
   page,
 }, info) => {
   await start(page);
-  await page.getByText("阅读设置", { exact: true }).click();
-  await page.getByLabel("文字大小").selectOption("23");
-  await page.getByLabel("对白显示").selectOption("0");
-  await page.reload();
-  await page.getByText("阅读设置", { exact: true }).click();
-  await expect(page.getByLabel("文字大小")).toHaveValue("23");
-  await expect(page.getByLabel("对白显示")).toHaveValue("0");
-  await page.getByText("阅读设置", { exact: true }).click();
   await page.screenshot({
     path: `../artifacts/issue-34-${info.project.name}.png`,
     fullPage: true,
@@ -41,7 +33,7 @@ test("reading preferences survive refresh and narrow layouts keep tools and inpu
       "我的手机",
       "关系图",
       "完整记录",
-      "返回存档",
+      "返回首页",
       "退出登录",
     ]) {
       const control = page.getByRole("button", { name, exact: true });

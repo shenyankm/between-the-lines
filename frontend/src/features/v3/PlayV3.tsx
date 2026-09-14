@@ -19,13 +19,12 @@ import { ProductPanel } from "../game/ProductPanel";
 import { EventHistory } from "../game/EventHistory";
 import { SceneInterlude } from "../../SceneInterlude";
 import { imageSource } from "../../images";
-import { Portraits, Script } from "./Stage";
+import { Portraits, Script, speakerSide } from "./Stage";
 import { Actions, Work, type StateV3 } from "./Work";
 import { followUpChoices } from "./followUp";
 import { Relations } from "./Relations";
 import { Discussion } from "./Discussion";
 import { useFormDraft } from "./useFormDraft";
-import { MetricsGuide } from "./MetricsGuide";
 import { ClosingPreview } from "./ClosingPreview";
 import { ActionReceipt } from "./ActionReceipt";
 import { Ending } from "./Ending";
@@ -49,7 +48,7 @@ export function PlayV3({
   const [logoutError, setLogoutError] = useState<unknown>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   async function logout() {
-    if (loggingOut) return;
+    if (loggingOut) return false;
     setLoggingOut(true);
     setLogoutError(null);
     try {
@@ -58,8 +57,10 @@ export function PlayV3({
       await client.cancelQueries();
       client.clear();
       void navigate("/");
+      return true;
     } catch (error) {
       setLogoutError(error);
+      return false;
     } finally {
       setLoggingOut(false);
     }
@@ -77,7 +78,6 @@ export function PlayV3({
   const textSpeed = ["0", "35", "70"].includes(reading.value.speed ?? "")
     ? Number(reading.value.speed)
     : 35;
-  const [metricsOpen, setMetricsOpen] = useState(() => window.innerWidth > 700);
   const [composingNode, setComposingNode] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>(null),
     [contact, setContact] = useState<Npc | "group" | null>(null);
@@ -123,6 +123,27 @@ export function PlayV3({
         confirmationOrigin.current.focus();
     };
   }, [proposalId]);
+  const [leaving, setLeaving] = useState<"home" | "logout" | null>(null);
+  const leaveDialog = useRef<HTMLDialogElement>(null);
+  const leaveOrigin = useRef<HTMLElement | null>(null);
+  // One native dialog backs both account actions: the title takes focus and the
+  // footer buttons carry the decision.
+  useEffect(() => {
+    const dialog = leaveDialog.current;
+    if (!dialog || !leaving) return;
+    leaveOrigin.current = document.activeElement as HTMLElement | null;
+    if (!dialog.open) dialog.showModal();
+    dialog.querySelector<HTMLElement>("#leave-title")?.focus();
+    return () => {
+      if (leaveOrigin.current?.isConnected) leaveOrigin.current.focus();
+    };
+  }, [leaving]);
+  async function confirmLeave() {
+    if (leaving === "home") {
+      setLeaving(null);
+      void navigate("/");
+    } else if (leaving === "logout" && (await logout())) setLeaving(null);
+  }
   const [, refresh] = useState(0);
   const channel =
     panel === "phone" && contact
@@ -430,12 +451,14 @@ export function PlayV3({
       )}
       {controller.status && <p role="status">{controller.status}</p>}
       <ErrorNotice error={controller.issue} message={controller.error} />
-      <ErrorNotice
-        error={logoutError}
-        onRetry={() => void logout()}
-        retryLabel="重试退出"
-        disabled={loggingOut}
-      />
+      {!leaving && (
+        <ErrorNotice
+          error={logoutError}
+          onRetry={() => void logout()}
+          retryLabel="重试退出"
+          disabled={loggingOut}
+        />
+      )}
       {controller.pending && (
         <Button
           variant="secondary"
@@ -472,18 +495,13 @@ export function PlayV3({
     >
       <header className={s.header}>
         <div>
-          <Link to="/">言外之意</Link>
+          <Link to="/">章外回声</Link>
           <h2>{scene.title}</h2>
           <small>
             {scene.time} · {scene.location}
           </small>
         </div>
-        <details
-          className={s.metricPanel}
-          open={metricsOpen}
-          onToggle={(event) => setMetricsOpen(event.currentTarget.open)}
-        >
-          <summary>四项指标与说明</summary>
+        <div className={s.metricPanel}>
           <div className={s.metrics}>
             {[
               ["舆论温度", state.heat],
@@ -505,36 +523,7 @@ export function PlayV3({
               </div>
             ))}
           </div>
-          <MetricsGuide state={state} saveId={save.id} />
-        </details>
-        <details className={s.readingSettings}>
-          <summary>阅读设置</summary>
-          <label>
-            文字大小
-            <select
-              value={textSize}
-              onChange={(event) => reading.update({ size: event.target.value })}
-            >
-              <option value={18}>标准</option>
-              <option value={20}>较大</option>
-              <option value={23}>大字</option>
-            </select>
-          </label>
-          <label>
-            对白显示
-            <select
-              value={textSpeed}
-              onChange={(event) =>
-                reading.update({ speed: event.target.value })
-              }
-            >
-              <option value={35}>标准速度</option>
-              <option value={70}>慢速</option>
-              <option value={0}>直接显示全文</option>
-            </select>
-          </label>
-          <p>系统减少动态效果开启时，始终直接显示全文。</p>
-        </details>
+        </div>
       </header>
       {!state.ending && (
         <Portraits
@@ -568,7 +557,7 @@ export function PlayV3({
             />
           ) : (
             <>
-              <strong>
+              <strong data-side={speakerSide(last?.speaker ?? "system")}>
                 {names[(last?.speaker ?? "system") as keyof typeof names] ??
                   "现场"}
               </strong>
@@ -681,19 +670,19 @@ export function PlayV3({
               savingReading ||
               loggingOut
             }
-            onClick={() => void navigate("/saves")}
+            onClick={() => setLeaving("home")}
             aria-description={
               controller.busy || controller.pending
-                ? "当前回合处理完成后可返回存档"
+                ? "当前回合处理完成后可返回首页"
                 : undefined
             }
           >
-            返回存档
+            返回首页
           </Button>
           <Button
             variant="secondary"
             isDisabled={loggingOut}
-            onClick={() => void logout()}
+            onClick={() => setLeaving("logout")}
           >
             退出登录
           </Button>
@@ -762,6 +751,67 @@ export function PlayV3({
               onClick={() => act("cancel_proposal")}
             >
               暂不执行
+            </Button>
+          </footer>
+        </dialog>
+      )}
+      {leaving && (
+        <dialog
+          ref={leaveDialog}
+          className={s.confirm}
+          role="alertdialog"
+          aria-labelledby="leave-title"
+          onCancel={(event) => {
+            event.preventDefault();
+            if (!loggingOut) setLeaving(null);
+          }}
+        >
+          <header className={s.confirmHeader}>
+            <h2 id="leave-title" tabIndex={-1}>
+              {leaving === "home" ? "返回首页" : "退出登录"}
+            </h2>
+          </header>
+          <div className={s.confirmBody}>
+            {leaving === "home" ? (
+              <p>
+                将回到首页，可以随时继续这段故事；
+                <br />
+                已填写的输入会保留。
+              </p>
+            ) : (
+              <p>
+                退出后需要重新登录才能继续；
+                <br />
+                未提交的输入草稿会被清除，故事进度仍保留在存档中。
+              </p>
+            )}
+            {leaving === "logout" && (
+              <ErrorNotice
+                error={logoutError}
+                onRetry={() => void logout()}
+                retryLabel="重试退出"
+                disabled={loggingOut}
+              />
+            )}
+          </div>
+          <footer className={s.confirmActions}>
+            <Button
+              variant="secondary"
+              isDisabled={loggingOut}
+              onClick={() => void confirmLeave()}
+            >
+              {leaving === "home"
+                ? "确认返回"
+                : loggingOut
+                  ? "正在退出…"
+                  : "确认退出"}
+            </Button>
+            <Button
+              variant="secondary"
+              isDisabled={loggingOut}
+              onClick={() => setLeaving(null)}
+            >
+              取消
             </Button>
           </footer>
         </dialog>

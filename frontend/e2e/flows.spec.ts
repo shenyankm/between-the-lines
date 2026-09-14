@@ -124,10 +124,10 @@ test("independent saves, continuation, logout and another identity do not mix", 
   await perform(page, "boundary");
   const first = page.url(),
     before = (await state(page)).save;
-  await page.getByRole("link", { name: "言外之意", exact: true }).click();
+  await page.getByRole("link", { name: "章外回声", exact: true }).click();
   await page.getByRole("link", { name: "继续上次的故事" }).click();
   await expect(page).toHaveURL(first);
-  await page.getByRole("link", { name: "言外之意", exact: true }).click();
+  await page.getByRole("link", { name: "章外回声", exact: true }).click();
   await page.getByRole("button", { name: "开始新的故事" }).click();
   await expect(page).toHaveURL(/\/play\//);
   await expect(page).not.toHaveURL(first);
@@ -141,6 +141,7 @@ test("independent saves, continuation, logout and another identity do not mix", 
   await readScene(page);
   expect((await state(page)).save.state).toEqual(before.state);
   await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.getByRole("button", { name: "确认退出", exact: true }).click();
   await page.getByRole("button", { name: "开发环境试玩" }).click();
   await page.getByRole("link", { name: "查看全部存档" }).click();
   await expect(page.getByText("还没有故事，从第一句话开始。")).toBeVisible();

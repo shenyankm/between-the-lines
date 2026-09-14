@@ -36,7 +36,6 @@ export function save(
     story_version: 1,
     last_played_at: null,
     parent_save_id: null,
-    archived_at: null,
     deleted_at: null,
     id: over.id ?? "save-1",
     version: over.version ?? 2,

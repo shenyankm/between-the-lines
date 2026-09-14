@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router";
 import { ErrorNotice } from "../ErrorNotice";
 import { ApiError, api, gameApi } from "../api";
 import { isSave } from "../contracts";
+import type { Save } from "../types";
 import { LoginRequired } from "./LoginRequired";
 import { clearIdentityDrafts } from "./game/drafts";
 import s from "../App.module.css";
@@ -54,8 +55,7 @@ export function Home() {
       /* Server identity remains authoritative. */
     }
   }, [user.data, user.error, client]);
-  const activeSaves =
-    saves.data?.filter((s) => !s.deleted_at && !s.archived_at) ?? [];
+  const activeSaves = saves.data?.filter((s) => !s.deleted_at) ?? [];
   const latest = activeSaves.find((s) => !s.state.ending) ?? activeSaves[0];
   async function trial() {
     setBusy(true);
@@ -70,8 +70,7 @@ export function Home() {
       await client.invalidateQueries({ queryKey: ["user"] });
       const existing = await gameApi.saves();
       const save =
-        existing.find((s) => !s.deleted_at && !s.archived_at) ??
-        (await gameApi.createSave());
+        existing.find((s) => !s.deleted_at) ?? (await gameApi.createSave());
       void navigate(`/play/${save.id}`);
     } catch (e) {
       setError(e);
@@ -115,14 +114,14 @@ export function Home() {
             height={40}
             alt=""
           />
-          BETWEEN THE LINES
+          章外回声 · Between the Lines
         </span>
         <span className={s.muted}>互动职场小说 · 第一季</span>
       </nav>
       <div className={s.homeContent}>
         <div className={s.overline}>一段关于关系与边界的故事</div>
         <h1>
-          言外<span>之意</span>
+          章外<span>回声</span>
         </h1>
         <div className={s.titleRule} />
         <p className={s.tagline}>
@@ -230,15 +229,20 @@ export function Home() {
   );
 }
 
+const PAGE_SIZE = 6;
+
 export function Saves() {
   const client = useQueryClient();
-  const [category, setCategory] = useState("active"),
+  const [page, setPage] = useState(1),
+    [confirming, setConfirming] = useState<Save | null>(null),
     [manageErrors, setManageErrors] = useState<Record<string, unknown>>({});
+  const confirmDialog = useRef<HTMLDialogElement>(null);
+  const confirmOrigin = useRef<HTMLElement | null>(null);
   const activeOperations = useRef(new Set<string>());
   const [pending, setPending] = useState<string[]>([]);
   const [managed, setManaged] = useState("");
   async function manage(id: string, operation: string) {
-    if (activeOperations.current.has(id)) return;
+    if (activeOperations.current.has(id)) return false;
     activeOperations.current.add(id);
     setPending([...activeOperations.current]);
     setManageErrors((errors) => ({ ...errors, [id]: null }));
@@ -247,15 +251,33 @@ export function Saves() {
       await api(`/saves/${id}/manage`, { operation }, undefined, false, isSave);
       await client.invalidateQueries({ queryKey: ["saves"] });
       setManaged(
-        `存档 ${id.slice(0, 8)} ${operation === "delete" ? "已移入回收站" : operation === "archive" ? "已归档" : "已恢复"}`,
+        `存档 ${id.slice(0, 8)} ${operation === "delete" ? "已删除" : "已恢复"}`,
       );
+      return true;
     } catch (e) {
       setManageErrors((errors) => ({ ...errors, [id]: e }));
+      return false;
     } finally {
       activeOperations.current.delete(id);
       setPending([...activeOperations.current]);
     }
   }
+  async function confirmDelete() {
+    if (confirming && (await manage(confirming.id, "delete")))
+      setConfirming(null);
+  }
+  // One native dialog serves every card: the title takes focus and the actions
+  // stay outside the scrolling body.
+  useEffect(() => {
+    const dialog = confirmDialog.current;
+    if (!dialog || !confirming) return;
+    confirmOrigin.current = document.activeElement as HTMLElement | null;
+    if (!dialog.open) dialog.showModal();
+    dialog.querySelector<HTMLElement>("#delete-save-title")?.focus();
+    return () => {
+      if (confirmOrigin.current?.isConnected) confirmOrigin.current.focus();
+    };
+  }, [confirming]);
   const user = useQuery({
     queryKey: ["user"],
     queryFn: ({ signal }) => gameApi.user(signal),
@@ -280,13 +302,14 @@ export function Saves() {
         )}
       </main>
     );
-  const visibleSaves = (saves.data ?? []).filter((item) =>
-    category === "trash"
-      ? !!item.deleted_at
-      : category === "archived"
-        ? !!item.archived_at && !item.deleted_at
-        : !item.archived_at && !item.deleted_at,
+  const visibleSaves = (saves.data ?? []).filter((item) => !item.deleted_at);
+  const pageCount = Math.max(1, Math.ceil(visibleSaves.length / PAGE_SIZE));
+  const current = Math.min(page, pageCount);
+  const pageItems = visibleSaves.slice(
+    (current - 1) * PAGE_SIZE,
+    current * PAGE_SIZE,
   );
+  const deleting = !!confirming && pending.includes(confirming.id);
   return (
     <main className={s.page}>
       <Link to="/" className={s.back}>
@@ -297,26 +320,12 @@ export function Saves() {
       <p className={s.muted}>每个存档都是独立的一段经历。</p>
       {saves.isLoading && <p role="status">正在读取…</p>}
       <ErrorNotice error={saves.error} onRetry={() => void saves.refetch()} />
-      {saves.data?.length === 0 && <p>还没有故事，从第一句话开始。</p>}
+      {saves.data && visibleSaves.length === 0 && (
+        <p>还没有故事，从第一句话开始。</p>
+      )}
       <p role="status">{managed}</p>
-      <nav className={s.saveFilters} aria-label="存档分类">
-        {[
-          ["active", "进行中与已完成"],
-          ["archived", "归档"],
-          ["trash", "回收站"],
-        ].map(([key, label]) => (
-          <Button
-            variant="secondary"
-            key={key}
-            onClick={() => setCategory(key!)}
-            aria-pressed={category === key}
-          >
-            {label}
-          </Button>
-        ))}
-      </nav>
-      <div className={s.saveGrid} data-count={Math.min(visibleSaves.length, 6)}>
-        {visibleSaves.map((item) => (
+      <div className={s.saveGrid} data-count={pageItems.length}>
+        {pageItems.map((item) => (
           <Card key={item.id} className={s.saveCard}>
             <Card.Header>
               <Bookmark size={20} aria-hidden="true" />
@@ -339,48 +348,86 @@ export function Saves() {
               <span>{saveMetrics(item)}</span>
             </Card.Content>
             <Card.Footer className={s.saveActions}>
-              {!item.deleted_at && (
-                <Link className={s.openSave} to={`/play/${item.id}`}>
-                  打开故事 <ArrowRight size={16} />
-                </Link>
-              )}
+              <Link className={s.openSave} to={`/play/${item.id}`}>
+                打开故事 <ArrowRight size={16} />
+              </Link>
               <Button
                 variant="secondary"
                 isDisabled={pending.includes(item.id)}
-                onClick={() =>
-                  void manage(
-                    item.id,
-                    item.deleted_at
-                      ? "restore"
-                      : item.archived_at
-                        ? "unarchive"
-                        : "archive",
-                  )
-                }
+                onClick={() => setConfirming(item)}
               >
-                {item.deleted_at
-                  ? "从回收站恢复"
-                  : item.archived_at
-                    ? "恢复归档"
-                    : "归档"}
+                删除
               </Button>
-              {!item.deleted_at && (
-                <Button
-                  variant="secondary"
-                  isDisabled={pending.includes(item.id)}
-                  onClick={() => void manage(item.id, "delete")}
-                >
-                  移入回收站（30 天）
-                </Button>
-              )}
             </Card.Footer>
             {pending.includes(item.id) && <p role="status">正在处理此存档…</p>}
-            <ErrorNotice error={manageErrors[item.id]} />
+            {confirming?.id !== item.id && (
+              <ErrorNotice error={manageErrors[item.id]} />
+            )}
           </Card>
         ))}
       </div>
-      {saves.data && visibleSaves.length === 0 && saves.data.length > 0 && (
-        <p className={s.muted}>这个分类还没有存档。</p>
+      {pageCount > 1 && (
+        <nav className={s.pager} aria-label="存档分页">
+          <Button
+            variant="secondary"
+            isDisabled={current <= 1}
+            onClick={() => setPage(current - 1)}
+          >
+            上一页
+          </Button>
+          <span className={s.pagerStatus}>
+            第 {current} / {pageCount} 页
+          </span>
+          <Button
+            variant="secondary"
+            isDisabled={current >= pageCount}
+            onClick={() => setPage(current + 1)}
+          >
+            下一页
+          </Button>
+        </nav>
+      )}
+      {confirming && (
+        <dialog
+          ref={confirmDialog}
+          className={s.confirm}
+          role="alertdialog"
+          aria-labelledby="delete-save-title"
+          onCancel={(event) => {
+            event.preventDefault();
+            if (!deleting) setConfirming(null);
+          }}
+        >
+          <header className={s.confirmHeader}>
+            <h2 id="delete-save-title" tabIndex={-1}>
+              删除存档
+            </h2>
+          </header>
+          <div className={s.confirmBody}>
+            <p>
+              删除后，这个存档会从存档列表中移除。
+              <br />
+              存档 {confirming.id.slice(0, 8)} · {saveTitle(confirming)}
+            </p>
+            <ErrorNotice error={manageErrors[confirming.id]} />
+          </div>
+          <footer className={s.confirmActions}>
+            <Button
+              variant="secondary"
+              isDisabled={deleting}
+              onClick={() => void confirmDelete()}
+            >
+              {deleting ? "正在删除…" : "确认删除"}
+            </Button>
+            <Button
+              variant="secondary"
+              isDisabled={deleting}
+              onClick={() => setConfirming(null)}
+            >
+              取消
+            </Button>
+          </footer>
+        </dialog>
       )}
     </main>
   );

@@ -9,7 +9,6 @@ function save({ id = "responsive-save" } = {}): Save {
     story_version: 1,
     last_played_at: null,
     parent_save_id: null,
-    archived_at: null,
     deleted_at: null,
     scene_intro: "这次，你决定先把事情问清楚。",
     ending_summary: null,

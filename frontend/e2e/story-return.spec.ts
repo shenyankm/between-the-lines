@@ -16,8 +16,12 @@ test("returning preserves progress and draft, while logout ends the session", as
     path: `../artifacts/story-return/${info.project.name}.png`,
     fullPage: true,
   });
-  await page.getByRole("button", { name: "返回存档", exact: true }).click();
-  await expect(page).toHaveURL(/\/saves$/);
+  await page.getByRole("button", { name: "返回首页", exact: true }).click();
+  await page.getByRole("button", { name: "确认返回", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("button", { name: "开始新的故事" }),
+  ).toBeVisible();
   expect(logouts).toBe(0);
   await page.locator(`a[href="${new URL(storyUrl).pathname}"]`).click();
   await expect(dialogue(page)).toHaveValue("等我回来再继续讨论。");
@@ -26,6 +30,7 @@ test("returning preserves progress and draft, while logout ends the session", as
   expect(resumed.save.state).toEqual(initial.save.state);
   expect(resumed.reading).toEqual(initial.reading);
   await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.getByRole("button", { name: "确认退出", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   expect(logouts).toBe(1);
 });
@@ -45,7 +50,7 @@ test("return stays disabled while a submitted turn has no result", async ({
   const originalUrl = page.url();
   await dialogue(page).fill("请说明当前工作安排。");
   await page.getByRole("button", { name: "发送", exact: true }).click();
-  const leave = page.getByRole("button", { name: "返回存档", exact: true });
+  const leave = page.getByRole("button", { name: "返回首页", exact: true });
   await expect(leave).toBeDisabled();
   expect(page.url()).toBe(originalUrl);
   release();

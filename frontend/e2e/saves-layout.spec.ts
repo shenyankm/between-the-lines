@@ -7,19 +7,27 @@ test("save cards balance counts and keep long metadata within the viewport", asy
   await start(page);
   const sample = (await state(page)).save;
   let count = 1;
+  const deleted = new Set<string>();
+  const listed = () =>
+    Array.from({ length: count }, (_, i) => ({
+      ...sample,
+      id: `sample-${i}`,
+      parent_save_id: "long-parent-".repeat(20),
+      state: {
+        ...sample.state,
+        ending: "一段很长但需要完整阅读的结局说明".repeat(5),
+      },
+    })).filter((row) => !deleted.has(row.id));
   await page.route("**/api/saves", (route) =>
-    route.fulfill({
-      json: Array.from({ length: count }, (_, i) => ({
-        ...sample,
-        id: `sample-${i}`,
-        parent_save_id: "long-parent-".repeat(20),
-        state: {
-          ...sample.state,
-          ending: "一段很长但需要完整阅读的结局说明".repeat(5),
-        },
-      })),
-    }),
+    route.fulfill({ json: listed() }),
   );
+  await page.route("**/api/saves/*/manage", (route) => {
+    const id = new URL(route.request().url()).pathname.split("/")[3]!;
+    deleted.add(id);
+    return route.fulfill({
+      json: { ...sample, id, deleted_at: new Date().toISOString() },
+    });
+  });
   for (count = 1; count <= 6; count++) {
     await page.goto("/saves");
     await expect(page.getByRole("link", { name: "打开故事" })).toHaveCount(
@@ -38,6 +46,14 @@ test("save cards balance counts and keep long metadata within the viewport", asy
     fullPage: true,
     quality: 75,
   });
-  await page.getByRole("button", { name: "归档", exact: true }).first().click();
-  await expect(page.getByText("这个分类还没有存档。")).toBeVisible();
+  // The loop leaves count at 7; pin the final state to the six listed cards.
+  count = 6;
+  await page.goto("/saves");
+  await expect(page.getByRole("link", { name: "打开故事" })).toHaveCount(6);
+  await page.getByRole("button", { name: "删除", exact: true }).first().click();
+  const dialog = page.getByRole("alertdialog", { name: "删除存档" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "确认删除" }).click();
+  await expect(page.getByText("存档 sample-0 已删除")).toBeVisible();
+  await expect(page.getByRole("link", { name: "打开故事" })).toHaveCount(5);
 });

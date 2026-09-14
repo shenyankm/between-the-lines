@@ -1,4 +1,4 @@
-# Between the Lines v2 product upgrade and release guide
+# 章外回声 v2 product upgrade and release guide
 
 This iteration retains React, FastAPI, PostgreSQL, Deep Agents, existing DeepSeek configuration, and one API process. New stories default to v2; existing stories continue as v1. Production launch separately requires real Zhihu OAuth, real-model semantic evaluation, off-host deployment, and target-player testing. Mock tests cannot replace these.
 

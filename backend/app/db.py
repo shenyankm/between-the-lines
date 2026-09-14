@@ -69,7 +69,6 @@ class Save(Base):
         String(150), default=new_id, server_default=""
     )
     parent_save_id: Mapped[str | None] = mapped_column(String(36))
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

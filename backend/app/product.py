@@ -55,11 +55,7 @@ async def check_save_capacity(db: AsyncSession, user: User, limit: int) -> None:
                 Save.user_id == user.id,
                 Save.story_version == 3,
                 Save.state["content_revision"].as_integer() >= 2,
-                *(
-                    []
-                    if user.identity_type == "guest"
-                    else [Save.archived_at.is_(None), Save.deleted_at.is_(None)]
-                ),
+                *([] if user.identity_type == "guest" else [Save.deleted_at.is_(None)]),
             )
         )
         or 0
@@ -70,7 +66,7 @@ async def check_save_capacity(db: AsyncSession, user: User, limit: int) -> None:
             "rule_violation",
             "访客只能保留一个试玩存档。"
             if user.identity_type == "guest"
-            else "已有二十个未归档存档，请先归档。",
+            else "已有二十个存档，请先删除不再游玩的存档。",
         )
 
 

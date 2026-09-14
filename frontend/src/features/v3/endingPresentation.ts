@@ -49,7 +49,7 @@ export function expressionStyle(state: StateV3) {
 
 export function shareLines(state: StateV3, facts: string[]) {
   return [
-    `《言外之意》 · 本局已收束${endingVisual(state) ? ` · ${endingVisual(state)!.code}` : ""}`,
+    `《章外回声》 · 本局已收束${endingVisual(state) ? ` · ${endingVisual(state)!.code}` : ""}`,
     state.outcome?.title ?? state.ending ?? "本局记录",
     ...(endingVisual(state) ? [endingVisual(state)!.subtitle] : []),
     `我的表达风格：${expressionStyle(state)}`,

@@ -38,7 +38,7 @@ export function GameStage({
             height={40}
             alt=""
           />
-          <span>言外之意</span>
+          <span>章外回声</span>
         </Link>
         <div className={s.chapterNav}>
           {story.acts.slice(1, 4).map((a, i) => (
