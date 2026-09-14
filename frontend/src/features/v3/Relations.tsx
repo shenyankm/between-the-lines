@@ -1,3 +1,5 @@
+import { RelationshipScene } from "./RelationshipScene";
+import type { StateV3 } from "./Work";
 import { Button } from "@heroui/react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -131,15 +133,21 @@ export function Relations({
       ) : (
         <p>选择一个人物，查看当前关系及其依据。</p>
       )}
+      {save.story_version === 3 && (
+        <RelationshipScene state={save.state as StateV3} saveId={save.id} />
+      )}
+      <h3>接下来，我想怎样回应</h3>
       <Actions
-        options={options.filter((a) =>
-          [
-            "cut_ties",
-            "keep_distance",
-            "repair_friendship",
-            "acknowledge_harm",
-            "complete_remedy",
-          ].includes(a.action),
+        options={options.filter(
+          (a) =>
+            !a.completed &&
+            [
+              "cut_ties",
+              "keep_distance",
+              "repair_friendship",
+              "acknowledge_harm",
+              "complete_remedy",
+            ].includes(a.action),
         )}
         act={act}
         busy={busy}

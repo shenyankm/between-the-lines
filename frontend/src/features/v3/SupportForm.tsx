@@ -96,14 +96,28 @@ export function SupportForm({
                   ? "已提交，等待处理"
                   : "草稿，尚未提交"}
           </p>
-          {current.approval && <p>{current.approval.detail}</p>}
+          {current.submitted && <p>我：已提交上述申请与工作安排。</p>}
+          {current.approval ? (
+            <section aria-label="负责人处理答复">
+              <h4>张工的答复 · 已记录</h4>
+              <p>{current.approval.detail}</p>
+              <p>批准与实际落实不同。你可以稍后落实；此前不会记录恢复效果。</p>
+            </section>
+          ) : (
+            current.submitted && (
+              <p>尚未记录负责人的答复。查看处理意见时才会推进到答复场景。</p>
+            )
+          )}
+          {current.completion && <p>实际落实：{current.completion.detail}</p>}
           <Actions
-            options={options.filter((option) =>
-              [
-                "submit_support",
-                "review_support",
-                current.kind === "leave" ? "rest" : "request_help",
-              ].includes(option.action),
+            options={options.filter(
+              (option) =>
+                !option.completed &&
+                [
+                  "submit_support",
+                  "review_support",
+                  current.kind === "leave" ? "rest" : "request_help",
+                ].includes(option.action),
             )}
             act={act}
             busy={busy}
