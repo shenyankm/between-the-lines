@@ -877,6 +877,15 @@ export function PlayV3({
           {state.quiet_turns >= 3 && (
             <p>这几轮没有新增进展。可以查看工作事项、表达边界，或继续故事。</p>
           )}
+          {(state.pressure >= 70 || state.rumination >= 70) && (
+            <p>
+              {state.pressure >= 70 && state.rumination >= 70
+                ? "工作压力和内耗都很高。可以在工作系统的人事页面申请休息或求助，也可以考虑离开。"
+                : state.pressure >= 70
+                  ? "工作压力很高。可以在工作系统的人事页面申请休息或分工协助。"
+                  : "内耗很高，反复猜测消耗精力。可以找人聊聊，或在工作系统申请休息。"}
+            </p>
+          )}
           {!panel && !play.proposal && !interlude && feedback}
         </section>
       )}
@@ -912,7 +921,10 @@ export function PlayV3({
                     ? " · 未读"
                     : id === "work" && state.work?.purchase === "returned"
                       ? " · 待处理"
-                      : ""}
+                      : id === "work" &&
+                          (state.pressure >= 70 || state.rumination >= 70)
+                        ? " · 可申请休息"
+                        : ""}
                 </span>
                 {id === "phone" ? (
                   <Smartphone size={18} aria-hidden="true" />

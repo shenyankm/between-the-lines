@@ -30,16 +30,22 @@ export function ActionReceipt({
   const next: Partial<Record<Action, Action[]>> = {
     request_materials: ["dispute_return", "supplement"],
     supplement: ["approve_purchase"],
-    dispute_return: ["approve_purchase"],
+    dispute_return: ["approve_purchase", "confirm_responsibility"],
     approve_purchase: ["deliver", "next"],
+    deliver: ["project_review"],
     clarify: ["review_clarification"],
+    review_clarification: ["confirm_responsibility", "project_review"],
+    confirm_responsibility: ["change_rules"],
+    change_rules: ["project_review"],
+    request_extension: ["project_review"],
+    project_review: ["correct_loss", "deliver", "apply_rules", "follow_up"],
     repair_friendship: ["acknowledge_harm", "cut_ties", "keep_distance"],
     acknowledge_harm: ["complete_remedy", "cut_ties", "keep_distance"],
+    complete_remedy: ["project_review", "follow_up"],
     draft_support: ["submit_support"],
     submit_support: ["review_support"],
     review_support: ["rest", "request_help"],
     draft_exit: ["submit_exit"],
-    project_review: ["correct_loss", "deliver"],
   };
   const lastAction = actions.at(-1)?.action;
   const choices = (play.available_actions ?? []).filter(

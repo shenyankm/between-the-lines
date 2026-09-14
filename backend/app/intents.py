@@ -116,6 +116,17 @@ def grounded_v3(text: str, action: str, npc: str, act: int) -> bool:
         "close_story": r"(我想|我要|我决定).{0,6}(结束|收束).{0,4}(本局|这一局|故事)",
         "submit_exit": r"(确认|正式).{0,4}提交.{0,6}(离职|调岗|退出).{0,4}申请",
         "draft_exit": r"(预览|草拟|填写).{0,6}(离职|调岗|退出).{0,4}申请",
+        "project_review": r"(进入|开始|启动|申请).{0,6}(项目|工作).{0,4}复核",
+        "confirm_responsibility": r"(确认|明确|核实).{0,8}(反馈|退回).{0,4}责任",
+        "change_rules": r"(提出|建议|制定).{0,10}(反馈|处理).{0,6}(时限|规则|约定)",
+        "apply_rules": r"(按|依照|用).{0,6}(新|约定的?).{0,4}(约定|规则|办法).{0,6}(处理|执行|工作)",
+        "deliver": r"(提交|交付).{0,8}(实验|项目).{0,4}(结果|报告|成果)",
+        "correct_loss": r"(纠正|恢复|撤销).{0,8}(职责|转交|损失)",
+        "request_extension": r"(申请|请求).{0,6}延期",
+        "review_clarification": r"(查看|看看).{0,8}(群内|群里).{0,6}(回应|后续|反应)",
+        "follow_up": r"(进行|开始).{0,6}(后续|下一次).{0,4}协作",
+        "acknowledge_harm": r"(谈清|说清|承认).{0,8}(伤害|问题|错误)",
+        "complete_remedy": r"(落实|完成|做出).{0,8}(补救|更正|弥补)",
     }
     for key, pattern in MAJOR_PATTERNS.items():
         if key != "leave":
