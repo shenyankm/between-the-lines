@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a reproducible problem with gameplay, saves, the UI, or development tooling.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues and PRs before submitting. Describe one problem per report.
+        Redact private dialogue, keys, tokens, cookies, and personal data from all examples and attachments. Do not upload raw saves, database backups, or `.env` files.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What went wrong, and how does it affect you?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the starting state and actions. If intermittent, describe the last occurrence and frequency.
+      placeholder: |
+        1. Start a new save or load an existing save...
+        2. Perform...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      placeholder: |
+        Expected:
+        Actual:
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and version
+      description: Include what you know; use "unknown" for unavailable details. For tooling problems, include the command and relevant tool versions.
+      placeholder: |
+        Commit or release:
+        Local setup or hosted deployment:
+        OS, browser/version, device:
+        Python, Node.js, pnpm versions (if relevant):
+    validations:
+      required: true
+  - type: dropdown
+    id: model_mode
+    attributes:
+      label: Model mode
+      options:
+        - Mock
+        - Real DeepSeek (deepseek-flash)
+        - Unknown / not applicable
+    validations:
+      required: true
+  - type: textarea
+    id: save_and_recovery
+    attributes:
+      label: Story, save, and recovery context
+      description: For gameplay or recovery problems, include the story version, act, new or existing save, and whether a refresh, disconnect, retry, restart, or save switch occurred. Omit private story content.
+      placeholder: |
+        Story version and act:
+        New save or existing save (created before which update, if known):
+        Refresh / disconnect / retry / restart / save switch:
+        Was the draft retained? Did an action or committed fact disappear or repeat?
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Add relevant error codes, request/turn IDs, log excerpts, or screenshots. Include related issues or a workaround if known; use only public-safe evidence.

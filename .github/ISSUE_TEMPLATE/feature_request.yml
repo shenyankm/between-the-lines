@@ -1,0 +1,46 @@
+name: Feature or improvement proposal
+description: Propose a feature, story or interaction improvement, documentation change, or refactor.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues and PRs first. Use this form to discuss new features, large refactors, story-direction changes, and model-boundary changes before implementation.
+        Small documentation corrections and clear local fixes can go directly to a PR. Keep private dialogue and credentials out of examples.
+  - type: textarea
+    id: need
+    attributes:
+      label: Problem or user need
+      description: Who needs this, in what situation, and what is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior and scope
+      description: Describe the desired outcome, a concrete example, and what is outside this proposal. Implementation details are optional.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What observable results would demonstrate that this proposal is complete?
+      placeholder: |
+        - Given ..., when ..., then ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing workarounds or other approaches and their tradeoffs.
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and project boundaries
+      description: Note known effects on existing saves, story facts, NPC information isolation, drafts/recovery, API contracts, migrations, or deployment. State if unknown or not applicable. The current model boundary is official DeepSeek deepseek-flash; explain any proposed boundary change explicitly.
+  - type: textarea
+    id: references
+    attributes:
+      label: References or mockups
+      description: Link related issues, public sources, or sketches. For story/content proposals, distinguish your editorial suggestions from sourced material.

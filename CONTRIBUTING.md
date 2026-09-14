@@ -10,6 +10,8 @@ This guide follows the organization of the [Qwen Code contribution guide](https:
 
 Search existing issues and PRs before starting. A bug report should include reproduction steps, expected and actual behavior, environment details, and redacted logs or screenshots. For save or turn-recovery problems, include the story version, act, and whether a refresh or disconnection occurred. Do not publish private conversations, session cookies, or keys.
 
+Use the [bug report form](.github/ISSUE_TEMPLATE/bug_report.yml) for defects and the [feature or improvement form](.github/ISSUE_TEMPLATE/feature_request.yml) for proposals, including story, interaction, documentation, and refactoring work. A blank issue remains available when neither form fits. Unknown technical details can be marked as such.
+
 Discuss new features, large refactors, story-direction changes, and model-boundary changes in an issue with the maintainer first. Small documentation corrections and clear local fixes can go directly to a PR with an explanation. An already agreed task does not need another round of routine confirmation.
 
 ### Pull requests
@@ -32,25 +34,7 @@ feat(story): add progress-aware relationship hints
 docs(contributing): document local verification
 ```
 
-Suggested PR description:
-
-```markdown
-## Problem and change
-
-Describe the trigger, previous behavior, new behavior, and related issue.
-
-## Verification
-
-List commands, results, and scenarios not covered.
-
-## Demo
-
-Screenshots, video, or "No visible change."
-
-## Compatibility and operations
-
-Describe save, API, migration, configuration, or deployment implications, or state that there are none.
-```
+The [default PR template](.github/pull_request_template.md) prompts for the problem and resulting behavior, verification, a demo, and compatibility or operational impacts. Keep each section proportional to the change; state when a section does not apply and explain skipped checks.
 
 ## Development environment
 
