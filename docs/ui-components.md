@@ -20,7 +20,9 @@ V3 follows system `prefers-reduced-motion` changes directly. The retired identit
 
 ## Ending page
 
-HeroUI Card separates the ending header, responsive narrative/facts columns and action footer. Paragraph breaks are rendered as text nodes, not HTML. Facts, outcome lists, copy text and the share canvas keep their existing data sources. On ending screens the navigation returns to normal document flow so the wide card cannot cover the work/history controls.
+HeroUI Card retains the ending region and action footer. The 1064 poster area uses self-hosted Noto Serif SC, a centered title, E01–E06 code, full-width illustration and narrative below it. The user's later visual clarification replaces the initial desktop split-column proposal with the same vertical poster order on all widths. CSS background slices retain the original paper ornaments without baked-in text or duplicate portrait edges.
+
+Saved facts and share controls follow the poster in ordinary document flow. Share selection permits at most three saved achievements/unresolved facts; default copy contains the ending, expression style and four final metrics. Preview, clipboard and export derive from the same lines. PNG is 900px wide and at least 1600px tall, with measured wrapping, awaited fonts/images, and explicit failure states. Noto Serif SC loads by unicode-range only where the ending uses it; ordinary game typography remains unchanged. Paragraphs are rendered as text, not HTML. Navigation remains in normal flow and never overlays the poster.
 
 ## Legacy and shared UI
 

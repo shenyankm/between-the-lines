@@ -5,12 +5,21 @@ import hashlib
 import json
 import logging
 from datetime import timedelta
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, or_, select
 
 from .agents import MODEL, make_model
+from .artifact_quality import (
+    STRATEGIES,
+    ArtifactQualityError,
+    diverse_sources,
+    normalized,
+    repeated_text,
+    role_context,
+    validate_advice,
+)
 from .budget import reserve_job, settle
 from .content import content_hash
 from .db import AIJob, AISpend, Event, Turn, User, ZhihuContent, utcnow
@@ -19,7 +28,7 @@ from .errors import ApiError
 from .schemas import JobInput
 from .services import GameService, owned_save
 
-PROMPT_VERSION = "4"
+PROMPT_VERSION = "6"
 
 
 class EndingText(BaseModel):
@@ -30,17 +39,20 @@ class EndingText(BaseModel):
 class ReflectionNode(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_id: str
+    actor: Literal["player"]
     alternative: str = Field(max_length=500)
     possible_cost: str = Field(max_length=300)
 
 
 class Reflection(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    nodes: list[ReflectionNode] = Field(min_length=1, max_length=3)
+    nodes: list[ReflectionNode] = Field(max_length=3)
 
 
 class Card(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    strategy: Literal["direct", "process", "observe"]
+    source_quotes: dict[str, str] = Field(min_length=1, max_length=6)
     view: str = Field(max_length=400)
     situation: str = Field(max_length=300)
     expression: str = Field(max_length=300)
@@ -50,7 +62,11 @@ class Card(BaseModel):
 
 class Cards(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    cards: list[Card] = Field(min_length=1, max_length=3)
+    cards: list[Card] = Field(max_length=3)
+
+
+def public_facts(facts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [{key: value for key, value in fact.items() if key != "role_context"} for fact in facts]
 
 
 def editorial() -> dict[str, Any]:
@@ -177,6 +193,8 @@ class JobRunner:
                     not in {"begin", "next", "propose", "cancel_proposal", "epilogue"}
                 ]
                 priorities = save.state.get("outcome", {}).get("key_event_ids", [])
+                if body.kind == "reflection":
+                    selected = [e for e in selected if role_context(e)["actor"] == "player"]
                 selected = sorted(
                     selected,
                     key=lambda e: (
@@ -193,15 +211,25 @@ class JobRunner:
                     payload["metrics"] = {
                         k: save.state[k] for k in ("heat", "credit", "rumination", "pressure")
                     }
+                if body.kind == "reflection":
+                    payload["system_context"] = [
+                        {
+                            "event_id": e.id,
+                            "event_summary": e.data.get("text", ""),
+                            "role_context": role_context(e),
+                        }
+                        for e in events
+                        if role_context(e)["actor"] != "player"
+                    ][-3:]
                 payload["facts"] = [
                     {
                         "event_id": e.id,
                         "actual_expression": e.data["text"]
-                        if e.data.get("action") == "speak"
-                        and e.data.get("speaker", "player") == "player"
+                        if e.data.get("action") == "speak" and e.data.get("speaker") == "player"
                         else "",
                         "event_summary": e.data["text"],
-                        "speaker": e.data.get("speaker", "player"),
+                        "speaker": e.data.get("speaker", "unknown"),
+                        "role_context": role_context(e),
                         "feedback": [
                             other.data["text"]
                             for other in events
@@ -248,18 +276,20 @@ class JobRunner:
                         or str(save.state["act"]) in row.topics
                         or f"act_{save.state['act']}" in row.topics
                     )
-                ][:6]
-                payload["sources"] = [
-                    {
-                        "id": f"{r.content_type}:{r.content_id}",
-                        "title": r.title,
-                        "author": r.author_name,
-                        "url": r.source_url,
-                        "summary": r.summary[:1500],
-                        "hash": r.content_hash,
-                    }
-                    for r in rows
                 ]
+                payload["sources"] = diverse_sources(
+                    [
+                        {
+                            "id": f"{r.content_type}:{r.content_id}",
+                            "title": r.title,
+                            "author": r.author_name,
+                            "url": r.source_url,
+                            "summary": r.summary[:1500],
+                            "hash": r.content_hash,
+                        }
+                        for r in rows
+                    ]
+                )
                 if live_sources:
                     payload["sources"] = live_sources
                     payload["live_sources"] = True
@@ -307,6 +337,22 @@ class JobRunner:
                     db.add(job)
                     await db.flush()
                     return job
+            if body.kind == "reflection" and not payload["facts"]:
+                job = AIJob(
+                    save_id=save.id,
+                    user_id=user.id,
+                    request_id=str(body.request_id),
+                    kind=body.kind,
+                    payload=payload,
+                    status="completed",
+                    result={
+                        "label": "暂无可可靠归属的玩家动作，仅保留事实回顾",
+                        "nodes": public_facts(payload.get("system_context", [])),
+                    },
+                )
+                db.add(job)
+                await db.flush()
+                return job
             try:
                 async with db.begin_nested():
                     job = await reserve_job(
@@ -370,6 +416,7 @@ class JobRunner:
                             "nodes": [
                                 {
                                     "event_id": fact["event_id"],
+                                    "actor": "player",
                                     "alternative": "先说明观察到的事实，再明确提出自己的需要。",
                                     "possible_cost": "可能需要继续解释，也无法保证对方接受。",
                                 }
@@ -380,6 +427,12 @@ class JobRunner:
                         else {
                             "cards": [
                                 {
+                                    "strategy": "direct",
+                                    "source_quotes": {
+                                        payload["sources"][0]["id"]: payload["sources"][0][
+                                            "summary"
+                                        ][:80]
+                                    },
                                     "view": "先核对事实，再提出需要。",
                                     "situation": "职场沟通出现分歧时",
                                     "expression": "我们先确认材料要求，再讨论如何推进。",
@@ -401,7 +454,11 @@ class JobRunner:
                         )
                     }
                 result = self.validate(kind, payload, raw)
-        except (Exception, asyncio.CancelledError):
+        except (Exception, asyncio.CancelledError) as exc:
+            logging.getLogger("btl.jobs").warning(
+                "artifact_generation_failed",
+                extra={"fields": {"kind": kind, "reason": type(exc).__name__}},
+            )
             failed = True
             result = (
                 editorial()
@@ -413,10 +470,13 @@ class JobRunner:
                         + payload.get("outcome", {}).get("unresolved", [])
                     ),
                     "outcome": payload.get("outcome"),
-                    "interactions": payload.get("facts", []),
+                    "interactions": public_facts(payload.get("facts", [])),
                 }
                 if kind == "ending"
-                else {"label": "生成未完成，以下为已保存事实", "nodes": payload.get("facts", [])}
+                else {
+                    "label": "生成未完成，以下为已保存事实",
+                    "nodes": public_facts(payload.get("facts", [])),
+                }
             )
         async with self.service.sessions.begin() as db:
             await db.scalar(select(User).where(User.id == job.user_id).with_for_update())
@@ -433,18 +493,29 @@ class JobRunner:
                 "label": "结局演出 · AI 生成",
                 "text": ending_text.text,
                 "outcome": payload["outcome"],
-                "interactions": payload.get("facts", []),
+                "interactions": public_facts(payload.get("facts", [])),
             }
         if kind == "reflection":
             parsed = Reflection.model_validate(raw)
             facts = {f["event_id"]: f for f in payload["facts"]}
             if len({n.event_id for n in parsed.nodes}) != len(parsed.nodes):
                 raise ValueError("Duplicate event")
+            eligible = {
+                key
+                for key, fact in facts.items()
+                if fact.get("role_context", {}).get("actor") == "player"
+            }
+            if {node.event_id for node in parsed.nodes} != eligible:
+                raise ArtifactQualityError("reflection_missing_or_unknown_player_event")
+            for node in parsed.nodes:
+                validate_advice(facts[node.event_id], node.alternative)
             return {
-                "label": "实际发生与另一种可能",
+                "label": "实际发生与另一种可能"
+                if eligible
+                else "暂无可可靠归属的玩家动作，仅保留事实回顾",
                 "nodes": [
                     {
-                        **facts[n.event_id],
+                        **public_facts([facts[n.event_id]])[0],
                         "alternative": n.alternative,
                         "possible_cost": n.possible_cost,
                     }
@@ -453,12 +524,38 @@ class JobRunner:
             }
         cards = Cards.model_validate(raw)
         sources = {s["id"]: s for s in payload["sources"]}
+        if not cards.cards:
+            return editorial()
+        strategies: set[str] = set()
+        expressions: list[str] = []
+        views: list[str] = []
+        for card in cards.cards:
+            for source_id in card.source_ids:
+                if source_id not in sources:
+                    raise KeyError(source_id)
+            if card.strategy in strategies:
+                raise ArtifactQualityError("discussion_duplicate_strategy")
+            if repeated_text(expressions, card.expression) or repeated_text(views, card.view):
+                raise ArtifactQualityError("discussion_duplicate_expression")
+            if set(card.source_quotes) != set(card.source_ids):
+                raise ArtifactQualityError("discussion_missing_source_support")
+            for source_id, quote in card.source_quotes.items():
+                source = sources[source_id]
+                if len(normalized(quote)) < 4 or normalized(quote) not in normalized(
+                    source["summary"][:800]
+                ):
+                    raise ArtifactQualityError("discussion_unsupported_source_quote")
+            strategies.add(card.strategy)
+            expressions.append(card.expression)
+            views.append(card.view)
         return {
-            "label": payload.get("source_label", "已审核资料 · AI 整理"),
+            "label": payload.get("source_label", "已审核资料 · AI 整理")
+            + (" · 当前资料仅支持一类回应" if len(cards.cards) == 1 else " · 不同回应方式"),
             "cards": [
                 {
                     "id": str(i),
-                    **card.model_dump(exclude={"source_ids"}),
+                    **card.model_dump(exclude={"source_ids", "strategy", "source_quotes"}),
+                    "view": STRATEGIES[card.strategy] + " · " + card.view,
                     "sources": [
                         {k: v for k, v in sources[source].items() if k != "summary"}
                         for source in card.source_ids
@@ -475,8 +572,19 @@ class JobRunner:
         if kind == "discussion":
             prompt_payload = {
                 "act": payload.get("act"),
+                "topic": {
+                    0: "职场边界",
+                    1: "被同事排除在聚会通知之外",
+                    2: "按模板提交的采购申请被含糊退回，如何核对依据并协调流程",
+                    3: "玩家被传准备跳槽，如何回应谣言",
+                    4: "职场关系与边界",
+                }.get(payload.get("act", 0)),
                 "sources": [
-                    {"id": source["id"], "summary": source["summary"][:800]}
+                    {
+                        "id": source["id"],
+                        "title": source["title"],
+                        "summary": source["summary"][:800],
+                    }
                     for source in payload["sources"]
                 ],
             }
@@ -491,9 +599,20 @@ class JobRunner:
                     "其他已取得成果仍需保留。正文控制在200至350字以内，直接写故事，不要附加生成说明或把已确认事实称作可能性。"
                     if kind == "ending"
                     else "替代表达必须标注为可能性。复盘的每个event_id只能使用一次，必须来自facts；"
-                    "节点数量不得超过提供的事实数量。只有一个事实时只生成一个节点。"
+                    "每个可归属玩家的facts事件恰好生成一个节点；facts为空时nodes为空。actor必须是player。"
+                    "玩家本人是周菱菱（菱菱），alternative中的第一人称我是周菱菱，不是孙淼；不能称呼周菱菱再给她回应。"
+                    "欢送会事件中，是孙淼替玩家决定是否参加；玩家要维护的是自己的参与意愿，不能反过来建议玩家问孙淼愿不愿参加、替孙淼报名或回话。"
+                    "role_context区分玩家、同事与系统结果，system_context仅是后果背景。按钮事件的summary可能同时转述他人回应，不能当成玩家原话。"
+                    "player_action说明玩家实际采取的动作；例如提交审核是玩家的行动，批准采购是李姐的行为。只围绕玩家动作提出替代建议。每项建议控制在60字以内，代价30字以内。"
+                    "建议必须是玩家可表达或采取的行动，不能替其他角色承认错误或批准申请。玩家是谣言对象，不能建议玩家在转述前向当事人核实。"
                     if kind == "reflection"
-                    else "替代表达必须标注为可能性。"
+                    else "围绕topic从来源中整理有实质区别的回应方式，不代表知乎整体主流。"
+                    "strategy只能为direct直接沟通、process流程协作、observe暂缓观察，每类最多一张。"
+                    "直接沟通侧重向相关同事表达边界或核对事实；流程协作侧重组织渠道、负责人协调与记录处理；暂缓观察侧重暂不回应及等待条件。不能把同一种找领导的建议分别包装为直接沟通和流程协作。"
+                    "资料充分时应有两至三类；只能支持一类就仅返回一类；全部无关时cards为空，禁止凑数或改写同一观点。"
+                    "每张卡的source_ids只能引用支持本张观点的来源。source_quotes需逐一给出这些来源summary里的连续原文短句，至少四字，不得编写引用。"
+                    "准确复制来源id，不要使用序号或网址代替。每卡优先一个来源，引用4至16字；view和situation各不超过20字，expression不超过40字，possible_cost不超过20字。整体JSON控制在800token以内。"
+                    "表达针对玩家可以采取的行动，代价标注为可能性，不臆测他人态度。"
                 )
                 + json.dumps(schema.model_json_schema(), ensure_ascii=False),
             ),
@@ -518,7 +637,7 @@ class JobRunner:
                 except (ValueError, KeyError) as exc:
                     reason = (
                         str(exc)
-                        if isinstance(exc, EndingFactError)
+                        if isinstance(exc, (EndingFactError, ArtifactQualityError))
                         or (type(exc) is ValueError and str(exc) == "Duplicate event")
                         else type(exc).__name__
                     )
@@ -533,7 +652,7 @@ class JobRunner:
                             "human",
                             f"上次结构、引用或事实一致性校验未通过：{reason}。"
                             "重新核对已确认事实与当前关系决定，不得把已完成阶段写成尚未发生；"
-                            "引用只能从所给集合选取，复盘event_id不得重复；严格遵守上述JSON Schema字段与长度。",
+                            "引用只能从所给集合选取，复盘event_id不得重复且建议只能由玩家实施；众议类别和表达不能重复，引用短句须有原文支持。严格遵守上述JSON Schema字段与长度。",
                         )
                     )
             raise ValueError("No output")
@@ -567,7 +686,7 @@ class JobRunner:
                     if job.kind == "discussion"
                     else {
                         "label": "服务重启，事实仍保留，可重新生成",
-                        "nodes": job.payload.get("facts", []),
+                        "nodes": public_facts(job.payload.get("facts", [])),
                     }
                 )
 

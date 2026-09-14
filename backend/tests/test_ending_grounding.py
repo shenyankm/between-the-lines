@@ -75,16 +75,25 @@ def test_attendance_cannot_be_denied_in_generated_ending():
 
 def test_reflection_cannot_duplicate_the_only_available_event():
     runner = JobRunner(SimpleNamespace())
-    payload = {"facts": [{"event_id": "recorded", "event_summary": "尚未破局"}]}
+    payload = {
+        "facts": [
+            {
+                "event_id": "recorded",
+                "event_summary": "尚未破局",
+                "role_context": {"actor": "player"},
+            }
+        ]
+    }
     node = {
         "event_id": "recorded",
+        "actor": "player",
         "alternative": "可以先核对材料。",
         "possible_cost": "需要时间。",
     }
     assert len(runner.validate("reflection", payload, {"nodes": [node]})["nodes"]) == 1
     with pytest.raises(ValueError, match="Duplicate event"):
         runner.validate("reflection", payload, {"nodes": [node, node]})
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         runner.validate("reflection", payload, {"nodes": [{**node, "event_id": "invented"}]})
 
 

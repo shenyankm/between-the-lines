@@ -67,6 +67,108 @@
       "bytes": 132318
     }
   ],
+  "/assets/ending-boundary.png": [
+    {
+      "width": 480,
+      "src": "/assets/ending-boundary-480-2b3a60f443a2.webp",
+      "bytes": 35080
+    },
+    {
+      "width": 768,
+      "src": "/assets/ending-boundary-768-8d9469c314a1.webp",
+      "bytes": 67480
+    },
+    {
+      "width": 941,
+      "src": "/assets/ending-boundary-941-661f29bd0edc.webp",
+      "bytes": 87162
+    }
+  ],
+  "/assets/ending-cost.png": [
+    {
+      "width": 480,
+      "src": "/assets/ending-cost-480-169199cf7c98.webp",
+      "bytes": 33656
+    },
+    {
+      "width": 768,
+      "src": "/assets/ending-cost-768-fc1e1c91e290.webp",
+      "bytes": 62448
+    },
+    {
+      "width": 941,
+      "src": "/assets/ending-cost-941-47113bc63542.webp",
+      "bytes": 80830
+    }
+  ],
+  "/assets/ending-exit.png": [
+    {
+      "width": 480,
+      "src": "/assets/ending-exit-480-bf3ac7826727.webp",
+      "bytes": 35026
+    },
+    {
+      "width": 768,
+      "src": "/assets/ending-exit-768-d1be06baaa42.webp",
+      "bytes": 65078
+    },
+    {
+      "width": 941,
+      "src": "/assets/ending-exit-941-3487cdfdc253.webp",
+      "bytes": 84256
+    }
+  ],
+  "/assets/ending-repair.png": [
+    {
+      "width": 480,
+      "src": "/assets/ending-repair-480-43392d6c2ca4.webp",
+      "bytes": 35920
+    },
+    {
+      "width": 768,
+      "src": "/assets/ending-repair-768-5732ba5d5fd2.webp",
+      "bytes": 66378
+    },
+    {
+      "width": 941,
+      "src": "/assets/ending-repair-941-7d3b8a327f7e.webp",
+      "bytes": 85932
+    }
+  ],
+  "/assets/ending-rules.png": [
+    {
+      "width": 480,
+      "src": "/assets/ending-rules-480-3407718b9203.webp",
+      "bytes": 31480
+    },
+    {
+      "width": 768,
+      "src": "/assets/ending-rules-768-a71aee93a44f.webp",
+      "bytes": 59076
+    },
+    {
+      "width": 941,
+      "src": "/assets/ending-rules-941-059e53cf5326.webp",
+      "bytes": 75304
+    }
+  ],
+  "/assets/ending-unresolved.png": [
+    {
+      "width": 480,
+      "src": "/assets/ending-unresolved-480-8e9b2233c1f7.webp",
+      "bytes": 31424
+    },
+    {
+      "width": 768,
+      "src": "/assets/ending-unresolved-768-6993c1e7e820.webp",
+      "bytes": 58518
+    },
+    {
+      "width": 941,
+      "src": "/assets/ending-unresolved-941-a4c70f99d9df.webp",
+      "bytes": 75748
+    }
+  ],
   "/assets/finance-rain.png": [
     {
       "width": 768,

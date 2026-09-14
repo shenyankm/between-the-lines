@@ -31,7 +31,8 @@ $secret_hits
 #    Exemption: frontend/public/assets holds ~2 MB source PNGs until phase 7.1
 #    converts them to AVIF/WebP. Empty HOOK_ASSET_ALLOWLIST once that lands.
 size_limit_kb=400
-allowlist='^frontend/public/assets/'
+allowlist='^frontend/public/assets/|^docs/assets/ending-posters/btl-wiki-1064-(rules|boundary|repair|exit|cost|unresolved)\.png$'
+# The six immutable Feishu reference posters are deliberately preserved at original resolution.
 big=""
 for f in $staged; do
     [ -f "$f" ] || continue

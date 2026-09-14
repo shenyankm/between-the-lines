@@ -140,7 +140,7 @@ async def test_generator_repairs_schema_once_and_backfills_sources(v2, monkeypat
                     usage_metadata={"input_tokens": 10, "output_tokens": 10, "total_tokens": 20},
                 )
             return AIMessage(
-                content='{"cards":[{"view":"事实与解释分开","situation":"发生分歧","expression":"请先核对事实","possible_cost":"需要沟通时间","source_ids":["source-1"]}]}',
+                content='{"cards":[{"strategy":"direct","source_quotes":{"source-1":"公开资料"},"view":"事实与解释分开","situation":"发生分歧","expression":"请先核对事实","possible_cost":"需要沟通时间","source_ids":["source-1"]}]}',
                 usage_metadata={"input_tokens": 10, "output_tokens": 10, "total_tokens": 20},
             )
 

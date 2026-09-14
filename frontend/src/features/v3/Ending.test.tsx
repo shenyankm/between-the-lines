@@ -88,7 +88,12 @@ it("previews locally and handles copy failure without sharing private messages",
     configurable: true,
     value: { writeText: write },
   });
-  const draw = { fillRect: vi.fn(), fillText: vi.fn() };
+  const draw = {
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    strokeRect: vi.fn(),
+    measureText: (text: string) => ({ width: text.length * 30 }),
+  };
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
     draw as unknown as CanvasRenderingContext2D,
   );
