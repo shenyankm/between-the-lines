@@ -416,6 +416,14 @@ export function PlayV3({
         act={act}
         compact={!!panel}
       />
+      {controller.savedStatus && <p role="status">{controller.savedStatus}</p>}
+      {!!controller.savedEffects?.length && (
+        <ul aria-label="本轮已保存结果">
+          {controller.savedEffects.map((text, index) => (
+            <li key={index}>{text}</li>
+          ))}
+        </ul>
+      )}
       {controller.status && <p role="status">{controller.status}</p>}
       <ErrorNotice error={controller.issue} message={controller.error} />
       <ErrorNotice

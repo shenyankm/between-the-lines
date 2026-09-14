@@ -25,10 +25,15 @@ interface View {
   pending: string | null;
   error: string;
   status: string;
+  savedStatus?: string;
+  savedEffects?: string[];
   issue?: unknown;
   blocked?: boolean;
 }
 const idle: View = { phase: "idle", pending: null, error: "", status: "" };
+const completedStatus = "本回合已完成，进度已保存。";
+const refreshingStatus = `${completedStatus}正在刷新页面…`;
+const uncertainStatus = "请求是否受理尚未确认，正在查询原回合。";
 const admissionErrors: ReadonlySet<string> = new Set<ErrorCode>([
   "not_authenticated",
   "forbidden_origin",
@@ -129,8 +134,18 @@ export function useTurnController(
           ...v,
           issue: failure.reason,
           error: "进度刷新未完成，请重新加载。",
+          savedStatus:
+            v.savedStatus === refreshingStatus
+              ? `${completedStatus}页面刷新未完成，可重新加载。`
+              : v.savedStatus,
           blocked: paused.current || Date.now() < notBefore.current,
         }));
+      } else if (!signal.aborted) {
+        setView((v) =>
+          v.savedStatus === refreshingStatus
+            ? { ...v, savedStatus: completedStatus }
+            : v,
+        );
       }
     },
     [client, userId, saveId, remember],
@@ -161,6 +176,15 @@ export function useTurnController(
       );
       setView({
         ...idle,
+        savedStatus:
+          result.status === "completed"
+            ? refreshingStatus
+            : result.effects?.length
+              ? "行动已保存，角色回复未完成。已保存的结果仍然有效，无需重复执行。"
+              : "角色回复未完成，请查看已保存记录后继续。",
+        savedEffects: (result.effects ?? []).flatMap((effect) =>
+          typeof effect.text === "string" && effect.text ? [effect.text] : [],
+        ),
         issue: result.failure
           ? new ApiError(
               result.failure.message,
@@ -221,6 +245,7 @@ export function useTurnController(
       issue: undefined,
       error: "",
       status: "正在恢复回合…",
+      savedStatus: v.savedStatus || uncertainStatus,
     }));
     try {
       const turn = await gameApi.turn(saveId, current.requestId, signal);
@@ -232,6 +257,7 @@ export function useTurnController(
           ...v,
           phase: "waiting",
           error: "这一回合仍在处理，请稍后恢复。",
+          savedStatus: "请求已受理，回合仍在处理，具体行动结果尚待确认。",
           status: "",
         }));
     } catch (error) {
@@ -277,6 +303,9 @@ export function useTurnController(
               blocked: paused.current || Date.now() < notBefore.current,
               status: "",
               pending: record.current?.requestId ?? null,
+              savedStatus: record.current
+                ? uncertainStatus
+                : "请求未被受理，输入仍保留。",
               error:
                 replayError instanceof Error
                   ? replayError.message
@@ -299,6 +328,9 @@ export function useTurnController(
           ...v,
           phase: record.current ? "waiting" : "idle",
           pending: record.current?.requestId ?? null,
+          savedStatus: record.current
+            ? v.savedStatus || uncertainStatus
+            : "未找到原回合，请查看当前进度后继续。",
           error: errorMessage(error),
           issue: error,
           blocked: paused.current || Date.now() < notBefore.current,
@@ -411,6 +443,7 @@ export function useTurnController(
         pending: requestId,
         error: "",
         status: "正在提交…",
+        savedStatus: "正在提交，请求是否受理尚未确认。",
       });
       try {
         const result = await sendTurn(
@@ -443,6 +476,9 @@ export function useTurnController(
           issue: error,
           blocked: paused.current || Date.now() < notBefore.current,
           status: "",
+          savedStatus: record.current
+            ? uncertainStatus
+            : "请求未被受理，输入仍保留。",
         });
         // The recovery window begins after the subscription ends, even if the
         // original stream used its entire idle timeout.
