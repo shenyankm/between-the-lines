@@ -46,3 +46,7 @@
 遇到难以理解的选择，或游玩中出现问题？欢迎[提交 Issue](https://github.com/shenyankm/between-the-lines/issues)，说明所在场景、尝试的操作和实际结果。可以附上截图，但请去掉私人对话和账号信息。安全问题请按[安全策略](SECURITY.md)报告。
 
 如果你想参与开发，请阅读[贡献指南](CONTRIBUTING.md)。本地运行与部署说明已移至[开发与部署文档](docs/development.md)，实现细节见[架构说明](docs/architecture.md)；这些技术文档使用英文。
+
+## 当前故事范围
+
+本版专注三幕职场主线，以及你与同事之间的工作和私人边界。谢川伴侣线、家庭支持短场景尚未作为可玩内容提供；推进剧情不会自动替你决定分手、和好、接受建议或释然。详见[故事范围](docs/story-scope.md)。
