@@ -1,9 +1,11 @@
+import { Button } from "@heroui/react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
 import { record } from "../../contracts";
 import type { Save } from "../../types";
 import type { components } from "../../generated/api";
+import s from "./V3.module.css";
 type Job = components["schemas"]["JobOut"];
 function requestKey(key: string): string {
   try {
@@ -50,7 +52,13 @@ export function EndingNarrative({
     ? result.interactions.filter(record)
     : [];
   return (
-    <section aria-label="结局正文">
+    <section aria-label="结局正文" className={s.endingSection}>
+      <h2>结局正文</h2>
+      <small>
+        {job.data?.status === "failed" || job.data?.status === "unknown"
+          ? "已保存事实 · 生成失败时的事实回顾"
+          : "AI 生成内容 · 以本局已保存事实为基础"}
+      </small>
       {(job.isPending || job.data?.status === "running") && (
         <p role="status">
           正在根据本局经历整理结局，已确认的成果和问题仍可在下方阅读。
@@ -59,7 +67,13 @@ export function EndingNarrative({
       {job.error && (
         <p role="alert">
           结局正文暂时无法生成，以下事实总结仍然有效。
-          <button onClick={() => void job.refetch()}>重试读取</button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void job.refetch()}
+          >
+            重试读取
+          </Button>
         </p>
       )}
       {(job.data?.status === "failed" || job.data?.status === "unknown") && (
@@ -70,10 +84,18 @@ export function EndingNarrative({
           <small>
             {typeof result.label === "string" ? result.label : "结局正文"}
           </small>
-          <p style={{ whiteSpace: "pre-wrap" }}>{result.text}</p>
+          {result.text
+            .split(/\r?\n\s*\r?\n/)
+            .filter((paragraph) => paragraph.trim())
+            .map((paragraph, i) => (
+              <p key={i}>{paragraph}</p>
+            ))}
         </>
       )}
-      {!!interactions.length && (
+      {job.data?.status === "completed" && !result?.text && (
+        <p>暂无可展示的结局正文，请参阅已保存事实。</p>
+      )}
+      {interactions.length ? (
         <>
           <h3>回看关键互动</h3>
           {interactions.map((event, i) => (
@@ -93,7 +115,9 @@ export function EndingNarrative({
             </blockquote>
           ))}
         </>
-      )}
+      ) : job.data?.status === "completed" ? (
+        <p>本次回顾未列出关键互动，可在完整记录中查看本局经历。</p>
+      ) : null}
     </section>
   );
 }
