@@ -1,3 +1,4 @@
+import { EffectDetails } from "../v3/EffectDetails";
 import { Button } from "@heroui/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "../../api";
@@ -68,6 +69,7 @@ export function EventHistory({
                 : "我"}
           </small>
           <p>{event.text}</p>
+          <EffectDetails event={event} />
         </article>
       ))}
     </section>

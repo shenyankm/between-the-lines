@@ -51,3 +51,18 @@ def test_risky_review_requires_current_confirmation_and_cancel_changes_no_facts(
         assert send("project_review", proposal_id=proposed["proposal"]["id"]).status_code == 409
         save = step(client, save, "project_review")  # Includes idempotent repeat.
         assert save["state"]["credit"] == old["credit"] - 20
+
+
+@pytest.mark.unit
+def test_effects_capture_facts_and_actual_clamped_deltas_without_mutating_history():
+    from app.actions import effects
+
+    before = initial_v3()
+    before.act = 1
+    before.credit = 99
+    after, text = transition_v3(before, "boundary", "sun", event_id="boundary-event")
+    receipt = effects(before, after, text)[0]
+    assert receipt["changes"]["credit"] == 1
+    assert any("代替决定" in str(fact["after"]) for fact in receipt["facts"])
+    assert not before.relationship.facts
+    assert effects(after, after, text) == []

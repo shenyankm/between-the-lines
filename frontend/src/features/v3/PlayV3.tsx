@@ -160,6 +160,15 @@ export function PlayV3({
       "report",
       "deliver",
       "project_review",
+      "request_materials",
+      "dispute_return",
+      "support_project",
+      "joint_review",
+      "request_extension",
+      "correct_loss",
+      "confirm_responsibility",
+      "change_rules",
+      "apply_rules",
       "draft_exit",
       "submit_exit",
       "rest",
@@ -381,7 +390,11 @@ export function PlayV3({
             : sceneOptions.filter((a) => a.enabled).slice(0, 3);
   const feedback = (
     <div className={s.status} aria-label="操作反馈">
-      <ActionReceipt play={play} openActions={() => setPanel("work")} />
+      <ActionReceipt
+        play={play}
+        openActions={() => setPanel("work")}
+        act={act}
+      />
       {controller.status && <p role="status">{controller.status}</p>}
       <ErrorNotice error={controller.issue} message={controller.error} />
       <ErrorNotice

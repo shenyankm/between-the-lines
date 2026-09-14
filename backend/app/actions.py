@@ -305,9 +305,23 @@ def available_actions(state: GameState) -> list[AvailableAction]:
 def effects(before: GameState, after: GameState, text: str) -> list[dict[str, Any]]:
     if before == after:
         return []
+    facts = []
+    if isinstance(before, GameStateV3) and isinstance(after, GameStateV3):
+        for area in ("work", "relationship"):
+            old = getattr(before, area).facts
+            new = getattr(after, area).facts
+            for key in sorted(old.keys() | new.keys()):
+                if old.get(key) != new.get(key):
+                    facts.append(
+                        {
+                            "before": old[key].detail if key in old else None,
+                            "after": new[key].detail if key in new else None,
+                        }
+                    )
     return [
         {
             "text": text,
+            "facts": facts,
             "changes": {
                 key: getattr(after, key) - getattr(before, key)
                 for key in (

@@ -1,8 +1,18 @@
-import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render as rtlRender, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import type { PlayState } from "../../types";
 import { save, sunReply } from "../../testing/fixtures";
 import { ActionReceipt } from "./ActionReceipt";
+
+function render(element: React.ReactNode) {
+  const client = new QueryClient();
+  const wrap = (child: React.ReactNode) => (
+    <QueryClientProvider client={client}>{child}</QueryClientProvider>
+  );
+  const result = rtlRender(wrap(element));
+  return { rerender: (child: React.ReactNode) => result.rerender(wrap(child)) };
+}
 
 it("never treats NPC claims as execution, and distinguishes pending from absent actions", () => {
   const play: PlayState = {
