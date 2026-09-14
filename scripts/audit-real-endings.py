@@ -19,9 +19,16 @@ def main():
     parser.add_argument("--real", action="store_true", required=True)
     parser.add_argument("--url", default="http://localhost:18081")
     parser.add_argument(
-        "--output", type=Path, default=ROOT / "artifacts/ending-audit/real-ai-results.json"
+        "--output",
+        type=Path,
+        default=ROOT / "artifacts/ending-audit/real-ai-results.json",
     )
     parser.add_argument("--skip-discussion", action="store_true")
+    parser.add_argument(
+        "--poster-quality",
+        action="store_true",
+        help="Include explicit player actions on every route",
+    )
     args = parser.parse_args()
     if httpx.URL(args.url).host not in {"localhost", "127.0.0.1"}:
         raise SystemExit("Only isolated localhost servers are supported")
@@ -128,6 +135,14 @@ def main():
                 return result
 
             step("begin")
+            if args.poster_quality and expected != "rules_rewritten":
+                turn(
+                    "speak",
+                    "sun",
+                    text="请先问我的意愿，不要替我决定是否参加活动。",
+                    channel="dm",
+                    target="sun",
+                )
             if expected == "rules_rewritten":
                 for npc, text, flag in [
                     ("sun", "我不接受这种玩笑，请尊重我的边界。", "boundary"),
