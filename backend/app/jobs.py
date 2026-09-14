@@ -22,13 +22,13 @@ from .artifact_quality import (
     validate_advice,
 )
 from .content import content_hash
-from .db import AIJob, Event, Turn, User, ZhihuContent, utcnow
+from .db import AIJob, Event, SaveSnapshot, Turn, User, ZhihuContent, utcnow
 from .ending_grounding import EndingFactError, current_ending_facts, validate_ending_prose
 from .errors import ApiError
 from .schemas import JobInput
 from .services import GameService, owned_save
 
-PROMPT_VERSION = "6"
+PROMPT_VERSION = "7"
 
 
 class EndingText(BaseModel):
@@ -67,6 +67,25 @@ class Cards(BaseModel):
 
 def public_facts(facts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{key: value for key, value in fact.items() if key != "role_context"} for fact in facts]
+
+
+def replay_before(
+    event_id: str, events: list[Event], points: list[SaveSnapshot]
+) -> dict[str, str] | None:
+    """Choose the nearest verified history prefix that excludes the quoted event."""
+    event_ids = [event.id for event in events]
+    if event_id not in event_ids:
+        return None
+    before = event_ids[: event_ids.index(event_id)]
+    eligible = []
+    for point in points:
+        history = [entry.get("id") for entry in point.history]
+        if history and len(history) <= len(before) and history == before[: len(history)]:
+            eligible.append(point)
+    if not eligible:
+        return None
+    point = max(eligible, key=lambda item: len(item.history))
+    return {"snapshot_id": point.id, "node": point.node}
 
 
 def editorial() -> dict[str, Any]:
@@ -216,6 +235,19 @@ class JobRunner:
                         for e in events
                         if role_context(e)["actor"] != "player"
                     ][-3:]
+                points = (
+                    list(
+                        (
+                            await db.scalars(
+                                select(SaveSnapshot)
+                                .where(SaveSnapshot.save_id == save.id)
+                                .order_by(SaveSnapshot.created_at, SaveSnapshot.id)
+                            )
+                        ).all()
+                    )
+                    if body.kind == "reflection"
+                    else []
+                )
                 payload["facts"] = [
                     {
                         "event_id": e.id,
@@ -224,6 +256,11 @@ class JobRunner:
                         else "",
                         "event_summary": e.data["text"],
                         "speaker": e.data.get("speaker", "unknown"),
+                        "channel": e.data.get("channel", "scene"),
+                        "npc": e.data.get("npc", "sun"),
+                        "replay": replay_before(e.id, events, points)
+                        if body.kind == "reflection"
+                        else None,
                         "role_context": role_context(e),
                         "feedback": [
                             other.data["text"]

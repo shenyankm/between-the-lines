@@ -258,3 +258,25 @@ def test_rejects_reproduced_participation_owner_swap():
             {"role_context": {"actor": "player", "action": "speak"}},
             "我可以先问孙淼本人是否愿意参加活动，再决定要不要替他向李姐回话。",
         )
+
+
+def test_replay_uses_nearest_complete_history_prefix_before_the_expression():
+    from app.db import SaveSnapshot
+    from app.jobs import replay_before
+
+    events = [Event(id=key, data={}) for key in ["begin", "work", "expression", "response"]]
+
+    def point(key, ids):
+        return SaveSnapshot(id=key, node="act_1", history=[{"id": item} for item in ids])
+
+    earliest = point("earliest", ["begin"])
+    nearest = point("nearest", ["begin", "work"])
+    late = point("late", ["begin", "work", "expression"])
+    divergent = point("divergent", ["unrelated"])
+    empty = point("empty", [])
+    assert replay_before("expression", events, [earliest, late, divergent, empty, nearest]) == {
+        "snapshot_id": "nearest",
+        "node": "act_1",
+    }
+    assert replay_before("expression", events, [late, divergent, empty]) is None
+    assert replay_before("missing", events, [nearest]) is None

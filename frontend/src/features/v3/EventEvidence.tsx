@@ -6,6 +6,16 @@ import { isEvent } from "../../contracts";
 import { ErrorNotice } from "../../ErrorNotice";
 import type { GameEvent } from "../../types";
 
+const names: Record<string, string> = {
+  sun: "孙淼",
+  li: "李姐",
+  zhang: "张工",
+  wang: "王会计",
+  player: "周菱菱",
+  system: "系统记录",
+  narrator: "旁白",
+};
+
 export function EventEvidence({
   saveId,
   eventId,
@@ -54,7 +64,10 @@ export function EventEvidence({
                     work: "工作系统",
                   }[evidence.data.channel ?? "scene"]
                 }{" "}
-                · 事件记录
+                · 事件记录 · 对象：
+                {names[evidence.data.npc] ?? evidence.data.npc}
+                {evidence.data.speaker &&
+                  ` · 记录者：${names[evidence.data.speaker] ?? evidence.data.speaker}`}
               </small>
               <p>{evidence.data.text}</p>
             </>

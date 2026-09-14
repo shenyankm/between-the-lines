@@ -8,6 +8,8 @@ import { ErrorNotice } from "../../ErrorNotice";
 import type { components } from "../../generated/api";
 import type { GameEvent, Save } from "../../types";
 import s from "../../App.module.css";
+import { EventEvidence } from "../v3/EventEvidence";
+import { expressionStyle } from "../v3/endingPresentation";
 type Job = components["schemas"]["JobOut"];
 type Point = components["schemas"]["SnapshotOut"];
 const jobsGuard = (v: unknown): v is Job[] =>
@@ -118,8 +120,23 @@ export function ProductPanel({
       await jobs.refetch();
     });
   }
+  const expression = "work" in save.state ? expressionStyle(save.state) : null;
+  async function branch(point: Point) {
+    await perform(async () => {
+      const result = await api(
+        `/saves/${save.id}/branches`,
+        { request_id: requestId(point.id), snapshot_id: point.id },
+        undefined,
+        false,
+        isSave,
+      );
+      await client.invalidateQueries({ queryKey: ["saves"] });
+      void navigate(`/play/${result.id}`);
+    });
+  }
   const share = [
     "《言外之意》· 我的故事",
+    expression ? `本局表达倾向：${expression}` : "",
     shareEnding && save.state.ending
       ? `${save.state.ending}\n${save.ending_summary ?? ""}`
       : "",
@@ -150,6 +167,7 @@ export function ProductPanel({
       {open && (
         <>
           <h2>我的故事记录</h2>
+          {expression && <p>本局表达倾向：{expression}（仅描述本局选择）</p>}
           <div className={s.choices}>
             {save.state.ending && (
               <Button
@@ -195,31 +213,78 @@ export function ProductPanel({
           {(jobs.data ?? []).map((job) => (
             <article key={job.id}>
               <h3>
-                {job.kind === "reflection" ? "个人复盘" : "观点卡"}{" "}
+                {
+                  {
+                    reflection: "个人复盘",
+                    discussion: "观点卡",
+                    ending: "结局正文",
+                  }[job.kind]
+                }{" "}
                 {job.status === "running" ? "· 正在整理…" : ""}
               </h3>
+              {["failed", "unknown"].includes(job.status) && (
+                <p role="status">
+                  复盘暂时无法确认，以下已保存事实和可用重玩入口仍然有效。可重新生成。
+                </p>
+              )}
               {job.result && <p>{prose(job.result.label)}</p>}
               {job.kind === "ending" && <p>{prose(job.result?.text)}</p>}
-              {objects(job.result?.nodes).map((node, i) => (
-                <div key={i}>
-                  <p>
-                    <strong>实际发生：</strong>
-                    {prose(node.actual_expression)}
-                  </p>
-                  {strings(node.feedback).map((text, j) => (
-                    <p key={j}>角色反馈：{text}</p>
-                  ))}
-                  {objects(node.consequences).map((item, j) => (
-                    <p key={j}>实际后果：{prose(item.text)}</p>
-                  ))}
-                  {typeof node.alternative === "string" && (
+              {objects(job.result?.nodes).map((node, i) => {
+                const replay = record(node.replay) ? node.replay : null;
+                const point = points.data?.find(
+                  (point) => point.id === replay?.snapshot_id,
+                );
+                return (
+                  <section key={i} aria-label="关键表达与另一种可能">
                     <p>
-                      <strong>另一种可能：</strong>
-                      {node.alternative} 可能代价：{prose(node.possible_cost)}
+                      <strong>实际发生：</strong>
+                      {prose(node.actual_expression) ||
+                        prose(node.event_summary) ||
+                        "引用不足，请查看原始记录。"}
                     </p>
-                  )}
-                </div>
-              ))}
+                    {strings(node.feedback).map((text, j) => (
+                      <p key={j}>角色反馈：{text}</p>
+                    ))}
+                    {objects(node.consequences).map((item, j) => (
+                      <p key={j}>实际后果：{prose(item.text)}</p>
+                    ))}
+                    {typeof node.event_id === "string" && (
+                      <EventEvidence saveId={save.id} eventId={node.event_id} />
+                    )}
+                    {job.status === "completed" &&
+                      typeof node.alternative === "string" && (
+                        <>
+                          <p>
+                            <strong>另一种可能（由我尝试，尚未发生）：</strong>
+                            {node.alternative} 可能代价：
+                            {prose(node.possible_cost)}
+                          </p>
+                          {point && !save.read_only ? (
+                            <>
+                              <p>
+                                起点：{nodes[point.node] ?? point.node}
+                                ，位于这次表达之前；建立独立分支，保留原故事。
+                              </p>
+                              <Button
+                                variant="secondary"
+                                isDisabled={busy || disabled}
+                                onClick={() => void branch(point)}
+                              >
+                                从这里尝试另一种回应
+                              </Button>
+                            </>
+                          ) : (
+                            <p>
+                              {save.read_only
+                                ? "此存档为只读修订，无法创建重玩分支。"
+                                : "未找到这次表达之前的可靠快照；可查看下方其他重玩起点。"}
+                            </p>
+                          )}
+                        </>
+                      )}
+                  </section>
+                );
+              })}
               {objects(job.result?.cards).map((card, i) => (
                 <div key={i}>
                   <h4>{prose(card.view)}</h4>
@@ -262,27 +327,19 @@ export function ProductPanel({
             <Button
               variant="secondary"
               key={point.id}
-              isDisabled={busy || disabled}
-              onClick={() =>
-                void perform(async () => {
-                  const result = await api(
-                    `/saves/${save.id}/branches`,
-                    { request_id: requestId(point.id), snapshot_id: point.id },
-                    undefined,
-                    false,
-                    isSave,
-                  );
-                  await client.invalidateQueries({ queryKey: ["saves"] });
-                  void navigate(`/play/${result.id}`);
-                })
-              }
+              isDisabled={busy || disabled || !!save.read_only}
+              onClick={() => void branch(point)}
             >
               {nodes[point.node] ?? point.node}
             </Button>
           ))}
-          {save.story_version !== 2 && (
-            <p>旧版本不提供无法可靠还原的重玩节点，请新建故事体验新版。</p>
-          )}
+          {save.story_version !== 3 || save.read_only ? (
+            <p>
+              旧版本或只读修订不提供无法可靠还原的重玩节点，请新建故事体验新版。
+            </p>
+          ) : !points.isPending && !points.error && !points.data?.length ? (
+            <p>本局尚未留下可重玩的快照，原始记录仍可查看。</p>
+          ) : null}
           <details>
             <summary>完整历史与幕间</summary>
             {[...history, ...events]

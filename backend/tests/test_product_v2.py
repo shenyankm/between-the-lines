@@ -387,6 +387,18 @@ async def test_reflection_and_cards_are_persistent_and_sourced(v2):
             if event.get("action") == "speak" and event.get("speaker") == "player"
             else ""
         )
+    replays = [node["replay"] for node in reflection["result"]["nodes"] if node.get("replay")]
+    assert replays
+    points = (await client.get(f"/api/saves/{save['id']}/snapshots")).json()
+    assert replays[0]["snapshot_id"] in {point["id"] for point in points}
+    before = (await client.get(f"/api/saves/{save['id']}")).json()
+    branch = await client.post(
+        f"/api/saves/{save['id']}/branches",
+        json={"request_id": str(uuid4()), "snapshot_id": replays[0]["snapshot_id"]},
+    )
+    assert branch.status_code == 200, branch.text
+    assert branch.json()["id"] != save["id"]
+    assert (await client.get(f"/api/saves/{save['id']}")).json() == before
     assert (await client.post(f"/api/saves/{save['id']}/jobs", json=body)).json()[
         "id"
     ] == reflection["id"]

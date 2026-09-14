@@ -52,7 +52,7 @@ export function shareLines(state: StateV3, facts: string[]) {
     `《言外之意》 · 本局已收束${endingVisual(state) ? ` · ${endingVisual(state)!.code}` : ""}`,
     state.outcome?.title ?? state.ending ?? "本局记录",
     ...(endingVisual(state) ? [endingVisual(state)!.subtitle] : []),
-    `我的表达风格：${expressionStyle(state)}`,
+    `本局表达倾向：${expressionStyle(state)}`,
     `舆论温度 ${state.heat} · 专业信用 ${state.credit}`,
     `内耗值 ${state.rumination ?? 25} · 工作压力 ${state.pressure ?? 25}`,
     ...facts,

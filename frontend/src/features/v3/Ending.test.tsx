@@ -76,7 +76,7 @@ it.each([
         },
       }),
     );
-    expect(screen.getByText(`我的职场人格 · ${style}`)).toBeTruthy();
+    expect(screen.getByText(`本局表达倾向 · ${style}`)).toBeTruthy();
     expect(screen.getByText("完成工作")).toBeTruthy();
     expect(screen.getByText("争议待核实")).toBeTruthy();
     await screen.findByText("已确认的经历");
@@ -113,7 +113,7 @@ it("previews locally and handles copy failure without sharing private messages",
     },
   );
   mount(state());
-  expect(screen.getByText("我的职场人格 · 保留空间")).toBeTruthy();
+  expect(screen.getByText("本局表达倾向 · 保留空间")).toBeTruthy();
   fireEvent.click(screen.getByText("复制文案"));
   await screen.findByText("文案已复制");
   expect(write.mock.calls[0]?.[0]).toContain("不是心理测评");
