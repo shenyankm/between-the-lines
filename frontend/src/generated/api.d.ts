@@ -592,6 +592,11 @@ export interface components {
         };
         /** ConfigOut */
         ConfigOut: {
+            /**
+             * Guest Full Story
+             * @default false
+             */
+            guest_full_story: boolean;
             /** Dev Login */
             dev_login: boolean;
             /** Zhihu Login */

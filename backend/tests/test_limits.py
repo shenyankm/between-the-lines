@@ -38,13 +38,16 @@ def prepare(client):
 
 
 @pytest.mark.parametrize(
-    "setting,value,tool_committed",
+    "setting,value,fails",
     [
-        ("max_model_calls", 1, True),
-        ("max_tool_calls", 0, True),
+        ("max_model_calls", 0, True),
+        ("max_model_calls", 1, False),
+        ("max_tool_calls", 0, False),
     ],
 )
-def test_agent_budgets_stop_execution(app, monkeypatch, setting, value, tool_committed):
+def test_v3_budgets_bound_generation_without_repeating_rule_actions(
+    app, monkeypatch, setting, value, fails
+):
     monkeypatch.setattr(app.state.settings, setting, value)
     with TestClient(app) as client:
         save = prepare(client)
@@ -58,13 +61,14 @@ def test_agent_budgets_stop_execution(app, monkeypatch, setting, value, tool_com
                 "text": "请明确材料要求",
             },
         )
-        assert '"status": "failed"' in response.text
+        expected = "failed" if fails else "completed"
+        assert f'"status": "{expected}"' in response.text
         state = client.get(f"/api/saves/{save['id']}").json()["state"]
-        assert ("requirements" in state["flags"]) is tool_committed
-        assert "execution_budget_exhausted" in response.text
-        # Deterministic intent survives, but the bounded model produces no reply.
+        assert "requirements" in state["flags"]
+        assert ("execution_budget_exhausted" in response.text) is fails
+        # Rules do not consume model/tool calls; narration needs at most one model call.
         events = client.get(f"/api/saves/{save['id']}/events").json()
-        assert not any(e["kind"] == "npc" for e in events)
+        assert any(e["kind"] == "npc" for e in events) is not fails
 
 
 def test_provider_rate_limit_has_no_unbounded_retry(app, monkeypatch):

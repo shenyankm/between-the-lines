@@ -221,6 +221,7 @@ class PlayStateOut(BaseModel):
 
 
 class ConfigOut(BaseModel):
+    guest_full_story: bool = False
     dev_login: bool
     zhihu_login: bool
     agent_mode: Literal["mock", "deepseek", "openai"]

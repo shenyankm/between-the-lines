@@ -25,6 +25,9 @@ const ctrl = vi.hoisted(() => ({
   aiBlocked: false,
   pending: null as string | null,
   status: "",
+  preview: undefined as
+    | { npc: "sun" | "li"; channel: string; text: string }
+    | undefined,
   error: "",
   completed: undefined as ((input: Partial<TurnInput>) => void) | undefined,
 }));
@@ -109,6 +112,7 @@ beforeEach(() => {
     aiBlocked: false,
     pending: null,
     status: "",
+    preview: undefined,
     error: "",
   });
   ctrl.submit.mockReset();
@@ -755,4 +759,45 @@ it("keeps all four meter values and their labels", () => {
     25,
     25,
   ]);
+});
+
+it.each([undefined, "act_1"])(
+  "shows the latest persisted NPC reply including legacy scene %s",
+  (scene) => {
+    const p = play();
+    p.events = [
+      {
+        ...sunReply,
+        act: 1,
+        channel: "scene",
+        scene,
+        speaker: "sun",
+        text: "这是刚刚回答的新内容。",
+      },
+    ];
+    mount(p);
+    expect(screen.getByText("这是刚刚回答的新内容。")).toBeTruthy();
+  },
+);
+it("never puts another contact's private preview on the main stage", () => {
+  const p = play();
+  p.events = [
+    {
+      ...sunReply,
+      act: 1,
+      channel: "scene",
+      scene: "act_1",
+      text: "当前现场的对白",
+    },
+  ];
+  ctrl.preview = { npc: "li", channel: "dm", text: "只给李姐的私聊" };
+  mount(p);
+  expect(screen.queryByText("只给李姐的私聊")).toBeNull();
+  expect(screen.getByText("当前现场的对白")).toBeTruthy();
+});
+it("shows a public scene preview while the turn is still running", () => {
+  ctrl.busy = true;
+  ctrl.preview = { npc: "sun", channel: "scene", text: "实时生成的开头" };
+  mount(play());
+  expect(screen.getByText("实时生成的开头")).toBeTruthy();
 });

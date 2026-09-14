@@ -2872,6 +2872,11 @@
       },
       "ConfigOut": {
         "properties": {
+          "guest_full_story": {
+            "type": "boolean",
+            "title": "Guest Full Story",
+            "default": false
+          },
           "dev_login": {
             "type": "boolean",
             "title": "Dev Login"

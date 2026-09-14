@@ -59,6 +59,19 @@ async def test_gpt6_uses_responses_without_deepseek_request_options():
         model.root_client.close()
 
 
+@pytest.mark.asyncio
+async def test_luna_can_disable_reasoning_but_gpt6_cannot():
+    with pytest.raises(ValueError, match="GPT6 does not support"):
+        config(openai_reasoning_effort="none")
+    model = make_model(config(openai_model="gpt-5.6-luna", openai_reasoning_effort="none"))
+    try:
+        assert model.model_name == "gpt-5.6-luna"
+        assert model.reasoning == {"effort": "none"}
+    finally:
+        await model.root_async_client.close()
+        model.root_client.close()
+
+
 def test_readiness_and_costs_belong_to_selected_provider():
     settings = config(deepseek_api_key="")
     assert settings.model_ready

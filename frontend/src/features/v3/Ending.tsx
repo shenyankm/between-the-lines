@@ -41,7 +41,7 @@ export function Ending({
       c.fillStyle = "#dec7a0";
       c.font = "28px sans-serif";
       c.fillText("言 外 之 意  /  本 局 记 录", 70, 100);
-      c.font = "60px serif";
+      c.font = "60px sans-serif";
       c.fillText(style, 70, 230);
       c.font = "32px sans-serif";
       c.fillText(state.outcome?.title ?? "", 70, 310);

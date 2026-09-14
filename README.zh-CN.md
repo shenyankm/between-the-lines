@@ -46,3 +46,5 @@
 遇到难以理解的选择，或游玩中出现问题？欢迎[提交 Issue](https://github.com/shenyankm/between-the-lines/issues)，说明所在场景、尝试的操作和实际结果。可以附上截图，但请去掉私人对话和账号信息。安全问题请按[安全策略](SECURITY.md)报告。
 
 如果你想参与开发，请阅读[贡献指南](CONTRIBUTING.md)。本地运行与部署说明已移至[开发与部署文档](docs/development.md)，实现细节见[架构说明](docs/architecture.md)；这些技术文档使用英文。
+
+AI 接入配置见 [GPT6 网关接入](docs/gpt6-gateway.md)；对白如何流式显示、如何减少模型调用及开启本地完整试玩，见 [NPC 响应说明](docs/response-latency.md)。

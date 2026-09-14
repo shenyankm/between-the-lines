@@ -47,6 +47,12 @@ test("GPT6 replies and generates a grounded ending through the real app", async 
         event.text.trim().length > 0,
     ),
   ).toBe(true);
+  const visibleReply = after.events
+    .filter((event) => !priorEvents.has(event.id) && event.kind === "npc")
+    .at(-1)!;
+  await expect(
+    page.getByText(visibleReply.text, { exact: true }),
+  ).toBeVisible();
   await exitStory(page);
   await commitClick(page, () =>
     page.getByRole("button", { name: "确认并提交" }).click(),

@@ -126,3 +126,8 @@ def test_oauth_ready_needs_every_endpoint_not_just_the_credentials():
     with pytest.raises(ValidationError, match="OAuth"):
         build(**partial, zhihu_userinfo_url="")
     assert build(**partial, zhihu_userinfo_url="https://partner.example/userinfo").oauth_ready
+
+
+def test_full_guest_story_cannot_be_enabled_in_production():
+    with pytest.raises(ValueError, match="Full guest story"):
+        Settings(_env_file=None, environment="production", guest_full_story_enabled=True)

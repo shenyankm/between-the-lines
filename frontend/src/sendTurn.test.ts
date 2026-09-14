@@ -96,7 +96,7 @@ describe("sendTurn() stream", () => {
       sse([
         ": keep-alive\n\n",
         frame("status", { text: "正在提交…" }),
-        frame("dialogue", { text: "这句话不该影响状态栏" }),
+        frame("dialogue", { npc: "sun", text: "这句话不该影响状态栏" }),
         frame("status", { text: "角色正在回应…" }),
         frame("done", done),
       ]),
@@ -212,5 +212,59 @@ describe("sendTurn() error branches", () => {
     );
     expect(error).toBeInstanceOf(ApiError);
     expect(asApiError(error).kind).toBe("network");
+  });
+});
+
+describe("public reply previews", () => {
+  it("delivers snapshots before completion without waiting for done", async () => {
+    const gate = deferred();
+    const visible = deferred();
+    const previews: string[] = [];
+    onTurn(() =>
+      sse([frame("dialogue", { npc: "li", text: "我来" })], gate.promise, [
+        frame("dialogue", { npc: "li", text: "我来核对。" }),
+        frame("done", done),
+      ]),
+    );
+    const pending = sendTurn(
+      "save-1",
+      2,
+      "li",
+      "speak",
+      "你好",
+      "preview",
+      () => {},
+      undefined,
+      {},
+      (text) => {
+        previews.push(text);
+        visible.resolve();
+      },
+    );
+    await visible.promise;
+    expect(previews).toEqual(["我来"]);
+    gate.resolve();
+    await pending;
+    expect(previews).toEqual(["我来", "我来核对。"]);
+  });
+  it.each([null, { npc: "sun", text: "别人的回复" }, { npc: "li", text: 123 }])(
+    "rejects malformed or wrong-role dialogue %s",
+    async (data) => {
+      onTurn(() => sse([frame("dialogue", data), frame("done", done)]));
+      await expect(
+        sendTurn("save-1", 2, "li", "speak", "你好", "wrong", () => {}),
+      ).rejects.toThrow();
+    },
+  );
+  it("accepts a legacy caller without a preview callback", async () => {
+    onTurn(() =>
+      sse([
+        frame("dialogue", { npc: "li", text: "完成" }),
+        frame("done", done),
+      ]),
+    );
+    await expect(
+      sendTurn("save-1", 2, "li", "speak", "你好", "legacy", () => {}),
+    ).resolves.toMatchObject({ status: "completed" });
   });
 });

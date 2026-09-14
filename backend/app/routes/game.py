@@ -48,6 +48,7 @@ router = APIRouter()
 async def config(request: Request) -> dict[str, Any]:
     return {
         "guest_login": runtime_for(request).settings.guest_enabled,
+        "guest_full_story": runtime_for(request).settings.guest_full_story_enabled,
         "story_version": 3,
         "dev_login": runtime_for(request).settings.dev_login_enabled
         and runtime_for(request).settings.environment != "production",
@@ -240,6 +241,14 @@ async def submit(
             },
         )
         try:
+            previous = ""
+            while not result.done():
+                preview = runtime.runner.live_replies.get(turn_id, "")
+                if preview != previous:
+                    yield sse("dialogue", {"npc": body.npc, "text": preview})
+                    previous = preview
+                # asyncio.wait leaves the owned task running on disconnect/timeout.
+                await asyncio.wait({result}, timeout=0.03)
             raw = await asyncio.shield(result)
             final = TurnResult.model_validate(raw).model_dump(mode="json")
         except asyncio.CancelledError:
@@ -256,8 +265,10 @@ async def submit(
                 ),
             )
             return
-        if final and final.get("status") == "completed" and final.get("text"):
-            yield sse("dialogue", {"npc": body.npc, "text": final["text"]})
+        if final:
+            final_text = final.get("text", "") if final.get("status") == "completed" else ""
+            if final_text != previous:
+                yield sse("dialogue", {"npc": body.npc, "text": final_text})
         yield sse("done", final)
 
     return StreamingResponse(

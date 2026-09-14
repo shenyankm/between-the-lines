@@ -273,6 +273,7 @@ export async function sendTurn(
   onStatus: (message: string) => void,
   signal?: AbortSignal,
   extra: Partial<import("./types").TurnInput> = {},
+  onDialogue?: (text: string) => void,
 ): Promise<Result> {
   const scope = subscription(signal, 90_000);
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
@@ -317,6 +318,15 @@ export async function sendTurn(
           if (!record(frame.data) || typeof frame.data.text !== "string")
             throw protocolError(correlation);
           onStatus(frame.data.text);
+        }
+        if (frame?.event === "dialogue") {
+          if (
+            !record(frame.data) ||
+            frame.data.npc !== npc ||
+            typeof frame.data.text !== "string"
+          )
+            throw protocolError(correlation);
+          onDialogue?.(frame.data.text);
         }
         if (frame?.event === "error") {
           if (

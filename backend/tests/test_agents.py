@@ -15,7 +15,7 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.mark.parametrize("tool_name", ["act_on_work", "execute", "task"])
-@pytest.mark.parametrize("story_version", [1, 3])
+@pytest.mark.parametrize("story_version", [1])
 async def test_deep_agent_tool_loop_isolation_and_fixed_model(
     monkeypatch, tool_name, story_version
 ):

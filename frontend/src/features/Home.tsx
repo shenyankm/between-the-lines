@@ -166,7 +166,9 @@ export function Home() {
                 isDisabled={busy}
                 onClick={() => void trial()}
               >
-                立即试玩 · 第一幕
+                {config.data?.guest_full_story
+                  ? "立即试玩 · 完整故事"
+                  : "立即试玩 · 第一幕"}
               </Button>
             )}
             <a
@@ -192,9 +194,13 @@ export function Home() {
         {user.data?.identity_type === "guest" && (
           <p className={s.notice}>
             访客进度保留七天。
-            <a href={config.data?.zhihu_login ? "/api/auth/zhihu" : undefined}>
-              绑定知乎，继承进度继续第二幕
-            </a>
+            {config.data?.guest_full_story ? (
+              <span>当前可继续完整故事，无需绑定账号。</span>
+            ) : config.data?.zhihu_login ? (
+              <a href="/api/auth/zhihu">绑定知乎，继承进度继续第二幕</a>
+            ) : (
+              <span>当前仅开放第一幕；知乎登录开放后可绑定并继续。</span>
+            )}
           </p>
         )}
         {user.data?.binding_pending && (

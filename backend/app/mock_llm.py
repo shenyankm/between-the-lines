@@ -74,7 +74,7 @@ def completion(payload: dict[str, Any]) -> dict[str, Any]:
             )
         else:
             arguments = {"operation": intent}
-    if operation:
+    if operation and payload.get("tools"):
         return {
             "role": "assistant",
             "content": None,

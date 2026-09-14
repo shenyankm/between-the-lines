@@ -47,7 +47,7 @@ export async function start(page: Page, guest = false) {
   });
   await page.goto("/");
   await page
-    .getByRole("button", { name: guest ? "立即试玩 · 第一幕" : "开发环境试玩" })
+    .getByRole("button", { name: guest ? /^立即试玩/ : "开发环境试玩" })
     .click();
   if (!guest) await page.getByRole("button", { name: "开始新的故事" }).click();
   await expect(page).toHaveURL(/\/play\//);
@@ -57,7 +57,15 @@ export async function start(page: Page, guest = false) {
 }
 export async function closePanel(page: Page) {
   const close = page.getByRole("button", { name: "关闭面板" });
-  if (await close.isVisible()) await close.click();
+  if (await close.isVisible()) {
+    try {
+      await close.click({ timeout: 2000 });
+    } catch (error) {
+      // A confirmed choice may already have closed the panel during the click.
+      // Only that completed close is acceptable; covered or disabled buttons fail.
+      if (await close.count()) throw error;
+    }
+  }
   await expect(close).toHaveCount(0);
 }
 export async function commitClick(page: Page, click: () => Promise<unknown>) {

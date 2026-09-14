@@ -213,7 +213,7 @@ export function PlayV3({
   const latest = events.at(-1);
   const last =
     latest &&
-    (latest.scene !== state.node ||
+    ((latest.scene != null && latest.scene !== state.node) ||
       [
         "begin",
         "next",
@@ -223,6 +223,8 @@ export function PlayV3({
       ].includes(latest.action ?? ""))
       ? (lines.at(-1) ?? latest)
       : latest;
+  const scenePreview =
+    controller.preview?.channel === "scene" ? controller.preview : undefined;
   const names = {
     sun: "孙淼",
     li: "李姐",
@@ -465,10 +467,15 @@ export function PlayV3({
           ) : (
             <>
               <strong>
-                {names[(last?.speaker ?? "system") as keyof typeof names] ??
-                  "现场"}
+                {names[
+                  (scenePreview?.text
+                    ? scenePreview.npc
+                    : (last?.speaker ?? "system")) as keyof typeof names
+                ] ?? "现场"}
               </strong>
-              <p className={s.current}>{last?.text || save.scene_intro}</p>
+              <p className={s.current}>
+                {scenePreview?.text || last?.text || save.scene_intro}
+              </p>
               <Actions
                 options={stageChoices}
                 act={(action, npc) => {
@@ -716,6 +723,14 @@ export function PlayV3({
                               {e.text}
                             </p>
                           ))}
+                          {controller.preview?.channel === "dm" &&
+                            controller.preview.npc === contact &&
+                            controller.preview.text && (
+                              <p aria-label="正在回复">
+                                <strong>{names[contact]}：</strong>
+                                {controller.preview.text}
+                              </p>
+                            )}
                           {!npcEvents.length && (
                             <p>
                               {contact === "group"

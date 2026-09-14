@@ -38,6 +38,7 @@ class TurnRunner:
         self.active: set[object] = set()
         self.tasks: set[asyncio.Task[dict[str, Any] | None]] = set()
         self.accepting = True
+        self.live_replies: dict[str, str] = {}
 
     async def submit(
         self, save_id: str, user_id: str, body: TurnInput
@@ -108,6 +109,7 @@ class TurnRunner:
                     if turn.input.action == "speak" and turn.input.channel != "group":
                         async for chunk in self.reply(turn, self.checkpointer, usage):
                             reply += chunk
+                            self.live_replies[turn.id] = reply
                     elif turn.input.action == "epilogue":
                         async with self.service.sessions() as db:
                             save = await owned_save(db, turn.save_id, turn.user_id)
@@ -137,6 +139,7 @@ class TurnRunner:
                 outcome = result["status"]
             return result
         finally:
+            self.live_replies.pop(turn.id, None)
             self.active.discard(reservation)
             self.observe(
                 outcome,

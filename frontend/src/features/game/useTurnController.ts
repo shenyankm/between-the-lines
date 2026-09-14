@@ -21,6 +21,7 @@ export const playKey = (userId: string, saveId: string) =>
   ["play", userId, saveId] as const;
 type Phase = "idle" | "submitting" | "waiting" | "recovering";
 interface View {
+  preview?: { npc: Npc; channel: string; text: string };
   phase: Phase;
   pending: string | null;
   error: string;
@@ -167,8 +168,9 @@ export function useTurnController(
             }
           : old,
       );
-      setView({
+      setView((previous) => ({
         ...idle,
+        preview: result.status === "completed" ? previous.preview : undefined,
         issue: result.failure
           ? new ApiError(
               result.failure.message,
@@ -187,7 +189,7 @@ export function useTurnController(
               result.text ||
               "回合未完成，请刷新后继续。"
             : "",
-      });
+      }));
     },
     [client, userId, saveId, onCompleted],
   );
@@ -433,9 +435,17 @@ export function useTurnController(
           },
           signal,
           extra,
+          (text) => {
+            if (!signal.aborted)
+              setView((v) => ({
+                ...v,
+                preview: { npc, channel: extra.channel ?? "scene", text },
+              }));
+          },
         );
         resolve(result, signal);
         await refresh(signal);
+        if (!signal.aborted) setView((v) => ({ ...v, preview: undefined }));
         return !signal.aborted && result.status === "completed";
       } catch (error) {
         if (signal.aborted) return false;

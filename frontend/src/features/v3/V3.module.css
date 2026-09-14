@@ -19,7 +19,7 @@
   min-width: 0;
 }
 .header h2 {
-  font-family: serif;
+  font-family: "PingFang SC", "Microsoft YaHei", SimHei, sans-serif;
   font-size: 26px;
   margin: 14px 0 4px;
 }
@@ -107,7 +107,7 @@
   z-index: 2;
 }
 .current {
-  font-family: serif;
+  font-family: "PingFang SC", "Microsoft YaHei", SimHei, sans-serif;
   font-size: 21px;
   line-height: 1.8;
   white-space: pre-wrap;
@@ -122,7 +122,7 @@
   border: 0;
 }
 .script span {
-  font-family: serif;
+  font-family: "PingFang SC", "Microsoft YaHei", SimHei, sans-serif;
   font-size: 23px;
   line-height: 1.85;
   min-height: 100px;
@@ -246,7 +246,7 @@
 }
 .drawerHeader h2 {
   margin: 0;
-  font-family: serif;
+  font-family: "PingFang SC", "Microsoft YaHei", SimHei, sans-serif;
   font-size: 24px;
 }
 .drawerBody {
@@ -469,7 +469,7 @@
   overflow-wrap: anywhere;
 }
 .ending h1 {
-  font-family: serif;
+  font-family: "PingFang SC", "Microsoft YaHei", SimHei, sans-serif;
   font-size: clamp(30px, 3.2vw, 50px);
   font-weight: 400;
   color: var(--accent);
@@ -564,7 +564,7 @@
   }
   .header {
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
   }
   .header h2 {
     font-size: 20px;
@@ -588,19 +588,19 @@
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 16px;
+    margin-top: 10px;
   }
   .toolbar button {
     flex: 1 1 95px;
     font-size: 13px;
-    padding: 10px;
+    padding: 6px 10px;
     justify-content: center;
   }
   .toolbar label {
     flex-basis: 100%;
   }
   .portraits {
-    inset: 320px 0 0;
+    inset: 250px 0 0;
   }
   .portraits img {
     height: 40vh;
@@ -609,7 +609,7 @@
     object-position: top;
   }
   .dialogue {
-    margin: 25vh 0 0;
+    margin: 14vh 0 0;
     padding: 18px;
   }
   .script span,

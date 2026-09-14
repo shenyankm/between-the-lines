@@ -17,6 +17,7 @@ AGENT_MODE=openai
 OPENAI_BASE_URL=https://api.openai-next.com/v1
 OPENAI_API_KEY=YOUR_KEY
 OPENAI_MODEL=gpt-6-astra
+OPENAI_REASONING_EFFORT=low
 OPENAI_MAX_RETRIES=1
 OPENAI_MAX_OUTPUT_TOKENS=1600
 ```
@@ -26,6 +27,11 @@ for deterministic development and CI. The browser config contract, admission
 checks, response parsing, usage model name and discussion cache identity all
 follow the selected provider. Responses text blocks are extracted without
 exposing reasoning or tool arguments, including JSON artifact output.
+
+V3 dialogue now uses one read-only generation after authoritative rules resolve
+grounded player actions. It reuses transport connections and streams public
+final-answer text. See [NPC response behavior and latency](response-latency.md)
+for the current implementation, optional model tuning, and measured limitations.
 
 The gateway guide does not specify token prices. If prices are omitted, public
 usage records return `cost_estimate_usd: null` and tokens are still counted.

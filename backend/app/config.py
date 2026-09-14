@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="", repr=False)
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-6-astra"
+    openai_reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
     openai_max_retries: int = Field(default=1, ge=0, le=3)
     openai_max_output_tokens: int = Field(default=1600, ge=128, le=8192)
     openai_input_usd_per_million: float | None = Field(default=None, ge=0)
@@ -44,6 +45,7 @@ class Settings(BaseSettings):
     deepseek_max_retries: int = 2
     story_v2_enabled: bool = True
     guest_enabled: bool = True
+    guest_full_story_enabled: bool = False
     automatic_intents_enabled: bool = True
     discussions_enabled: bool = True
     guest_ai_limit: int = 8
@@ -80,9 +82,13 @@ class Settings(BaseSettings):
                 raise ValueError("OPENAI_BASE_URL must use HTTPS")
             if not self.openai_model.strip():
                 raise ValueError("OPENAI_MODEL must not be empty")
+            if self.openai_model.startswith("gpt-6") and self.openai_reasoning_effort == "none":
+                raise ValueError("GPT6 does not support OPENAI_REASONING_EFFORT=none")
             if self.monthly_cost_cap_usd > 0 and not self.pricing_known:
                 raise ValueError("OpenAI cost cap requires configured gateway token prices")
         if self.environment == "production":
+            if self.guest_full_story_enabled:
+                raise ValueError("Full guest story is only available in development")
             if self.dev_login_enabled or self.agent_mode == "mock":
                 raise ValueError("Production forbids development login and mock agents")
             if len(self.session_secret) < 32 or self.session_secret.startswith("development"):

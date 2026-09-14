@@ -46,3 +46,5 @@ At the end, revisit what happened and reflect on your choices. You do not have t
 Found a confusing choice or a problem while playing? [Open an issue](https://github.com/shenyankm/between-the-lines/issues) with the scene, what you tried, and what happened. A screenshot can help; leave out private messages and account information. Report security issues through the [security policy](SECURITY.md).
 
 To work on the project, see the [contribution guide](CONTRIBUTING.md). Local setup and hosting instructions are in [development and deployment](docs/development.md); implementation details are in the [architecture guide](docs/architecture.md).
+
+For AI setup, see the [GPT6 gateway guide](docs/gpt6-gateway.md). The [NPC response guide](docs/response-latency.md) explains streaming, one-pass dialogue, and the development-only complete guest trial.

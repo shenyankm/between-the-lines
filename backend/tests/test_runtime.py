@@ -203,3 +203,26 @@ async def test_persistence_failure_is_subscription_error_until_recovery(app, mon
         lookup = (await c.get(f"/api/saves/{save['id']}/turns/{body['request_id']}")).json()
         assert lookup["result"]["failure"]["code"] == "turn_interrupted"
         assert not app.state.runtime.runner.active
+
+
+async def test_reply_records_the_current_scene_and_full_trial_preserves_guest_identity(app):
+    app.state.settings.guest_full_story_enabled = True
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,
+    ):
+        user = (await c.post("/api/auth/guest", json={})).json()
+        save = (await c.post("/api/saves", json={})).json()
+        for action, text in [("begin", ""), ("speak", "你好"), ("next", "")]:
+            r = await c.post(
+                f"/api/saves/{save['id']}/turns", json={**payload(save, action), "text": text}
+            )
+            assert r.status_code == 200
+            view = (await c.get(f"/api/saves/{save['id']}/play-state")).json()
+            save = view["save"]
+            if action == "speak":
+                reply = next(e for e in view["events"] if e["kind"] == "npc")
+                assert reply["scene"] == save["state"]["node"] == "act_1"
+        assert save["state"]["act"] == 2
+        assert (await c.get("/api/auth/me")).json()["id"] == user["id"]
+        assert (await c.get("/api/auth/me")).json()["identity_type"] == "guest"
