@@ -18,6 +18,7 @@ import { Actions, Work, type StateV3 } from "./Work";
 import { followUpChoices } from "./followUp";
 import { Relations } from "./Relations";
 import { Discussion } from "./Discussion";
+import { ClosingPreview } from "./ClosingPreview";
 import { ActionReceipt } from "./ActionReceipt";
 import { Ending } from "./Ending";
 import s from "./V3.module.css";
@@ -629,6 +630,9 @@ export function PlayV3({
           </header>
           <div className={s.confirmBody}>
             <p>{play.proposal.effect}</p>
+            {play.proposal.action === "close_story" && (
+              <ClosingPreview state={state} />
+            )}
             {["leave", "submit_exit"].includes(play.proposal.action) &&
               state.exit_draft && (
                 <>

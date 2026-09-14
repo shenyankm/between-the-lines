@@ -257,6 +257,20 @@ export function Work({
               </li>
             ))}
           </ol>
+          {options.find((a) => a.action === "project_review" && a.enabled) && (
+            <section className={s.notice} aria-label="项目复核后果">
+              <h3>复核前核对</h3>
+              <p>
+                {options.find((a) => a.action === "project_review")?.effect}
+              </p>
+              {options.find((a) => a.action === "project_review")
+                ?.requires_confirmation && (
+                <p>
+                  可先处理上方采购与交付事项，或选择“申请延期并获批”；继续复核需要确认。
+                </p>
+              )}
+            </section>
+          )}
           <Actions
             options={options.filter((a) => procurement.has(a.action))}
             act={act}

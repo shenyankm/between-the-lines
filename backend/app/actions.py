@@ -213,12 +213,12 @@ def transition(
 def available_actions(state: GameState) -> list[AvailableAction]:
     if isinstance(state, GameStateV3):
         from .story_rules import CATALOG as V3_CATALOG
-        from .story_rules import MAJOR as V3_MAJOR
+        from .story_rules import action_effect, requires_confirmation
 
         result: list[AvailableAction] = []
         if state.ending:
             return result
-        for action, (label, acts, target, flag, effect) in V3_CATALOG.items():
+        for action, (label, acts, target, flag, _effect) in V3_CATALOG.items():
             if state.act not in acts or action == "leave":
                 continue
             reason = ""
@@ -260,9 +260,9 @@ def available_actions(state: GameState) -> list[AvailableAction]:
                         )
                         in state.flags
                     ),
-                    requires_confirmation=action in V3_MAJOR,
+                    requires_confirmation=requires_confirmation(state, action),
                     reason=reason,
-                    effect=effect,
+                    effect=action_effect(state, action),
                 )
             )
         return result
