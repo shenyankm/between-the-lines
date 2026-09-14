@@ -55,7 +55,7 @@ languages require updating the locale allowlist in `vite.config.ts`.
 ## Validation and review
 
 - TypeScript, ESLint, production build and asset gate pass.
-- 275 frontend tests pass; coverage is 92.88% lines/statements, 91.62% branches,
+- 275 frontend tests pass; coverage is 92.88% lines/statements, 91.64% branches,
   88.10% functions. API client coverage remains 100% in all metrics.
 - 209 backend unit tests pass. Regenerated OpenAPI, story and TypeScript contracts
   match committed artifacts (normalizing Windows line endings).
@@ -63,6 +63,11 @@ languages require updating the locale allowlist in `vite.config.ts`.
   asynchronous recovery, procurement, ending flows and save isolation. Added UI
   checks cover Escape/focus restoration, sidebar placement, one through six saves,
   long text and horizontal overflow.
+- After integrating main `4d54560`, the full browser run passed 101 of 102 cases.
+  One desktop initialization timed out waiting for the scripted continue button.
+  The affected case then passed five consecutive desktop and five mobile runs;
+  the timeout was not reproduced and its cause is not established. The original
+  pre-rebase 64-case suite and the eight added/updated UI checks passed separately.
 - Review screenshots are under `docs/ui-review/`; browser tests also regenerate
   current screenshots under ignored `artifacts/ui/`.
 
