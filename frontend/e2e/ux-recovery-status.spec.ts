@@ -30,7 +30,15 @@ test("lost submission response stays uncertain until original committed result i
     page.getByRole("status").filter({ hasText: "请求是否受理尚未确认" }),
   ).toBeVisible();
   releaseLookup();
-  await expect(page.getByText("已保存", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "请求是否受理尚未确认" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: "既然知道我可能会生气，为什么不直接问我？",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   const after = await state(page);
   expect(posts).toBe(1);
   expect(after.save.version).toBe(before.save.version + 1);

@@ -46,7 +46,7 @@ test("attending the farewell must not later be described as missing it", async (
   ).toBe(false);
 });
 
-test("submitted exit application must remain labelled submitted when reopened", async ({
+test("submitted exit application stays committed when the ending is reloaded", async ({
   page,
 }, info) => {
   await start(page);
@@ -57,8 +57,14 @@ test("submitted exit application must remain labelled submitted when reopened", 
   await expect(
     page.getByRole("heading", { name: "主动转身", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /^工作系统/ }).click();
-  await page.getByRole("button", { name: "人事申请" }).click();
+  // Completed stories restore the ending, with no active work tools.
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "主动转身", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "故事工具与账户" }),
+  ).toHaveCount(0);
   const save = (await state(page)).save;
   expect("exit_draft" in save.state && save.state.exit_draft?.submitted).toBe(
     true,

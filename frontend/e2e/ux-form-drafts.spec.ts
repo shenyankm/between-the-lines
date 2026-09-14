@@ -37,7 +37,9 @@ test("unsubmitted HR input survives panel closure, refresh, and server validatio
     page.getByRole("textbox", { name: "申请理由", exact: true }),
   ).toHaveValue("希望调整工作安排");
   await page.reload();
-  await open();
+  // Navigation restores the work dialog; select HR inside it.
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "人事申请", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "原因", exact: true }),
   ).toHaveValue("需要休息一天");
