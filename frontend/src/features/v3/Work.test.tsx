@@ -346,26 +346,22 @@ it("restores unsaved HR input on remount, separates forms, and can clear it expl
     target: { value: "help" },
   });
   expect(
-    (screen.getByLabelText("原因", { exact: true }) as HTMLTextAreaElement)
-      .value,
+    screen.getByLabelText<HTMLTextAreaElement>("原因", { exact: true }).value,
   ).toBe("");
   first.unmount();
   render(<Work {...props} />);
   fireEvent.click(screen.getByRole("button", { name: "人事申请" }));
-  expect((screen.getByLabelText("申请理由") as HTMLTextAreaElement).value).toBe(
+  expect(screen.getByLabelText<HTMLTextAreaElement>("申请理由").value).toBe(
     "未保存的理由",
   );
   fireEvent.change(screen.getByLabelText("申请事项"), {
     target: { value: "leave" },
   });
   expect(
-    (screen.getByLabelText("原因", { exact: true }) as HTMLTextAreaElement)
-      .value,
+    screen.getByLabelText<HTMLTextAreaElement>("原因", { exact: true }).value,
   ).toBe("请假原因");
   fireEvent.click(screen.getByRole("button", { name: "清空退出申请输入" }));
-  expect((screen.getByLabelText("申请理由") as HTMLTextAreaElement).value).toBe(
-    "",
-  );
+  expect(screen.getByLabelText<HTMLTextAreaElement>("申请理由").value).toBe("");
   expect(props.act).not.toHaveBeenCalled();
 });
 

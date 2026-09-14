@@ -1,3 +1,4 @@
+import type { TurnInput } from "../src/types";
 import { test, expect } from "@playwright/test";
 import { start, state, closePanel } from "./v3-helpers";
 
@@ -46,7 +47,7 @@ test("unsubmitted HR input survives panel closure, refresh, and server validatio
   const p = await state(page);
   expect("exit_draft" in p.save.state && p.save.state.exit_draft).toBeNull();
   await page.route("**/api/saves/*/turns", async (route) => {
-    const body = route.request().postDataJSON();
+    const body = route.request().postDataJSON() as TurnInput;
     await route.continue({
       postData: JSON.stringify({
         ...body,
