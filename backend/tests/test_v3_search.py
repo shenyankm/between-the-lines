@@ -17,7 +17,7 @@ async def test_search_bounds_and_source_validation():
                 "ContentID": str(i),
                 "ContentType": "answer",
                 "Title": "公开问题",
-                "ContentText": "公开观点",
+                "ContentText": f"公开观点 {i}",
                 "Url": f"https://www.zhihu.com/question/1/answer/{i}",
             }
             for i in range(12)
@@ -42,6 +42,8 @@ def test_artifact_rejects_invented_source():
             {
                 "cards": [
                     {
+                        "strategy": "direct",
+                        "source_quotes": {"invented": "不存在的资料"},
                         "view": "a",
                         "situation": "b",
                         "expression": "c",
