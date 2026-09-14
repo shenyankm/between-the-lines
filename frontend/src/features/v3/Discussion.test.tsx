@@ -86,3 +86,28 @@ it("retries a failed generation request using the same id and polls running work
   await screen.findByText("已完成", {}, { timeout: 3000 });
   expect(new Set(ids).size).toBe(1);
 });
+
+it.each(["failed", "unknown", "completed"])(
+  "explains %s without inventing a suggestion",
+  async (status) => {
+    server.use(
+      http.post("/api/saves/save-1/jobs", () =>
+        HttpResponse.json({
+          id: "job",
+          kind: "discussion",
+          status,
+          result: null,
+        }),
+      ),
+    );
+    mount();
+    await screen.findByText(
+      status === "completed"
+        ? "本幕暂无可用观点，可以先用自己的话回应。"
+        : "本次观点整理未完成，可以继续故事，稍后再查看。",
+    );
+    expect(
+      screen.queryByRole("button", { name: "带入输入框，再由我修改" }),
+    ).toBeNull();
+  },
+);

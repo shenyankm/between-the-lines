@@ -27,3 +27,11 @@ HeroUI Card separates the ending header, responsive narrative/facts columns and 
 Legacy conversations, menus, result panels and interludes use the same HeroUI buttons and form controls; shared errors use Surface while retaining `role="alert"`, retry delays and diagnostic-copy behavior. Router links, authored story artwork, share canvas, native dialogs, select/checkbox/meter and disclosure details are deliberate semantic exceptions. The native dialog shell remains shared in design conventions across versions, with existing focus and close behavior preserved.
 
 The migration does not change account identity, per-save draft storage, turn idempotency, recovery or server facts. Validation includes a legacy save fixture with a rejected submission to ensure the input and shared error remain usable.
+
+## Responsive and feedback conventions
+
+The V3 stage uses separate grid areas for title/metrics, tools, portraits, dialogue and feedback. Above 1000px, tools occupy the right column; smaller windows place tools in normal flow. At 700px the metrics and controls compact, and windows at most 500px high use a small portrait region. Tool actions and account navigation remain separate groups. Long content wraps and scrolls instead of being clipped.
+
+Native selects and text controls use the shared field colors, 16px input text and visible focus outlines. Independent buttons and close controls have a minimum 44px height. Both legacy and V3 drawers keep their header outside the scrolling body; native confirmation dialogs focus the title and keep their actions outside the scroll region. Modal height uses dynamic viewport units and safe-area insets.
+
+Turn feedback is rendered once in the currently accessible V3 surface (stage, drawer, confirmation or interlude). Keep the existing controller as the source of pending/recovery behavior. Forms explain unavailable actions from the server; local save management locks only the affected card. Display helpers may translate ending labels and choose version-specific metrics, but must not rewrite saved facts. See the [responsive audit matrix](frontend-responsive-audit.md) for evidence, commands and remaining device checks.

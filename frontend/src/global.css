@@ -15,7 +15,8 @@ body {
 }
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 button,
@@ -61,6 +62,42 @@ button:not(.button) {
 }
 textarea {
   resize: vertical;
+}
+/* Shared control geometry also covers the deliberately native controls. */
+.button {
+  min-height: 44px;
+  height: auto;
+  max-width: 100%;
+  white-space: normal;
+}
+input:not([type="checkbox"]),
+textarea,
+select {
+  font-size: 16px;
+  max-width: 100%;
+  color: var(--field-foreground);
+  background-color: var(--field-background);
+}
+select {
+  min-height: 44px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+summary {
+  min-height: 44px;
+  padding-block: 8px;
+}
+label:has(input[type="checkbox"]) {
+  min-height: 44px;
+  padding-block: 10px;
+}
+dialog {
+  overscroll-behavior: contain;
 }
 ::selection {
   background: #867052;

@@ -197,7 +197,14 @@ it("shows a submitted exit as submitted while leaving an unsubmitted draft disti
 });
 it("saves a support draft with an editable handover plan", () => {
   const submit = vi.fn();
-  render(<SupportForm state={state} options={[]} act={submit} busy={false} />);
+  render(
+    <SupportForm
+      state={state}
+      options={[option("draft_support")]}
+      act={submit}
+      busy={false}
+    />,
+  );
   fireEvent.change(screen.getByLabelText("申请事项"), {
     target: { value: "help" },
   });
@@ -261,3 +268,28 @@ it.each(["draft", "submitted", "approval", "completion"] as const)(
     );
   },
 );
+
+it("does not submit support requests when the server withholds the action", () => {
+  const submit = vi.fn();
+  render(
+    <SupportForm
+      state={state}
+      options={[option("draft_support", false)]}
+      act={submit}
+      busy={false}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("原因"), {
+    target: { value: "需要帮助" },
+  });
+  fireEvent.change(screen.getByLabelText("交接或分工安排"), {
+    target: { value: "交接安排" },
+  });
+  const button = screen.getByRole<HTMLButtonElement>("button", {
+    name: "保存并预览申请",
+  });
+  expect(button.disabled).toBe(true);
+  expect(screen.getByText("先完成材料")).toBeTruthy();
+  fireEvent.submit(button.closest("form")!);
+  expect(submit).not.toHaveBeenCalled();
+});

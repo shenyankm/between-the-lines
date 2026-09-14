@@ -754,3 +754,48 @@ it("follows system motion changes and removes the retired stored override", () =
   view.unmount();
   expect(preference.removeEventListener).toHaveBeenCalledWith("change", update);
 });
+
+it("moves turn errors and recovery into the open panel without duplicating feedback or clearing drafts", () => {
+  ctrl.error = "提交未完成，请检查安排。";
+  ctrl.pending = "accepted-request";
+  mount();
+  fireEvent.change(screen.getByLabelText("自由表达"), {
+    target: { value: "现场保留" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: /孙淼/ }));
+  const panel = screen.getByRole("dialog");
+  fireEvent.change(within(panel).getByLabelText("自由表达"), {
+    target: { value: "私聊保留" },
+  });
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(within(panel).getByRole("alert").textContent).toContain(ctrl.error);
+  fireEvent.click(within(panel).getByRole("button", { name: "恢复回合结果" }));
+  expect(ctrl.recover).toHaveBeenCalledOnce();
+  expect(
+    within(panel).getByLabelText<HTMLTextAreaElement>("自由表达").value,
+  ).toBe("私聊保留");
+  fireEvent.click(within(panel).getByRole("button", { name: "关闭面板" }));
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(screen.getByLabelText<HTMLTextAreaElement>("自由表达").value).toBe(
+    "现场保留",
+  );
+});
+it("focuses the decision title before a long confirmation and shows errors inside it", () => {
+  const p = play();
+  p.proposal = {
+    id: "proposal",
+    version: 2,
+    action: "submit_exit",
+    label: "确认退出申请",
+    effect: "申请需要后续办理",
+  };
+  ctrl.error = "申请暂未提交";
+  mount(p);
+  const dialog = screen.getByRole("alertdialog");
+  expect(document.activeElement).toBe(
+    within(dialog).getByRole("heading", { name: "确认退出申请" }),
+  );
+  expect(within(dialog).getByRole("alert").textContent).toContain(ctrl.error);
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+});

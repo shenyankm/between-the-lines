@@ -1,6 +1,12 @@
 import { Form, TextArea, Button } from "@heroui/react";
 import { useState } from "react";
-import { Actions, type Act, type Option, type StateV3 } from "./Work";
+import {
+  Actions,
+  unavailableReason,
+  type Act,
+  type Option,
+  type StateV3,
+} from "./Work";
 
 export function SupportForm({
   state,
@@ -18,12 +24,16 @@ export function SupportForm({
   const [plan, setPlan] = useState("");
   const current = state.support_requests?.at(-1);
   const processing = !!current?.submitted && !current.completion;
+  const disabledReason = processing
+    ? "申请已提交，等待处理完成。"
+    : unavailableReason(options, "draft_support", busy);
   return (
     <section aria-label="请假与求助申请">
       <h3>请假与求助</h3>
       <Form
         onSubmit={(event) => {
           event.preventDefault();
+          if (disabledReason) return;
           act("draft_support", "sun", {
             params: { support_kind: kind, reason, plan },
           });
@@ -62,9 +72,15 @@ export function SupportForm({
             onChange={(event) => setPlan(event.target.value)}
           />
         </label>
-        <Button variant="primary" type="submit" isDisabled={busy || processing}>
+        <Button
+          variant="primary"
+          type="submit"
+          isDisabled={!!disabledReason}
+          aria-describedby={disabledReason ? "support-hint" : undefined}
+        >
           保存并预览申请
         </Button>
+        {disabledReason && <p id="support-hint">{disabledReason}</p>}
       </Form>
       {current && (
         <article>

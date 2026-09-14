@@ -33,7 +33,7 @@
   border-radius: 9px;
 }
 .muted {
-  color: #8d9cab;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.8;
 }
@@ -70,7 +70,7 @@
   color: #dde0e5;
 }
 .description {
-  color: #91a0b0;
+  color: var(--muted);
   font-size: 15px;
   line-height: 2;
   margin-bottom: 36px;
@@ -87,7 +87,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 32px;
-  min-width: 230px;
+  min-width: min(230px, 100%);
+  max-width: 100%;
+  white-space: normal;
   min-height: 48px;
   padding: 14px 22px;
   border-radius: 4px;
@@ -159,10 +161,11 @@
   border-top: 1px solid #ffffff0a;
 }
 .page {
-  min-height: 100vh;
+  min-height: 100dvh;
   max-width: 1120px;
   margin: auto;
-  padding: 50px 30px;
+  padding: 40px clamp(16px, 4vw, 30px);
+  overflow-wrap: anywhere;
 }
 .page h1 {
   font-family: "Songti SC", serif;
@@ -170,6 +173,7 @@
   margin-top: 36px;
 }
 .back {
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -307,6 +311,8 @@
   background: #d3b994;
 }
 .iconText {
+  min-height: 44px;
+  min-width: 44px;
   display: flex;
   gap: 8px;
   color: #a0afc0;
@@ -595,26 +601,34 @@
   backdrop-filter: blur(4px);
 }
 .drawerInside {
-  padding: 30px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .drawerHeader {
   display: flex;
-  justify-content: space-between;
+  flex-shrink: 0;
   align-items: center;
-  border-bottom: 1px solid #344359;
-  margin-bottom: 28px;
-  padding-bottom: 18px;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: max(20px, env(safe-area-inset-top)) 24px 20px;
 }
 .drawerHeader h2 {
-  font-size: 22px;
-  font-weight: 400;
+  font-size: 24px;
   margin: 0;
 }
 .drawerHeader button {
-  background: none;
-  display: flex;
-  color: #a4b4c6;
-  padding: 5px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.drawerBody {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  padding: 24px 24px max(24px, env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
 }
 .contact {
   display: flex;
@@ -711,12 +725,14 @@
   margin: 10px 0;
 }
 .logout {
-  position: fixed;
-  bottom: 8px;
-  left: 8px;
-  background: none;
-  color: #4b637d;
-  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: static;
+  margin: 16px auto;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--muted);
 }
 .ending {
   padding: 28px 0;
@@ -977,7 +993,7 @@
     min-width: 0;
   }
   .composer input {
-    font-size: 13px;
+    font-size: 16px;
   }
   .saved {
     font-size: 10px;
@@ -988,8 +1004,8 @@
   .conversationFooter button {
     font-size: 12px;
   }
-  .drawerInside {
-    padding: 24px;
+  .drawerBody {
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
   }
   .desktop {
     display: none;
@@ -1022,21 +1038,32 @@
 
 .interlude {
   width: min(1100px, 94vw);
-  max-height: 92dvh;
+  max-height: calc(
+    100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
   padding: 0;
   border: 1px solid #556272;
   border-radius: 14px;
   background: #0c1624;
   color: #ece6dc;
-  overflow: auto;
+  overflow: hidden;
+}
+.interlude[open] {
+  display: flex;
+  flex-direction: column;
+}
+.interludeBody {
+  overflow-y: auto;
+  min-height: 0;
 }
 .interlude::backdrop {
   background: #020812db;
 }
-.interlude > img {
+.interludeBody > img {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
+  max-height: 40dvh;
   object-fit: cover;
 }
 .interludeCopy {
@@ -1054,7 +1081,10 @@
   line-height: 1.9;
   color: #b8c3d0;
 }
-.interludeCopy > div {
+.interludeActions {
+  flex-shrink: 0;
+  padding: 16px clamp(16px, 4vw, 48px);
+  border-top: 1px solid var(--border);
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
@@ -1082,9 +1112,9 @@
   padding: 1.2rem;
   width: min(960px, calc(100% - 2rem));
   box-sizing: border-box;
-  border: 1px solid #53645f;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #17231f;
+  background: var(--surface);
   overflow-wrap: anywhere;
 }
 .confirmation button,
@@ -1117,4 +1147,29 @@
   color: #b4c0d0;
   font-size: 12px;
   font-weight: 400;
+}
+
+@media (max-width: 600px) {
+  .home h1 {
+    font-size: clamp(46px, 14vw, 66px);
+    letter-spacing: 0.08em;
+  }
+  .saveActions > button {
+    flex: 1 1 auto;
+  }
+  .interludeActions {
+    gap: 8px;
+  }
+  .interludeActions > button {
+    flex: 1 1 180px;
+  }
+}
+@media (max-height: 500px) {
+  .homeContent {
+    padding-top: 24px;
+  }
+  .stage {
+    min-height: 300px;
+    height: 300px;
+  }
 }
