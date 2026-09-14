@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useEffect, useState } from "react";
 import type { Story } from "../../types";
 import { imageSource } from "../../images";
@@ -27,7 +28,8 @@ export function Script({
   if (!line) return null;
   const full = reduced || count >= line.text.length;
   return (
-    <button
+    <Button
+      variant="secondary"
       className={s.script}
       onClick={() => {
         if (!full) setCount(line.text.length);
@@ -51,7 +53,7 @@ export function Script({
       </strong>
       <span>{full ? line.text : line.text.slice(0, count)}</span>
       <small>{full ? "点击继续 →" : "点击显示全文"}</small>
-    </button>
+    </Button>
   );
 }
 export function Portraits({
