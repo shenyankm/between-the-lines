@@ -1,0 +1,38 @@
+[
+  {
+    "code": "E01",
+    "source": "btl-wiki-1064-rules.png",
+    "sha256": "7c3af700438815eac7336d9e6a0e7db859c1df4a2cdc010e71e5f3dc24d1d777",
+    "cleaned": "frontend/public/assets/ending-rules.png"
+  },
+  {
+    "code": "E02",
+    "source": "btl-wiki-1064-boundary.png",
+    "sha256": "6eb6a8a0770356ad2d63a77929275a060268081feed044ca019929d957690976",
+    "cleaned": "frontend/public/assets/ending-boundary.png"
+  },
+  {
+    "code": "E03",
+    "source": "btl-wiki-1064-repair.png",
+    "sha256": "f124cbdc7906c4e34828c8de5cb96a10d2890ef6c94f884bef0678889c840b12",
+    "cleaned": "frontend/public/assets/ending-repair.png"
+  },
+  {
+    "code": "E04",
+    "source": "btl-wiki-1064-exit.png",
+    "sha256": "57bbda6dc3feee9e02dcac08c8864ee14be550b1613a26c08ccf79fd7c04ad30",
+    "cleaned": "frontend/public/assets/ending-exit.png"
+  },
+  {
+    "code": "E05",
+    "source": "btl-wiki-1064-cost.png",
+    "sha256": "066ca80236085575c11fe9362dc182701c909ea09e95ae44a2a5b4e04d5e3cc3",
+    "cleaned": "frontend/public/assets/ending-cost.png"
+  },
+  {
+    "code": "E06",
+    "source": "btl-wiki-1064-unresolved.png",
+    "sha256": "43760e75a4eb5c5ee48479c8308edc9fd934e55b05769d63404e6bfc08a34412",
+    "cleaned": "frontend/public/assets/ending-unresolved.png"
+  }
+]

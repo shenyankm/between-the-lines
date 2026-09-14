@@ -1,10 +1,13 @@
 import { Button, Card } from "@heroui/react";
-import { useRef, useState } from "react";
+import { type CSSProperties, useRef, useState } from "react";
 import type { StateV3 } from "./Work";
 import s from "./V3.module.css";
 import type { Save } from "../../types";
 import { EndingNarrative } from "./EndingNarrative";
 import { Link } from "react-router";
+import { imageSet, imageSource } from "../../images";
+import { endingVisual, expressionStyle } from "./endingPresentation";
+import "./ending-fonts.css";
 export function Ending({
   state,
   save,
@@ -17,17 +20,13 @@ export function Ending({
   const canvas = useRef<HTMLCanvasElement>(null);
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState("");
+  const visual = endingVisual(state);
+  const source = visual ? `/assets/ending-${visual.asset}.png` : "";
+  const [failedImage, setFailedImage] = useState<string | null>(null);
   const evidence = Object.entries(state.relationship?.facts ?? {}).filter(
     ([k]) => ["boundary", "sun_cut", "friendship", "sun_observe"].includes(k),
   );
-  const style =
-    state.relationship?.intention === "professional"
-      ? "清晰守界"
-      : state.relationship?.intention === "friendship"
-        ? "审慎修复"
-        : evidence.length
-          ? "主动表达"
-          : "保留空间";
+  const style = expressionStyle(state);
   const text = `《言外之意》｜${state.outcome?.title}\n我的表达风格：${style}\n${evidence.map(([, f]) => f.detail).join("\n")}\n这是本局选择的记录，不是心理测评。`;
   function draw() {
     setPreview(true);
@@ -61,15 +60,48 @@ export function Ending({
   }
   return (
     <Card className={s.ending} role="region" aria-label="故事结局">
-      <Card.Header>
-        <small>这一次，你的故事停在这里</small>
-        <h1>{state.outcome?.title}</h1>
-      </Card.Header>
-      <Card.Content className={s.endingColumns}>
-        <div className={s.endingNarrative}>
-          <h2>结局回顾</h2>
-          <EndingNarrative save={save} userId={userId} />
+      <div
+        className={s.endingPoster}
+        style={
+          {
+            "--poster-image":
+              source && failedImage !== source
+                ? `url("${imageSource(source, 941)}")`
+                : "none",
+          } as CSSProperties
+        }
+      >
+        <Card.Header className={s.endingPosterHeader}>
+          <div className={s.endingBrand}>
+            <span>言外之意</span>
+            <span>{visual?.code}</span>
+          </div>
+          <small className={s.endingClosed}>本局已收束</small>
+          <h1>{state.outcome?.title ?? state.ending ?? "本局记录"}</h1>
+          {visual && <p className={s.endingSubtitle}>{visual.subtitle}</p>}
+        </Card.Header>
+        <div className={s.endingStory}>
+          {source && failedImage !== source && (
+            <div className={s.endingArtFrame}>
+              <img
+                className={s.endingArt}
+                src={imageSource(source, 768)}
+                srcSet={imageSet(source)}
+                sizes="(min-width: 1000px) 941px, calc(100vw - 48px)"
+                width={941}
+                height={1672}
+                alt={`${state.outcome?.title ?? "故事结局"}插画`}
+                onError={() => setFailedImage(source)}
+              />
+            </div>
+          )}
+          <div className={s.endingNarrative}>
+            <h2 className={s.sr}>结局回顾</h2>
+            <EndingNarrative save={save} userId={userId} />
+          </div>
         </div>
+      </div>
+      <Card.Content className={s.endingColumns}>
         <section className={s.endingFacts} aria-label="已保存事实">
           <h2>已保存事实</h2>
           <h3>这一局留下的余波</h3>

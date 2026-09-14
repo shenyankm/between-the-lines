@@ -26,7 +26,10 @@ for source in sorted(assets.glob("*.png")):
     }
     variants = []
     with Image.open(source) as image:
-        for width in [256, 512, 1024] if character else [768, 1280, 1672]:
+        widths = [256, 512, 1024] if character else [768, 1280, 1672]
+        if source.stem.startswith("ending-"):
+            widths = sorted({min(width, image.width) for width in [480, 768, 941]})
+        for width in widths:
             height = round(image.height * width / image.width)
             resized = image.resize((width, height), Image.Resampling.LANCZOS)
             stream = io.BytesIO()
