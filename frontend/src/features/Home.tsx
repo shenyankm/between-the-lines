@@ -1,4 +1,4 @@
-import { Button, Card, Dropdown } from "@heroui/react";
+import { Button, Card } from "@heroui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -25,6 +25,19 @@ export function Home() {
   const [logoutError, setLogoutError] = useState<unknown>(null);
   const logoutDialog = useRef<HTMLDialogElement>(null);
   const accountTrigger = useRef<HTMLButtonElement>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRoot = useRef<HTMLDivElement>(null);
+  const accountMenu = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!accountOpen) return;
+    accountMenu.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    const outside = (event: PointerEvent) => {
+      if (!accountRoot.current?.contains(event.target as Node))
+        setAccountOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [accountOpen]);
   useEffect(() => {
     if (!confirmLogout) return;
     const dialog = logoutDialog.current;
@@ -196,12 +209,30 @@ export function Home() {
         <div className={s.homeAccount}>
           <span className={s.muted}>互动职场小说 · 第一季</span>
           {user.data && !user.error && (
-            <Dropdown>
-              <Dropdown.Trigger
+            <div
+              ref={accountRoot}
+              className={s.accountRoot}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget))
+                  setAccountOpen(false);
+              }}
+            >
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={accountOpen}
+                aria-controls="account-menu"
+                onClick={() => setAccountOpen(!accountOpen)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setAccountOpen(true);
+                  }
+                }}
                 ref={accountTrigger}
                 className={s.accountAvatar}
                 aria-label="用户菜单"
-                isDisabled={busy}
+                disabled={busy}
               >
                 {user.data.avatar_url && !avatarFailed ? (
                   <img
@@ -215,37 +246,80 @@ export function Home() {
                     {user.data.name.slice(0, 1) || "我"}
                   </span>
                 )}
-              </Dropdown.Trigger>
-              <Dropdown.Popover
-                placement="bottom end"
-                offset={10}
-                className={s.accountPopover}
-              >
-                <Dropdown.Menu aria-label="账户操作" className={s.accountMenu}>
-                  <Dropdown.Item
+              </button>
+              {accountOpen && (
+                <div
+                  ref={accountMenu}
+                  id="account-menu"
+                  role="menu"
+                  tabIndex={-1}
+                  aria-label="账户操作"
+                  className={`${s.accountPopover} ${s.accountMenu}`}
+                  onKeyDown={(event) => {
+                    const items = Array.from(
+                      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                        "button",
+                      ),
+                    );
+                    const index = items.indexOf(
+                      document.activeElement as HTMLButtonElement,
+                    );
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setAccountOpen(false);
+                      accountTrigger.current?.focus();
+                    }
+                    if (
+                      ["ArrowDown", "ArrowUp", "Home", "End"].includes(
+                        event.key,
+                      )
+                    ) {
+                      event.preventDefault();
+                      const next =
+                        event.key === "Home"
+                          ? 0
+                          : event.key === "End"
+                            ? items.length - 1
+                            : (index +
+                                (event.key === "ArrowDown" ? 1 : -1) +
+                                items.length) %
+                              items.length;
+                      items[next]?.focus();
+                    }
+                  }}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    tabIndex={-1}
                     className={s.accountMenuItem}
-                    textValue="我的存档"
                     id="saves"
-                    onAction={() => void navigate("/saves")}
+                    onClick={() => {
+                      setAccountOpen(false);
+                      void navigate("/saves");
+                    }}
                   >
                     <Bookmark size={17} aria-hidden="true" />
                     <span>我的存档</span>
-                  </Dropdown.Item>
-                  <Dropdown.Item
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    tabIndex={-1}
                     className={s.accountMenuItem}
-                    textValue="退出登录"
                     id="logout"
-                    onAction={() => {
+                    onClick={() => {
+                      setAccountOpen(false);
                       setLogoutError(null);
                       setConfirmLogout(true);
                     }}
                   >
                     <LogOut size={17} aria-hidden="true" />
                     <span>退出登录</span>
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </nav>

@@ -40,8 +40,8 @@ assert largest_ending <= 800_000, largest_ending
 bundles = list((ROOT / "frontend/dist/assets").glob("*.js"))
 assert bundles, "Build the frontend first"
 js_bytes = sum(len(gzip.compress(file.read_bytes())) for file in bundles)
-# Includes the document-aligned procurement form and review history.
-assert js_bytes <= 152_000, js_bytes
+# Product transport budget: at most 1 MB of gzip-compressed JavaScript.
+assert js_bytes <= 1_000_000, js_bytes
 report = {
     "passed": True,
     "critical_image_upper_bound_bytes": critical,

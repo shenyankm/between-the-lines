@@ -497,3 +497,39 @@ it("shows guest binding progress without hiding its existing saves", async () =>
     "我",
   );
 });
+
+it("supports account menu keyboard navigation and dismissal", async () => {
+  setup();
+  mount();
+  const trigger = await screen.findByRole("button", { name: "用户菜单" });
+  fireEvent.keyDown(trigger, { key: "Shift" });
+  expect(screen.queryByRole("menu")).toBeNull();
+  fireEvent.keyDown(trigger, { key: "ArrowDown" });
+  const saves = screen.getByRole("menuitem", { name: "我的存档" });
+  const logout = screen.getByRole("menuitem", { name: "退出登录" });
+  expect(document.activeElement).toBe(saves);
+  fireEvent.keyDown(saves, { key: "ArrowUp" });
+  expect(document.activeElement).toBe(logout);
+  fireEvent.keyDown(logout, { key: "ArrowDown" });
+  expect(document.activeElement).toBe(saves);
+  fireEvent.keyDown(saves, { key: "End" });
+  expect(document.activeElement).toBe(logout);
+  fireEvent.keyDown(logout, { key: "Home" });
+  expect(document.activeElement).toBe(saves);
+  fireEvent.pointerDown(saves);
+  expect(screen.getByRole("menu")).toBeTruthy();
+  fireEvent.keyDown(saves, { key: "Escape" });
+  expect(screen.queryByRole("menu")).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  fireEvent.click(trigger);
+  fireEvent.pointerDown(document.body);
+  expect(screen.queryByRole("menu")).toBeNull();
+  fireEvent.click(trigger);
+  fireEvent.blur(screen.getByRole("menuitem", { name: "我的存档" }), {
+    relatedTarget: document.body,
+  });
+  expect(screen.queryByRole("menu")).toBeNull();
+  fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole("menuitem", { name: "我的存档" }));
+  expect(screen.queryByRole("menu")).toBeNull();
+});

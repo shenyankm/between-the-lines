@@ -1269,6 +1269,15 @@
   gap: 20px;
 }
 
+.homeAccount .muted {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #102033b8;
+  color: #f5f0e6;
+  font-weight: 600;
+  text-shadow: 0 1px 2px #102033;
+}
+
 .home .accountAvatar {
   width: 44px;
   height: 44px;
@@ -1346,5 +1355,30 @@
   background: #2b435b;
 }
 .accountMenuItem + .accountMenuItem {
+  border-top: 1px solid #71839933;
+}
+
+.accountRoot {
+  position: relative;
+}
+.accountRoot .accountPopover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  padding: 6px;
+}
+.accountRoot .accountMenuItem {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font-weight: 400;
+  justify-content: flex-start;
+}
+.accountRoot .accountMenuItem:hover,
+.accountRoot .accountMenuItem:focus-visible {
+  background: #2b435b;
+}
+.accountRoot .accountMenuItem + .accountMenuItem {
   border-top: 1px solid #71839933;
 }
