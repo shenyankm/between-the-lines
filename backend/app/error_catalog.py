@@ -11,6 +11,7 @@ class ErrorCode(StrEnum):
     OAUTH_FAILED = "oauth_failed"
     REQUEST_BODY_INVALID = "request_body_invalid"
     NOT_AUTHENTICATED = "not_authenticated"
+    ZHIHU_LOGIN_REQUIRED = "zhihu_login_required"
     FORBIDDEN_ORIGIN = "forbidden_origin"
     NOT_FOUND = "not_found"
     SAVE_NOT_FOUND = "save_not_found"
@@ -45,6 +46,7 @@ CATALOG: dict[ErrorCode, ErrorDefinition] = {
     ),
     ErrorCode.OAUTH_FAILED: ErrorDefinition(400, "知乎授权未完成，请重新登录。", "login"),
     ErrorCode.NOT_AUTHENTICATED: ErrorDefinition(401, "请先登录。", "login"),
+    ErrorCode.ZHIHU_LOGIN_REQUIRED: ErrorDefinition(403, "请先使用知乎账号登录。", "login"),
     ErrorCode.FORBIDDEN_ORIGIN: ErrorDefinition(403, "不允许的请求来源。", "refresh"),
     ErrorCode.NOT_FOUND: ErrorDefinition(404, "接口不存在。", "refresh"),
     ErrorCode.SAVE_NOT_FOUND: ErrorDefinition(404, "存档不存在。", "refresh"),

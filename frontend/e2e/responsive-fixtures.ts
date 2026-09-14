@@ -106,6 +106,7 @@ export async function responsiveFixture(page: Page) {
             id: "responsive-user",
             name: "合成审查用户",
             identity_type: "dev",
+            can_play: true,
           })
         : route.fulfill({
             status: 401,

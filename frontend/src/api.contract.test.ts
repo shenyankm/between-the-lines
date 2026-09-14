@@ -84,7 +84,7 @@ it("concrete clients use the existing endpoints and preserve the configured publ
       if (path.endsWith("/saves"))
         return HttpResponse.json(request.method === "POST" ? save() : [save()]);
       if (path.endsWith("/logout")) return HttpResponse.json({ ok: true });
-      return HttpResponse.json({ id: "u", name: "玩家" });
+      return HttpResponse.json({ id: "u", name: "玩家", can_play: true });
     }),
   );
   expect(await gameApi.login()).toMatchObject({ id: "u" });

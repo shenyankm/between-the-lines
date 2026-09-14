@@ -40,7 +40,7 @@ function setup() {
       }),
     ),
     http.get("/api/auth/me", () =>
-      HttpResponse.json({ id: "u", name: "玩家" }),
+      HttpResponse.json({ id: "u", name: "玩家", can_play: true }),
     ),
     http.get("/api/saves", () => HttpResponse.json([save()])),
   );
@@ -65,7 +65,7 @@ it("handles login and new-save failures in place, then permits an explicit retry
   server.use(
     http.get("/api/auth/me", () =>
       loggedIn
-        ? HttpResponse.json({ id: "u", name: "玩家" })
+        ? HttpResponse.json({ id: "u", name: "玩家", can_play: true })
         : HttpResponse.json(
             apiError("请先登录", { code: "not_authenticated" }),
             { status: 401 },
@@ -81,7 +81,7 @@ it("handles login and new-save failures in place, then permits an explicit retry
   server.use(
     http.post("/api/auth/dev", () => {
       loggedIn = true;
-      return HttpResponse.json({ id: "u", name: "玩家" });
+      return HttpResponse.json({ id: "u", name: "玩家", can_play: true });
     }),
   );
   fireEvent.click(screen.getByRole("button", { name: /开发环境试玩/ }));
@@ -146,6 +146,7 @@ it.each([true, false])(
               id: "guest",
               name: "试玩者",
               identity_type: "guest",
+              can_play: true,
             })
           : HttpResponse.json(apiError("登录", { code: "not_authenticated" }), {
               status: 401,
@@ -157,6 +158,7 @@ it.each([true, false])(
           id: "guest",
           name: "试玩者",
           identity_type: "guest",
+          can_play: true,
         });
       }),
       http.get("/api/saves", () => HttpResponse.json(existing ? [save()] : [])),
@@ -238,6 +240,7 @@ it("binding completion clears only the guest cache and refreshes inherited saves
         id: "u",
         name: "玩家",
         identity_type: "member",
+        can_play: true,
         binding_pending: false,
       }),
     ),

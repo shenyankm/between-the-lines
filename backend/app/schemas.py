@@ -95,6 +95,7 @@ class SaveOut(BaseModel):
 class UserOut(BaseModel):
     id: str
     name: str
+    can_play: bool
     identity_type: str = "member"
     guest_expires_at: datetime | None = None
     binding_pending: bool = False

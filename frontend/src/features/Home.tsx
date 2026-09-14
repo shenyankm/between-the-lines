@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router";
 import { ErrorNotice } from "../ErrorNotice";
 import { ApiError, api, gameApi } from "../api";
 import { isSave } from "../contracts";
+import { LoginRequired } from "./LoginRequired";
 import { clearIdentityDrafts } from "./game/drafts";
 import s from "../App.module.css";
 import { saveMetrics, saveTitle } from "./savePresentation";
@@ -28,13 +29,12 @@ export function Home() {
   const saves = useQuery({
     queryKey: ["saves", user.data?.id],
     queryFn: ({ signal }) => gameApi.saves(signal),
-    enabled:
-      !!user.data &&
-      !(user.error instanceof ApiError && user.error.status === 401),
+    enabled: !!user.data?.can_play && !user.error,
   });
   useEffect(() => {
     if (
-      !user.data ||
+      !user.data?.can_play ||
+      user.error ||
       user.data.identity_type === "guest" ||
       user.data.binding_pending
     )
@@ -53,7 +53,7 @@ export function Home() {
     } catch {
       /* Server identity remains authoritative. */
     }
-  }, [user.data, client]);
+  }, [user.data, user.error, client]);
   const activeSaves =
     saves.data?.filter((s) => !s.deleted_at && !s.archived_at) ?? [];
   const latest = activeSaves.find((s) => !s.state.ending) ?? activeSaves[0];
@@ -135,8 +135,9 @@ export function Home() {
           <br className={s.desktop} />
           找到属于自己的回应。
         </p>
-        {user.data &&
-        !(user.error instanceof ApiError && user.error.status === 401) ? (
+        {user.data && !user.error && !user.data.can_play ? (
+          <LoginRequired user={user.data} />
+        ) : user.data?.can_play && !user.error ? (
           <div className={s.homeActions}>
             <Button
               variant="primary"
@@ -173,7 +174,7 @@ export function Home() {
               href={config.data?.zhihu_login ? "/api/auth/zhihu" : undefined}
               aria-disabled={!config.data?.zhihu_login}
             >
-              知乎账号登录 <ArrowRight size={18} />
+              知乎授权登录 <ArrowRight size={18} />
             </a>
             {config.data?.dev_login && (
               <Button
@@ -187,7 +188,7 @@ export function Home() {
             )}
           </div>
         )}
-        {user.data?.identity_type === "guest" && (
+        {user.data?.can_play && user.data.identity_type === "guest" && (
           <p className={s.notice}>
             访客进度保留七天。
             <a href={config.data?.zhihu_login ? "/api/auth/zhihu" : undefined}>
@@ -264,15 +265,22 @@ export function Saves() {
   const saves = useQuery({
     queryKey: ["saves", user.data?.id],
     queryFn: ({ signal }) => gameApi.saves(signal),
-    enabled:
-      !!user.data &&
-      !(user.error instanceof ApiError && user.error.status === 401),
+    enabled: !!user.data?.can_play && !user.error,
   });
-  const visibleSaves = (
-    user.error instanceof ApiError && user.error.status === 401
-      ? []
-      : (saves.data ?? [])
-  ).filter((item) =>
+  if (!user.data || user.error || !user.data.can_play)
+    return (
+      <main className={s.page}>
+        <Link to="/">返回首页</Link>
+        {user.error ? (
+          <ErrorNotice error={user.error} onRetry={() => void user.refetch()} />
+        ) : user.data ? (
+          <LoginRequired user={user.data} />
+        ) : (
+          <p>正在读取身份…</p>
+        )}
+      </main>
+    );
+  const visibleSaves = (saves.data ?? []).filter((item) =>
     category === "trash"
       ? !!item.deleted_at
       : category === "archived"
@@ -288,10 +296,7 @@ export function Saves() {
       <h1>我的故事</h1>
       <p className={s.muted}>每个存档都是独立的一段经历。</p>
       {saves.isLoading && <p role="status">正在读取…</p>}
-      <ErrorNotice
-        error={user.error || saves.error}
-        onRetry={() => void (user.error ? user.refetch() : saves.refetch())}
-      />
+      <ErrorNotice error={saves.error} onRetry={() => void saves.refetch()} />
       {saves.data?.length === 0 && <p>还没有故事，从第一句话开始。</p>}
       <p role="status">{managed}</p>
       <nav className={s.saveFilters} aria-label="存档分类">

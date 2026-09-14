@@ -425,7 +425,7 @@ describe("Play: scene rendering", () => {
       http.get("/api/story", () => HttpResponse.json(story)),
       http.get("/api/saves/:id/events", () => HttpResponse.json([])),
       http.get("/api/auth/me", () =>
-        HttpResponse.json({ id: "test-user", name: "试玩者" }),
+        HttpResponse.json({ id: "test-user", name: "试玩者", can_play: true }),
       ),
       http.get("/api/saves/:id/play-state", () =>
         // The constant the API's 500 handler renders. It deliberately does not

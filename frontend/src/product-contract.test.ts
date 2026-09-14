@@ -71,6 +71,7 @@ it("guest creation and versioned story use validated public adapters", async () 
         id: "guest",
         name: "试玩者",
         identity_type: "guest",
+        can_play: true,
       }),
     ),
     http.get("/api/story", ({ request }) => {

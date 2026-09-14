@@ -124,3 +124,29 @@ it("renders no alert for explicit cancellation", () => {
   );
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+it("offers login for a restricted identity instead of retrying a forbidden operation", () => {
+  render(
+    <MemoryRouter>
+      <ErrorNotice
+        error={
+          new ApiError(
+            "请先使用知乎账号登录。",
+            403,
+            "zhihu_login_required",
+            undefined,
+            undefined,
+            "http",
+            undefined,
+            "login",
+          )
+        }
+        onRetry={() => {
+          throw new Error("must not retry");
+        }}
+      />
+    </MemoryRouter>,
+  );
+  expect(screen.getByRole("link", { name: "返回首页登录" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "重新加载" })).toBeNull();
+});

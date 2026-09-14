@@ -317,21 +317,33 @@ describe("failure safety", () => {
     expect(h.result.current.pending).toBe(original.requestId);
     expect(readPending("u", "save-1")?.requestId).toBe(original.requestId);
   });
-  it("pauses on session expiry without forgetting the accepted request", async () => {
-    writePending(original);
-    vi.mocked(api.gameApi.turn).mockRejectedValue(
-      new api.ApiError("登录已失效", 401, "not_authenticated"),
-    );
-    const h = mount();
-    await tick(100_000);
-    expect(api.gameApi.turn).toHaveBeenCalledTimes(1);
-    expect(h.result.current.pending).toBe(original.requestId);
-    expect(h.result.current.blocked).toBe(true);
-    await act(async () => {
-      await h.result.current.recover();
-    });
-    expect(api.gameApi.turn).toHaveBeenCalledTimes(1);
-  });
+  it.each([401, 403])(
+    "pauses on login restriction %s without forgetting the accepted request",
+    async (status) => {
+      writePending(original);
+      vi.mocked(api.gameApi.turn).mockRejectedValue(
+        new api.ApiError(
+          "需要登录",
+          status,
+          status === 401 ? "not_authenticated" : "zhihu_login_required",
+          undefined,
+          undefined,
+          "http",
+          undefined,
+          "login",
+        ),
+      );
+      const h = mount();
+      await tick(100_000);
+      expect(api.gameApi.turn).toHaveBeenCalledTimes(1);
+      expect(h.result.current.pending).toBe(original.requestId);
+      expect(h.result.current.blocked).toBe(true);
+      await act(async () => {
+        await h.result.current.recover();
+      });
+      expect(api.gameApi.turn).toHaveBeenCalledTimes(1);
+    },
+  );
   it("blocks new submissions until the server's wait expires", async () => {
     const send = vi
       .spyOn(api, "sendTurn")

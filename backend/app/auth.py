@@ -55,7 +55,7 @@ async def current_user(request: Request) -> User:
 
 async def issue_session(
     subject: str, name: str, response: Response, runtime: Runtime
-) -> dict[str, str]:
+) -> dict[str, Any]:
     token = secrets.token_urlsafe(32)
     async with runtime.sessions.begin() as db:
         await db.execute(
@@ -80,7 +80,20 @@ async def issue_session(
         max_age=604800,
         path="/",
     )
-    return {"id": user.id, "name": user.name}
+    return {"id": user.id, "name": user.name, "can_play": can_play(user, runtime)}
+
+
+def can_play(user: User, runtime: Runtime) -> bool:
+    return runtime.settings.environment != "production" or (
+        user.identity_type == "member" and user.subject.startswith("zhihu:")
+    )
+
+
+async def current_player(request: Request, user: User = Depends(current_user)) -> User:
+    # Identity lookup stays available to OAuth so a restricted guest can still bind saves.
+    if not can_play(user, runtime_for(request)):
+        raise ApiError(403, "zhihu_login_required")
+    return user
 
 
 @router.post(
@@ -97,7 +110,7 @@ async def issue_session(
         404: envelope_response(codes(404, "not_found")),
     },
 )
-async def dev_login(body: DevLogin, request: Request, response: Response) -> dict[str, str]:
+async def dev_login(body: DevLogin, request: Request, response: Response) -> dict[str, Any]:
     runtime = runtime_for(request)
     if runtime.settings.environment == "production" or not runtime.settings.dev_login_enabled:
         raise ApiError(404, "not_found")
@@ -119,6 +132,7 @@ async def me(request: Request, user: User = Depends(current_user)) -> dict[str, 
         "id": user.id,
         "name": user.name,
         "identity_type": user.identity_type,
+        "can_play": can_play(user, runtime),
         "guest_expires_at": user.guest_expires_at,
         "binding_pending": bool(pending),
     }
@@ -224,10 +238,14 @@ async def zhihu_callback(request: Request) -> RedirectResponse:
     return response
 
 
-@router.post("/guest", response_model=UserOut, responses=MUTATION_RESPONSES)
+@router.post(
+    "/guest",
+    response_model=UserOut,
+    responses={**MUTATION_RESPONSES, 404: envelope_response(codes(404, "not_found"))},
+)
 async def guest_login(request: Request, response: Response) -> dict[str, Any]:
     runtime = runtime_for(request)
-    if not runtime.settings.guest_enabled:
+    if not runtime.settings.guest_login_enabled:
         raise ApiError(404, "not_found")
     try:
         user = await current_user(request)
@@ -235,6 +253,7 @@ async def guest_login(request: Request, response: Response) -> dict[str, Any]:
             "id": user.id,
             "name": user.name,
             "identity_type": user.identity_type,
+            "can_play": can_play(user, runtime),
             "guest_expires_at": user.guest_expires_at,
         }
     except ApiError:

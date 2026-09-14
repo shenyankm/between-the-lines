@@ -36,6 +36,7 @@ const refreshingStatus = `${completedStatus}正在刷新页面…`;
 const uncertainStatus = "请求是否受理尚未确认，正在查询原回合。";
 const admissionErrors: ReadonlySet<string> = new Set<ErrorCode>([
   "not_authenticated",
+  "zhihu_login_required",
   "forbidden_origin",
   "save_not_found",
   "request_id_reused",
@@ -78,7 +79,7 @@ export function useTurnController(
   const remember = useCallback(
     (error: unknown) => {
       if (!(error instanceof ApiError)) return;
-      if (error.status === 401) {
+      if (error.status === 401 || error.recovery === "login") {
         paused.current = true;
         void client.invalidateQueries({ queryKey: ["user"] });
       }

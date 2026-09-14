@@ -323,6 +323,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       }
@@ -545,6 +555,16 @@
               }
             }
           },
+          "403": {
+            "description": "zhihu_login_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "save_not_found",
             "content": {
@@ -589,6 +609,16 @@
           },
           "401": {
             "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -643,26 +673,6 @@
               }
             }
           },
-          "403": {
-            "description": "forbidden_origin",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "415": {
-            "description": "json_required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
           "409": {
             "description": "unsupported_save_version",
             "content": {
@@ -693,8 +703,28 @@
               }
             }
           },
+          "403": {
+            "description": "forbidden_origin / zhihu_login_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "save_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "json_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -765,6 +795,16 @@
           },
           "401": {
             "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -930,6 +970,16 @@
               }
             }
           },
+          "403": {
+            "description": "zhihu_login_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "save_not_found",
             "content": {
@@ -1020,6 +1070,16 @@
               }
             }
           },
+          "403": {
+            "description": "zhihu_login_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "save_not_found",
             "content": {
@@ -1092,6 +1152,16 @@
           },
           "401": {
             "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1182,6 +1252,16 @@
           },
           "401": {
             "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1294,7 +1374,7 @@
             }
           },
           "403": {
-            "description": "forbidden_origin",
+            "description": "forbidden_origin / zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1445,6 +1525,16 @@
               }
             }
           },
+          "403": {
+            "description": "zhihu_login_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "save_not_found",
             "content": {
@@ -1525,8 +1615,8 @@
               }
             }
           },
-          "404": {
-            "description": "save_not_found",
+          "403": {
+            "description": "forbidden_origin / zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1535,8 +1625,8 @@
               }
             }
           },
-          "403": {
-            "description": "forbidden_origin",
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1635,8 +1725,8 @@
               }
             }
           },
-          "404": {
-            "description": "save_not_found",
+          "403": {
+            "description": "forbidden_origin / zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1645,8 +1735,8 @@
               }
             }
           },
-          "403": {
-            "description": "forbidden_origin",
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1731,6 +1821,16 @@
           },
           "401": {
             "description": "not_authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1829,8 +1929,8 @@
               }
             }
           },
-          "404": {
-            "description": "save_not_found",
+          "403": {
+            "description": "forbidden_origin / zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1839,8 +1939,8 @@
               }
             }
           },
-          "403": {
-            "description": "forbidden_origin",
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1939,6 +2039,16 @@
               }
             }
           },
+          "403": {
+            "description": "forbidden_origin / zhihu_login_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "save_not_found",
             "content": {
@@ -1951,16 +2061,6 @@
           },
           "400": {
             "description": "request_body_invalid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "forbidden_origin",
             "content": {
               "application/json": {
                 "schema": {
@@ -2079,6 +2179,16 @@
               }
             }
           },
+          "403": {
+            "description": "zhihu_login_required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "save_not_found",
             "content": {
@@ -2161,8 +2271,8 @@
               }
             }
           },
-          "404": {
-            "description": "save_not_found",
+          "403": {
+            "description": "forbidden_origin / zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -2171,8 +2281,8 @@
               }
             }
           },
-          "403": {
-            "description": "forbidden_origin",
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2263,8 +2373,8 @@
               }
             }
           },
-          "404": {
-            "description": "save_not_found",
+          "403": {
+            "description": "forbidden_origin / zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -2273,8 +2383,8 @@
               }
             }
           },
-          "403": {
-            "description": "forbidden_origin",
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2365,8 +2475,8 @@
               }
             }
           },
-          "404": {
-            "description": "save_not_found",
+          "403": {
+            "description": "forbidden_origin / zhihu_login_required",
             "content": {
               "application/json": {
                 "schema": {
@@ -2375,8 +2485,8 @@
               }
             }
           },
-          "403": {
-            "description": "forbidden_origin",
+          "404": {
+            "description": "save_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -3141,6 +3251,7 @@
           "oauth_failed",
           "request_body_invalid",
           "not_authenticated",
+          "zhihu_login_required",
           "forbidden_origin",
           "not_found",
           "save_not_found",
@@ -5170,6 +5281,10 @@
             "type": "string",
             "title": "Name"
           },
+          "can_play": {
+            "type": "boolean",
+            "title": "Can Play"
+          },
           "identity_type": {
             "type": "string",
             "title": "Identity Type",
@@ -5196,7 +5311,8 @@
         "type": "object",
         "required": [
           "id",
-          "name"
+          "name",
+          "can_play"
         ],
         "title": "UserOut"
       },

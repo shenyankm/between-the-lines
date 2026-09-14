@@ -124,7 +124,9 @@ export function isResult(v: unknown): v is Result {
   );
 }
 export function isUser(v: unknown): v is User {
-  return record(v) && strings(v, ["id", "name"]);
+  return (
+    record(v) && strings(v, ["id", "name"]) && typeof v.can_play === "boolean"
+  );
 }
 export function isConfig(v: unknown): v is Config {
   return (

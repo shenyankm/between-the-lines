@@ -701,7 +701,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "oauth_failed" | "request_body_invalid" | "not_authenticated" | "forbidden_origin" | "not_found" | "save_not_found" | "turn_not_found" | "request_id_reused" | "turn_still_running" | "save_busy" | "version_conflict" | "unsupported_save_version" | "json_required" | "validation_failed" | "empty_message" | "rule_violation" | "concurrency_budget_exhausted" | "internal_error" | "oauth_not_configured" | "model_unconfigured" | "http_404" | "http_405";
+        ErrorCode: "oauth_failed" | "request_body_invalid" | "not_authenticated" | "zhihu_login_required" | "forbidden_origin" | "not_found" | "save_not_found" | "turn_not_found" | "request_id_reused" | "turn_still_running" | "save_busy" | "version_conflict" | "unsupported_save_version" | "json_required" | "validation_failed" | "empty_message" | "rule_violation" | "concurrency_budget_exhausted" | "internal_error" | "oauth_not_configured" | "model_unconfigured" | "http_404" | "http_405";
         /** ErrorEnvelope */
         ErrorEnvelope: {
             error: components["schemas"]["ErrorBody"];
@@ -1388,6 +1388,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Can Play */
+            can_play: boolean;
             /**
              * Identity Type
              * @default member
@@ -1743,6 +1745,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description json_required */
             415: {
                 headers: {
@@ -1921,6 +1932,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description zhihu_login_required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description save_not_found */
             404: {
                 headers: {
@@ -1986,6 +2006,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description zhihu_login_required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description unsupported_save_version */
             409: {
                 headers: {
@@ -2037,7 +2066,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2122,6 +2151,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description zhihu_login_required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description save_not_found */
             404: {
                 headers: {
@@ -2187,6 +2225,15 @@ export interface operations {
             };
             /** @description not_authenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description zhihu_login_required */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2262,6 +2309,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description zhihu_login_required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description save_not_found */
             404: {
                 headers: {
@@ -2330,6 +2386,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description zhihu_login_required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description save_not_found / turn_not_found */
             404: {
                 headers: {
@@ -2390,6 +2455,15 @@ export interface operations {
             };
             /** @description not_authenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description zhihu_login_required */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2480,7 +2554,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2591,6 +2665,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description zhihu_login_required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description save_not_found */
             404: {
                 headers: {
@@ -2658,7 +2741,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2747,7 +2830,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2832,6 +2915,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description zhihu_login_required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description save_not_found */
             404: {
                 headers: {
@@ -2903,7 +2995,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2981,6 +3073,15 @@ export interface operations {
             };
             /** @description not_authenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description zhihu_login_required */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3068,7 +3169,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3177,7 +3278,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3266,7 +3367,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3355,7 +3456,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description forbidden_origin */
+            /** @description forbidden_origin / zhihu_login_required */
             403: {
                 headers: {
                     [name: string]: unknown;
