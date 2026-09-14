@@ -128,6 +128,7 @@ class GameService:
                 before = parse_state(save.state)
                 event_id = new_id()
                 from .story_rules import MAJOR as V3_MAJOR
+                from .story_rules import requires_confirmation
 
                 major = V3_MAJOR if isinstance(before, GameStateV3) else MAJOR
                 pending = await db.scalar(
@@ -137,7 +138,11 @@ class GameService:
                 )
                 if (
                     isinstance(before, (GameStateV2, GameStateV3))
-                    and body.action in major
+                    and (
+                        requires_confirmation(before, body.action)
+                        if isinstance(before, GameStateV3)
+                        else body.action in major
+                    )
                     and (
                         not pending
                         or pending.id != str(body.proposal_id)
@@ -574,14 +579,18 @@ class GameService:
         if not proposal:
             return None
         from .story_rules import CATALOG as V3_CATALOG
+        from .story_rules import action_effect
 
+        state = parse_state(save.state)
         definition = (V3_CATALOG if save.story_version == 3 else CATALOG)[proposal.action]
         return {
             "id": proposal.id,
             "action": proposal.action,
             "version": proposal.version,
             "label": definition[0],
-            "effect": definition[4],
+            "effect": action_effect(state, proposal.action)
+            if isinstance(state, GameStateV3)
+            else definition[4],
         }
 
     def ai_status(self) -> dict[str, Any]:
@@ -643,6 +652,7 @@ class GameService:
     async def player_intent(self, turn_id: str, npc: str, action: str, evidence: str = "") -> str:
         from .intents import grounded, grounded_major, grounded_v3
         from .story_rules import MAJOR as V3_MAJOR
+        from .story_rules import requires_confirmation
 
         async with self.sessions.begin() as db:
             turn = cast(Turn, await db.get(Turn, turn_id))
@@ -666,7 +676,11 @@ class GameService:
             ):
                 raise RuleError("请引用本轮原文作为依据；当前意图未执行。")
             major_actions = V3_MAJOR if isinstance(before, GameStateV3) else MAJOR
-            if isinstance(before, (GameStateV2, GameStateV3)) and action in major_actions:
+            if isinstance(before, (GameStateV2, GameStateV3)) and (
+                requires_confirmation(before, action)
+                if isinstance(before, GameStateV3)
+                else action in major_actions
+            ):
                 if not (
                     grounded_v3(turn.payload["text"], action, npc, before.act)
                     if isinstance(before, GameStateV3)

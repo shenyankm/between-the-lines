@@ -144,6 +144,7 @@ CATALOG = {
     "close_story": ("收束本局", {3}, None, "", "按已发生事实判定结局"),
 }
 MAJOR = {
+    "project_review",
     "public_confront",
     "cut_ties",
     "keep_distance",
@@ -163,6 +164,24 @@ TITLES = dict(
     unresolved="尚未破局",
 )
 EVIDENCE = {"quote", "purpose", "urgency"}
+
+
+def review_risk(state: GameStateV3) -> bool:
+    return not {"delivered", "extension"} & state.work.facts.keys()
+
+
+def requires_confirmation(state: GameStateV3, action: str) -> bool:
+    return action in MAJOR and (action != "project_review" or review_risk(state))
+
+
+def action_effect(state: GameStateV3, action: str) -> str:
+    if action == "project_review":
+        return (
+            "尚未交付，也未获延期。现在复核将转交负责人职责：专业信用 -20，工作压力 +20。完成交付后仍可申请纠正。"
+            if review_risk(state)
+            else "已记录交付或延期。本次复核会推进至后续协作，不会因未交付且未延期而转交职责。"
+        )
+    return CATALOG[action][4]
 
 
 def ending_for(s: GameStateV3) -> EndingResult:
@@ -454,6 +473,7 @@ def transition_v3(
         record(flag, "实验结果和项目报告已交付张工")
         score(flag, credit=10, pressure=-5, heat=-5)
     elif action == "project_review":
+        text = "项目复核已完成，已记录交付或延期，本次未转交职责。"
         s.tick += 1
         s.node = "act_3_follow_up"
         record(flag, "第三幕项目复核已经发生")
