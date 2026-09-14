@@ -18,6 +18,7 @@ import { Actions, Work, type StateV3 } from "./Work";
 import { followUpChoices } from "./followUp";
 import { Relations } from "./Relations";
 import { Discussion } from "./Discussion";
+import { ActionReceipt } from "./ActionReceipt";
 import { Ending } from "./Ending";
 import s from "./V3.module.css";
 
@@ -265,11 +266,32 @@ export function PlayV3({
         });
       }}
     >
+      <div className={s.recipient}>
+        <p id={dm ? "dm-recipient" : "scene-recipient"}>
+          {dm
+            ? contact === "group"
+              ? "工作群 · 项目工作群"
+              : `私聊 · ${names[target]}`
+            : "现场 · 对孙淼说"}
+        </p>
+        {!dm && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setPanel("phone");
+              setContact(null);
+            }}
+          >
+            切换对话对象
+          </Button>
+        )}
+      </div>
       <label className={s.sr} htmlFor={dm ? "dm-input" : "scene-input"}>
         自由表达
       </label>
       <TextArea
         id={dm ? "dm-input" : "scene-input"}
+        aria-describedby={dm ? "dm-recipient" : "scene-recipient"}
         maxLength={1500}
         value={draft.text}
         onChange={(e) => setInput(e.target.value)}
@@ -358,6 +380,7 @@ export function PlayV3({
             : sceneOptions.filter((a) => a.enabled).slice(0, 3);
   const feedback = (
     <div className={s.status} aria-label="操作反馈">
+      <ActionReceipt play={play} openActions={() => setPanel("work")} />
       {controller.status && <p role="status">{controller.status}</p>}
       <ErrorNotice error={controller.issue} message={controller.error} />
       <ErrorNotice

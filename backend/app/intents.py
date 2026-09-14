@@ -81,6 +81,14 @@ def grounded_v3(text: str, action: str, npc: str, act: int) -> bool:
     target = CATALOG[action][2]
     if target is not None and target != npc and not (action == "request_materials" and npc == "li"):
         return False
+    # These complete utterances state a boundary despite a polite contrast. Keep
+    # the general ambiguity gate for every other sentence and compound request.
+    if action == "boundary" and re.fullmatch(
+        r"(?:我不接受你替我决定[，,]?但是我愿意听你解释|"
+        r"我希望你以后先问问我再替我[作做]决定)[。！!]?",
+        text.strip(),
+    ):
+        return True
     if re.search(
         r'[“”"「」『』‘’]|如果|假如|假设|举例|比如|他说|她说|引用|转述|以前|上次|不确定|要不要|是否|不知道|并不|不愿|不是要|不想|不需要|不请求|不打算|无需|暂不提交|先别|不要帮|不用|或者|还是|但是|不过|算了',
         text,
