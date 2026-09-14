@@ -487,9 +487,9 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 2,
+              "maximum": 3,
               "minimum": 1,
-              "default": 2,
+              "default": 3,
               "title": "Revision"
             }
           }
@@ -2514,6 +2514,21 @@
             ],
             "title": "Evidence"
           },
+          "purchase_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "standard",
+                  "urgent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Kind"
+          },
           "support_kind": {
             "anyOf": [
               {
@@ -3658,7 +3673,8 @@
             "default": 1,
             "enum": [
               1,
-              2
+              2,
+              3
             ],
             "title": "Content Revision",
             "type": "integer"
@@ -4615,6 +4631,15 @@
       },
       "Submission": {
         "properties": {
+          "kind": {
+            "default": "standard",
+            "enum": [
+              "standard",
+              "urgent"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
           "event_id": {
             "title": "Event Id",
             "type": "string"

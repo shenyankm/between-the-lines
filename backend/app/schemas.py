@@ -25,6 +25,7 @@ class ActionParameters(BaseModel):
     evidence: list[Literal["quote", "purpose", "urgency"]] | None = Field(
         default=None, max_length=3
     )
+    purchase_kind: Literal["standard", "urgent"] | None = None
     support_kind: Literal["leave", "help"] | None = None
     plan: str | None = Field(default=None, min_length=1, max_length=1000)
     boundary_response: Literal["decline", "agree", "ask_details"] | None = None

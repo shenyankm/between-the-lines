@@ -64,7 +64,7 @@ async def story(
     response: Response,
     version: int = Query(default=3, ge=1, le=3),
     story_id: str = "workplace-s1",
-    revision: int = Query(default=2, ge=1, le=2),
+    revision: int = Query(default=3, ge=1, le=3),
 ) -> StoryOut | Response:
     if story_id != "workplace-s1":
         raise ApiError(404, "not_found")

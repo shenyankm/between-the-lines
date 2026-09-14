@@ -181,6 +181,13 @@ def action_effect(state: GameStateV3, action: str) -> str:
             if review_risk(state)
             else "已记录交付或延期。本次复核会推进至后续协作，不会因未交付且未延期而转交职责。"
         )
+    if state.content_revision >= 3:
+        if action in {"supplement", "dispute_return"}:
+            return "真正补齐缺项或成功纠正不合理退回可恢复信用与减轻压力，每局只计一次；重复提交合格材料不奖励。"
+        if action == "appease":
+            return "暂缓回应可保留精力，但问题仍未解决：首次工作压力 -5、内耗 +5。"
+        if action == "public_confront":
+            return "公开表达会增加关注；有已核验传播记录或有效采购复核依据时不扣信用。相同收益或代价每局只计一次。"
     return CATALOG[action][4]
 
 
@@ -368,15 +375,23 @@ def transition_v3(
     elif action in {"request_materials", "supplement", "dispute_return"}:
         need(bool(s.work.submissions), "请先提交采购申请。")
         if action == "supplement":
+            latest = s.work.submissions[-1]
+            purchase_kind = params.get("purchase_kind", latest.kind)
+            need(purchase_kind in {"standard", "urgent"}, "请选择普通或加急采购。")
+            required = {"quote", "purpose"} | (
+                {"urgency"} if s.content_revision >= 3 and purchase_kind == "urgent" else set()
+            )
+            missing = required - set(latest.evidence)
             evidence = params.get("evidence", [])
             need(
-                isinstance(evidence, list) and {"quote", "purpose"} <= set(evidence) <= EVIDENCE,
+                isinstance(evidence, list) and required <= set(evidence) <= EVIDENCE,
                 "普通申请需要报价和用途说明；选择加急时另附加急依据。",
             )
             s.work.submissions.append(
                 Submission(
                     event_id=event_id,
                     version=len(s.work.submissions) + 1,
+                    kind=purchase_kind if s.content_revision >= 3 else "standard",
                     purpose=s.work.submissions[-1].purpose,
                     evidence=sorted(set(evidence)),
                     status="resubmitted",
@@ -384,21 +399,38 @@ def transition_v3(
             )
             s.work.purchase = "review"
             record("materials", "已再次提交报价及用途说明，附加材料按本次实际选择保留")
-            score("materials", credit=10, pressure=-5)
+            if s.content_revision < 3 or missing:
+                score("materials", credit=10, pressure=-5)
+            else:
+                text = "原材料已符合本次申请要求；再次提交仅保存版本，没有重复劳动奖励。可请李姐复核退回依据。"
         else:
             text = (
                 "李姐核对普通采购模板：原申请已有报价和用途说明，无需加急依据。原退回未指出实际缺项，应恢复审核并写清处理意见。"
                 if action == "dispute_return"
                 else "普通采购模板要求报价与用途说明；只有申请加急时才需要加急依据。原退回尚未指出哪项不符，请结合原始附件核对。"
             )
+            latest = s.work.submissions[-1]
+            required = {"quote", "purpose"} | (
+                {"urgency"} if s.content_revision >= 3 and latest.kind == "urgent" else set()
+            )
+            if s.content_revision >= 3 and action == "dispute_return":
+                text = (
+                    "李姐核对本次申请：材料符合要求，原退回未指出实际缺项；恢复审核并更正处理意见。"
+                    if required <= set(latest.evidence)
+                    else "李姐核对本次申请：仍缺少必要材料，复核不能替代补齐；加急申请还需加急依据。"
+                )
             record(flag, text)
             if action == "dispute_return":
-                latest = s.work.submissions[-1]
-                if {"quote", "purpose"} <= set(latest.evidence):
+                if required <= set(latest.evidence):
                     record(
-                        "materials", "李姐核验原申请符合普通采购模板，原始材料有效，无需重复补齐"
+                        "materials",
+                        "李姐核验本次申请符合材料要求，原始材料有效，无需重复补齐"
+                        if s.content_revision >= 3
+                        else "李姐核验原申请符合普通采购模板，原始材料有效，无需重复补齐",
                     )
                     s.work.purchase = "review"
+                    if s.content_revision >= 3:
+                        score("materials", credit=10, pressure=-5)
                 s.work.reviews.append(
                     ReviewRecord(
                         event_id=event_id,
@@ -413,6 +445,10 @@ def transition_v3(
         need("materials" in w, "请先补充材料，或请李姐复核原申请是否合格。")
         need(action != "joint_review" or "supported" in w, "请先取得张工协调支持。")
         need(s.work.purchase != "approved", "采购已经通过。")
+        if s.content_revision >= 3:
+            latest = s.work.submissions[-1]
+            required = {"quote", "purpose"} | ({"urgency"} if latest.kind == "urgent" else set())
+            need(required <= set(latest.evidence), "本次申请仍缺必要材料；加急采购需要加急依据。")
         s.work.purchase = "approved"
         s.procurement = "approved"
         s.work.reviews.append(
@@ -421,7 +457,9 @@ def transition_v3(
                 version=s.work.submissions[-1].version,
                 actor="li",
                 decision="审核通过",
-                detail="李姐核对报价、用途及本次实际提交的材料后批准普通采购申请。",
+                detail="李姐核对报价、用途及本次申请要求的材料后批准采购申请。"
+                if s.content_revision >= 3
+                else "李姐核对报价、用途及本次实际提交的材料后批准普通采购申请。",
                 time="本幕 · 审核时",
             )
         )
@@ -677,7 +715,26 @@ def transition_v3(
             "request_help": dict(pressure=-10),
             "appease": dict(rumination=10),
         }
-        score(flag if action == "report" else result_key, **deltas.get(action, {}))
+        if s.content_revision >= 3:
+            if action == "appease":
+                text = "你选择暂缓回应，留出精力等待信息；当下工作压力略有缓解，未表达的困扰仍然存在，问题尚未解决。"
+                record(flag, text, True)
+                deltas["appease"] = dict(rumination=5, pressure=-5)
+            if action == "public_confront" and (
+                "rumor_verified" in w or {"return_disputed", "materials"} <= w.keys()
+            ):
+                text = (
+                    "你依据已核对的记录公开质问，专业信用不因此扣减；公开争议仍增加关注与表达压力。"
+                )
+                record(flag, text)
+                deltas["public_confront"] = dict(rumination=5, heat=20)
+        score(
+            flag
+            if action == "report"
+            or (s.content_revision >= 3 and action in {"boundary", "appease", "public_confront"})
+            else result_key,
+            **deltas.get(action, {}),
+        )
         if repeatable:
             s.flags.append(result_key)
     if s.heat >= 70 and "company_review" not in w:

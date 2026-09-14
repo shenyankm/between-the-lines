@@ -54,7 +54,7 @@ async def check_save_capacity(db: AsyncSession, user: User, limit: int) -> None:
             .where(
                 Save.user_id == user.id,
                 Save.story_version == 3,
-                Save.state["content_revision"].as_integer() == 2,
+                Save.state["content_revision"].as_integer() >= 2,
                 *(
                     []
                     if user.identity_type == "guest"

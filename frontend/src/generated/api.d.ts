@@ -506,6 +506,8 @@ export interface components {
             purpose?: string | null;
             /** Evidence */
             evidence?: ("quote" | "purpose" | "urgency")[] | null;
+            /** Purchase Kind */
+            purchase_kind?: ("standard" | "urgent") | null;
             /** Support Kind */
             support_kind?: ("leave" | "help") | null;
             /** Plan */
@@ -875,7 +877,7 @@ export interface components {
              * @default 1
              * @enum {integer}
              */
-            content_revision: 1 | 2;
+            content_revision: 1 | 2 | 3;
             /** Support Requests */
             support_requests?: components["schemas"]["SupportApplication"][];
             /**
@@ -1226,6 +1228,12 @@ export interface components {
         };
         /** Submission */
         Submission: {
+            /**
+             * Kind
+             * @default standard
+             * @enum {string}
+             */
+            kind: "standard" | "urgent";
             /** Event Id */
             event_id: string;
             /** Version */

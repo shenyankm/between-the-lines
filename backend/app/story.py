@@ -345,7 +345,7 @@ class StoryDefinition(BaseModel):
 def load_story(version: int = 1, revision: int = 2) -> StoryDefinition:
     if version not in (1, 2, 3):
         raise ValueError("Unsupported story version")
-    if revision not in (1, 2):
+    if revision not in (1, 2, 3):
         raise ValueError("Unsupported content revision")
     filename = (
         "story-v3-r1.json"
