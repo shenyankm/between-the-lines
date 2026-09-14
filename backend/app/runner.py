@@ -108,6 +108,8 @@ class TurnRunner:
                 async with asyncio.timeout(self.settings.turn_timeout_seconds):
                     if turn.input.action == "speak" and turn.input.channel != "group":
                         async for chunk in self.reply(turn, self.checkpointer, usage):
+                            if chunk and "first_reply_ms" not in usage:
+                                usage["first_reply_ms"] = round((time.monotonic() - started) * 1000)
                             reply += chunk
                             self.live_replies[turn.id] = reply
                     elif turn.input.action == "epilogue":

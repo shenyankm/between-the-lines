@@ -2,11 +2,13 @@ import { expect, test } from "@playwright/test";
 import { dialogue, start, state, exitStory, commitClick } from "./v3-helpers";
 import type { Turn, TurnInput } from "../src/types";
 
-test("GPT6 replies and generates a grounded ending through the real app", async ({
+const liveModel = process.env.BTL_LIVE_MODEL || "gpt-6-astra";
+
+test(`${liveModel} replies and generates a grounded ending through the real app`, async ({
   page,
 }) => {
   test.skip(
-    process.env.BTL_LIVE_GPT6 !== "1",
+    process.env.BTL_LIVE_GPT6 !== "1" && process.env.BTL_LIVE_AI !== "1",
     "Explicit opt-in: consumes gateway credits",
   );
   test.setTimeout(180_000);
@@ -36,7 +38,7 @@ test("GPT6 replies and generates a grounded ending through the real app", async 
   expect(response.ok()).toBe(true);
   const turn = (await response.json()) as Turn;
   expect(turn.status).toBe("completed");
-  expect(turn.usage).toMatchObject({ mode: "openai", model: "gpt-6-astra" });
+  expect(turn.usage).toMatchObject({ mode: "openai", model: liveModel });
   expect(turn.usage.model_calls).toBeGreaterThan(0);
   expect(turn.usage.total_tokens).toBeGreaterThan(0);
   expect(

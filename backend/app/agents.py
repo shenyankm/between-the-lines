@@ -32,6 +32,7 @@ from .context import AgentTurn, GameTools
 from .domain import RuleError
 from .failures import EmptyReplyError
 from .game_types import parse_state
+from .model_timing import ModelTiming, current_timing, response_headers
 from .story import StoryDefinition, load_story
 
 MODEL = "deepseek-flash"
@@ -82,23 +83,31 @@ def make_model(settings: Settings) -> ChatDeepSeek | ChatOpenAI:
             raise RuntimeError("Physical model call budget exceeded")
         if len(request.content) > settings.ai_input_byte_limit:
             raise RuntimeError("Model input budget exceeded")
+        if (timing := current_timing.get()) is not None:
+            timing.request(len(request.content))
 
     if settings.agent_mode == "openai":
         if not settings.openai_api_key:
             raise RuntimeError("OPENAI_API_KEY is not configured")
+        # The gateway exposes DeepSeek through Chat Completions. Keep the
+        # gateway's credentials and unknown-price accounting, not official pricing.
+        deepseek_gateway = settings.openai_model.startswith("deepseek-")
         return ChatOpenAI(
             model=settings.openai_model,
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
-            use_responses_api=True,
-            reasoning={"effort": settings.openai_reasoning_effort},
+            use_responses_api=not deepseek_gateway,
+            reasoning=None if deepseek_gateway else {"effort": settings.openai_reasoning_effort},
+            extra_body={"thinking": {"type": "disabled"}} if deepseek_gateway else None,
             max_tokens=settings.model_output_tokens,
             timeout=25,
             max_retries=settings.openai_max_retries,
             streaming=True,
             stream_usage=True,
             http_client=httpx.Client(),
-            http_async_client=httpx.AsyncClient(event_hooks={"request": [guard]}),
+            http_async_client=httpx.AsyncClient(
+                event_hooks={"request": [guard], "response": [response_headers]}
+            ),
         )
     if settings.agent_mode == "mock":
         from .mock_llm import handle_request
@@ -111,7 +120,8 @@ def make_model(settings: Settings) -> ChatDeepSeek | ChatOpenAI:
             # and the backoff would make CI timings inexact.
             max_retries=0,
             http_async_client=httpx.AsyncClient(
-                transport=httpx.MockTransport(handle_request), event_hooks={"request": [guard]}
+                transport=httpx.MockTransport(handle_request),
+                event_hooks={"request": [guard], "response": [response_headers]},
             ),
             extra_body={"thinking": {"type": "disabled"}},
             streaming=True,
@@ -123,7 +133,9 @@ def make_model(settings: Settings) -> ChatDeepSeek | ChatOpenAI:
         model_name=MODEL,
         api_key=settings.deepseek_api_key,
         api_base=settings.deepseek_api_base,
-        http_async_client=httpx.AsyncClient(event_hooks={"request": [guard]}),
+        http_async_client=httpx.AsyncClient(
+            event_hooks={"request": [guard], "response": [response_headers]}
+        ),
         temperature=0.7,
         max_tokens=800,
         timeout=25,
@@ -281,6 +293,7 @@ class AgentGateway:
         self, turn: AgentTurn, checkpointer: Checkpointer, usage: dict[str, Any]
     ) -> AsyncIterator[str]:
         """Yield public dialogue deltas; raw graph events remain server-side."""
+        timing = ModelTiming()
         npc = turn.input.npc
         context = await self.service.context_for(turn)
         if context.story_version == 3 and self.settings.automatic_intents_enabled:
@@ -305,12 +318,17 @@ class AgentGateway:
             # model omission must not silently turn a clear request into idle chat.
             if len(candidates) == 1:
                 action = candidates[0]
+                if action in {"request_materials", "approve_purchase", "support_project"}:
+                    # Grounded paraphrases use the same authoritative response as
+                    # exact shortcuts; another model call adds no new work result.
+                    try:
+                        yield await self.service.npc_operation(turn.id, npc, action)
+                    except RuleError as exc:
+                        yield f"目前还不能办理：{exc}"
+                    return
                 # Missing form values do not acquire invented defaults.
                 with suppress(RuleError):
-                    if action in {"request_materials", "approve_purchase", "support_project"}:
-                        await self.service.npc_operation(turn.id, npc, action)
-                    else:
-                        await self.service.player_intent(turn.id, npc, action, turn.input.text)
+                    await self.service.player_intent(turn.id, npc, action, turn.input.text)
                 context = await self.service.context_for(turn)
         model = self.model_factory()
         agent = self.build_agent(
@@ -348,6 +366,7 @@ class AgentGateway:
                         "本轮玩家对白": turn.input.text,
                     },
                     ensure_ascii=False,
+                    separators=(",", ":"),
                 )
             ),
         ]
@@ -355,6 +374,8 @@ class AgentGateway:
         streamed = ""
         phases: dict[tuple[str, int], str] = {}
         call_scope = _physical_calls.set({"count": 0})
+        timing_scope = current_timing.set(timing)
+        timing.mark("model_prepare_ms")
         try:
             async for item in agent.astream(
                 {"messages": incoming},
@@ -369,6 +390,7 @@ class AgentGateway:
                     else ("updates", item)
                 )
                 if mode == "messages":
+                    timing.mark("model_first_event_ms")
                     chunk, _metadata = cast(tuple[Any, Any], update)
                     # Never preview reasoning, commentary or tool-call arguments.
                     # Providers without an explicit final phase remain buffered.
@@ -384,6 +406,7 @@ class AgentGateway:
                             if phases.get(block_key) == "final_answer" and block.get("text"):
                                 delta = block["text"]
                                 streamed += delta
+                                timing.mark("model_first_text_ms")
                                 yield delta
                     continue
                 for data in update.values():
@@ -399,6 +422,9 @@ class AgentGateway:
                         if not message.tool_calls:
                             reply = model_text(message.content)
         finally:
+            timing.mark("model_complete_ms")
+            usage.update(timing.values)
+            current_timing.reset(timing_scope)
             _physical_calls.reset(call_scope)
             await self._release_model(model)
         if not reply.strip():

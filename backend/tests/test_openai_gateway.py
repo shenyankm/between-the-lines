@@ -84,6 +84,21 @@ def test_readiness_and_costs_belong_to_selected_provider():
     assert reservation(priced, calls=1) == round(2 * (24000 * 2 + 1600 * 8) / 1_000_000, 8)
 
 
+@pytest.mark.asyncio
+async def test_gateway_deepseek_uses_non_thinking_chat_and_unknown_gateway_pricing():
+    settings = config(openai_model="deepseek-v4-flash", openai_reasoning_effort="none")
+    model = make_model(settings)
+    try:
+        assert model.model_name == "deepseek-v4-flash"
+        assert model.use_responses_api is False
+        assert model.reasoning is None
+        assert model.extra_body == {"thinking": {"type": "disabled"}}
+        assert settings.estimate_cost(1000, 100) is None
+    finally:
+        await model.root_async_client.close()
+        model.root_client.close()
+
+
 def test_response_blocks_extract_text_without_reasoning_or_tool_arguments():
     assert (
         model_text(

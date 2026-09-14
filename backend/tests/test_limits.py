@@ -58,13 +58,13 @@ def test_v3_budgets_bound_generation_without_repeating_rule_actions(
                 "version": save["version"],
                 "action": "speak",
                 "npc": "sun",
-                "text": "请明确材料要求",
+                "text": "我不喜欢这种玩笑。",
             },
         )
         expected = "failed" if fails else "completed"
         assert f'"status": "{expected}"' in response.text
         state = client.get(f"/api/saves/{save['id']}").json()["state"]
-        assert "requirements" in state["flags"]
+        assert "boundary:act_2" in state["flags"]
         assert ("execution_budget_exhausted" in response.text) is fails
         # Rules do not consume model/tool calls; narration needs at most one model call.
         events = client.get(f"/api/saves/{save['id']}/events").json()
@@ -91,7 +91,7 @@ def test_provider_rate_limit_has_no_unbounded_retry(app, monkeypatch):
                 "version": save["version"],
                 "action": "speak",
                 "npc": "sun",
-                "text": "请明确材料要求",
+                "text": "我不喜欢这种玩笑。",
             },
         )
         assert '"status": "failed"' in response.text
@@ -99,7 +99,7 @@ def test_provider_rate_limit_has_no_unbounded_retry(app, monkeypatch):
         events = client.get(f"/api/saves/{save['id']}/events").json()
         # A clear request is committed before prose; failed prose cannot undo it.
         state = client.get(f"/api/saves/{save['id']}").json()["state"]
-        assert "requirements" in state["flags"]
+        assert "boundary:act_2" in state["flags"]
         assert not any(e["kind"] == "npc" for e in events)
 
 

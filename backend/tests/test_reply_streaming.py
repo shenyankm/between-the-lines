@@ -148,6 +148,11 @@ async def test_shared_transport_keeps_a_separate_call_budget_for_each_turn():
             usage = {}
             assert "".join([s async for s in gateway.run_agent(turn(), InMemorySaver(), usage)])
             assert usage["model_calls"] == 1
+            assert usage["model_http_requests"] == 1
+            assert usage["model_request_bytes"] > 0
+            assert usage["model_prepare_ms"] <= usage["model_request_ms"]
+            assert usage["model_request_ms"] <= usage["model_headers_ms"]
+            assert usage["model_headers_ms"] <= usage["model_complete_ms"]
     finally:
         await gateway.close()
 
@@ -167,6 +172,36 @@ async def test_exact_work_request_uses_authoritative_rules_without_model():
     parts = [p async for p in gateway.run_agent(turn("采购需要哪些材料"), InMemorySaver(), {})]
     assert parts == ["公开材料要求已记录。"]
     service.npc_operation.assert_awaited_once_with("turn", "sun", "request_materials")
+
+
+@pytest.mark.parametrize("denied", [False, True])
+async def test_grounded_work_paraphrase_returns_rule_result_without_generation(denied):
+    from app.actions import AvailableAction
+    from app.domain import RuleError
+
+    context = AgentContext(
+        story_version=3,
+        facts={"act": 2, "flags": [], "procurement": "pending"},
+        history=[],
+        available_actions=[AvailableAction(action="request_materials", label="材料要求")],
+    )
+    operation = AsyncMock(return_value="原申请已有报价和用途说明，请核对退回依据。")
+    if denied:
+        operation.side_effect = RuleError("请先提交采购申请。")
+    service = SimpleNamespace(context_for=AsyncMock(return_value=context), npc_operation=operation)
+    gateway = AgentGateway(
+        Settings(_env_file=None, agent_mode="mock"),
+        service,
+        load_story(),
+        Mock(side_effect=AssertionError("must not invoke a model to repeat the rule result")),
+    )
+    parts = [p async for p in gateway.run_agent(turn("请明确材料要求"), InMemorySaver(), {})]
+    assert parts == [
+        "目前还不能办理：请先提交采购申请。"
+        if denied
+        else "原申请已有报价和用途说明，请核对退回依据。"
+    ]
+    operation.assert_awaited_once_with("turn", "sun", "request_materials")
 
 
 @pytest.mark.parametrize(
