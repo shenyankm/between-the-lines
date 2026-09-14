@@ -495,17 +495,21 @@ export function PlayV3({
                     ))}
                   </div>
                 )}
-              {state.act > 0 && composer()}
-              {sceneOptions.some((a) => a.action === "close_story") && (
-                <button disabled={busy} onClick={() => act("close_story")}>
-                  按当前进度结束本局
-                </button>
-              )}
-              {sceneOptions.some((a) => a.action === "next") && (
-                <button disabled={busy} onClick={() => act("next")}>
-                  带着当前进度进入下一幕 →
-                </button>
-              )}
+              <div className={s.dialogueControls}>
+                {state.act > 0 && composer()}
+                <div className={s.progressActions} aria-label="故事进度操作">
+                  {sceneOptions.some((a) => a.action === "close_story") && (
+                    <button disabled={busy} onClick={() => act("close_story")}>
+                      按当前进度结束本局
+                    </button>
+                  )}
+                  {sceneOptions.some((a) => a.action === "next") && (
+                    <button disabled={busy} onClick={() => act("next")}>
+                      带着当前进度进入下一幕 →
+                    </button>
+                  )}
+                </div>
+              </div>
             </>
           )}
           {readError && (
