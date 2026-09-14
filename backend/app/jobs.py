@@ -23,6 +23,7 @@ from .artifact_quality import (
 )
 from .content import content_hash
 from .db import AIJob, Event, Turn, User, ZhihuContent, utcnow
+from .discussion_mock import discussion_mock
 from .ending_grounding import EndingFactError, current_ending_facts, validate_ending_prose
 from .errors import ApiError
 from .schemas import JobInput
@@ -121,6 +122,7 @@ class JobRunner:
                     owned.story_version == 3
                     and owned.state.get("content_revision", 1) >= 2
                     and self.service.settings.discussions_enabled
+                    and self.service.settings.agent_mode != "mock"
                 ):
                     from .zhihu_search import topic_sources
 
@@ -313,8 +315,14 @@ class JobRunner:
                     )
                     .limit(1)
                 )
+                mock_discussion = (
+                    save.story_version == 3
+                    and save.state.get("content_revision", 1) >= 2
+                    and self.service.settings.agent_mode == "mock"
+                )
                 if (
                     cached
+                    or mock_discussion
                     or not payload["sources"]
                     or not self.service.settings.discussions_enabled
                 ):
@@ -325,7 +333,9 @@ class JobRunner:
                         kind=body.kind,
                         payload=payload,
                         status="completed",
-                        result=cached.result
+                        result=discussion_mock(payload["act"])
+                        if mock_discussion and self.service.settings.discussions_enabled
+                        else cached.result
                         if cached and self.service.settings.discussions_enabled
                         else editorial(),
                     )

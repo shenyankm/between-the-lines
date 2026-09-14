@@ -152,32 +152,27 @@ test("malformed stream after acceptance recovers the original result without a s
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-test("an unavailable ending narrative retries without changing the ending", async ({
+test("ending card remains available when narrative generation is unavailable", async ({
   page,
 }) => {
   await start(page);
   await exitStory(page);
-  await page.route("**/api/saves/*/jobs", (route) =>
-    route.request().method() === "POST"
-      ? route.fulfill({ status: 500, json: failure })
-      : route.continue(),
-  );
+  let generationRequests = 0;
+  await page.route("**/api/saves/*/jobs", (route) => {
+    generationRequests++;
+    return route.fulfill({ status: 500, json: failure });
+  });
   await commitClick(page, () =>
     page.getByRole("button", { name: "确认并提交" }).click(),
   );
+  await readScene(page);
   await expect(
-    page.getByRole("heading", { name: "主动转身", exact: true }),
+    page.getByRole("img", { name: /主动转身：文档原版/ }),
   ).toBeVisible();
-  await expect(
-    page.getByText("结局正文暂时无法生成，以下事实总结仍然有效。"),
-  ).toBeVisible();
-  await page.unroute("**/api/saves/*/jobs");
-  await page.getByRole("button", { name: "重试读取" }).click();
-  await expect(page.getByRole("region", { name: "结局正文" })).toContainText(
-    "AI",
-  );
   await page.reload();
+  await readScene(page);
   await expect(
-    page.getByRole("heading", { name: "主动转身", exact: true }),
+    page.getByRole("img", { name: /主动转身：文档原版/ }),
   ).toBeVisible();
+  expect(generationRequests).toBe(0);
 });

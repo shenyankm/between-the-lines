@@ -11,7 +11,7 @@ const endings: [string, string, string][] = [
   ["unresolved", "尚未破局", "E06"],
 ];
 
-test("six posters load only their own art, preserve facts and really export PNG", async ({
+test("six original ending cards load completely without generated text", async ({
   page,
 }, info) => {
   await start(page);
@@ -65,15 +65,21 @@ test("six posters load only their own art, preserve facts and really export PNG"
   for (index = 0; index < endings.length; index++) {
     const before = requests.length;
     await page.reload();
+    await page.getByRole("button", { name: "继续", exact: true }).click();
+    await page.getByRole("button", { name: "查看本局结算" }).click();
     const region = page.getByRole("region", { name: "故事结局", exact: true });
-    await expect(
-      region.getByRole("heading", { name: endings[index]![1], exact: true }),
-    ).toBeVisible();
-    await expect(
-      region.getByText(endings[index]![2], { exact: true }),
-    ).toBeVisible();
     const art = region.getByRole("img");
+    await expect(art).toHaveAttribute(
+      "alt",
+      `${endings[index]![2]} ${endings[index]![1]}：文档原版结局卡片`,
+    );
     await expect(art).toBeVisible();
+    const bounds = await art.boundingBox();
+    expect(bounds!.y).toBeGreaterThanOrEqual(0);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(
+      page.viewportSize()!.height,
+    );
+    expect(bounds!.width / bounds!.height).toBeCloseTo(941 / 1672, 2);
     await expect
       .poll(() => art.evaluate((node: HTMLImageElement) => node.naturalWidth))
       .toBeGreaterThan(0);
@@ -88,22 +94,15 @@ test("six posters load only their own art, preserve facts and really export PNG"
           ),
         ),
     ).toBe(true);
-    await region
-      .getByRole("checkbox", { name: "已确认：已参加欢送会" })
-      .check();
-    await region.getByRole("button", { name: "预览分享卡" }).click();
-    await expect(region.locator("canvas")).toBeVisible();
-    const copy = await region.locator("pre").innerText();
-    expect(await region.locator("canvas").getAttribute("aria-label")).toBe(
-      copy,
+    await expect(
+      region.getByText("这些记录保留了本局已经发生的经历，问题仍待处理。"),
+    ).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "已保存事实" })).toHaveCount(
+      0,
     );
-    expect(copy).toContain("已参加欢送会");
-    expect(copy).not.toContain("错过");
-    const download = page.waitForEvent("download");
-    await region.getByRole("button", { name: "导出图片" }).click();
-    const file = await download;
-    await file.saveAs(`${artifact}/${endings[index]![2]}-share.png`);
-    expect(await file.failure()).toBeNull();
+    await expect(page.getByRole("button", { name: "预览分享卡" })).toHaveCount(
+      0,
+    );
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -116,7 +115,7 @@ test("six posters load only their own art, preserve facts and really export PNG"
   }
 });
 
-test("320px long endings remain usable after art failure and generation failure", async ({
+test("320px ending card gives an honest fallback after art failure", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 720 });
@@ -150,16 +149,11 @@ test("320px long endings remain usable after art failure and generation failure"
     }),
   );
   await page.reload();
+  await page.getByRole("button", { name: "继续", exact: true }).click();
+  await page.getByRole("button", { name: "查看本局结算" }).click();
   await expect(
-    page.getByText("本次生成未完成，展示已保存事实，不补写新的经历。"),
+    page.getByText("结局卡片暂时未能加载，请刷新重试。"),
   ).toBeVisible();
-  await page.getByRole("button", { name: "预览分享卡" }).click();
-  await expect(
-    page.getByText("插画暂时不可用，已生成文字分享卡。"),
-  ).toBeVisible();
-  await page.getByRole("checkbox").first().focus();
-  await page.keyboard.press("Space");
-  await expect(page.getByRole("checkbox").first()).toBeChecked();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

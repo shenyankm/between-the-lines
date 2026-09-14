@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { start, state } from "./v3-helpers";
 
-test("long endings separate narrative, facts and actions in every generation state", async ({
+test("historical ending fallback remains readable without generated reports", async ({
   page,
 }, info) => {
   await start(page);
@@ -51,13 +51,19 @@ test("long endings separate narrative, facts and actions in every generation sta
   );
   for (status of ["completed", "running", "failed"]) {
     await page.reload();
-    const facts = page.getByRole("region", { name: "已保存事实", exact: true });
-    await expect(facts).toBeVisible();
+    await page.getByRole("button", { name: "继续", exact: true }).click();
+    await page.getByRole("button", { name: "查看本局结算" }).click();
+    await expect(
+      page.getByRole("region", { name: "故事结局", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "已保存事实", exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("link", { name: "重新开始一个独立故事" }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     if (status === "completed") {
-      await expect(page.getByText("新的段落保留独立阅读空间。")).toBeVisible();
+      await expect(page.getByText("新的段落保留独立阅读空间。")).toHaveCount(0);
       await page.screenshot({
         path: `../artifacts/ending-layout/${info.project.name}.jpg`,
         fullPage: true,

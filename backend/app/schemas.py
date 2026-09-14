@@ -13,6 +13,7 @@ from .game_types import (
     GameStateV2,
     GameStateV3,
     Npc,
+    PurchaseForm,
     TurnStatus,
     parse_state,
 )
@@ -21,6 +22,7 @@ from .story import Relationship, SceneLine, load_story
 
 class ActionParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    purchase_form: PurchaseForm | None = None
     purpose: str | None = Field(default=None, min_length=1, max_length=1000)
     evidence: list[Literal["quote", "purpose", "urgency"]] | None = Field(
         default=None, max_length=3

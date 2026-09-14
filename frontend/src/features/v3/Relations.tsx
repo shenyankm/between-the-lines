@@ -10,6 +10,7 @@ import type { Save } from "../../types";
 import { Actions, type Act, type Option } from "./Work";
 import { followUpChoices } from "./followUp";
 import s from "./V3.module.css";
+import graph from "./RelationshipGraph.module.css";
 export function Relations({
   save,
   userId,
@@ -23,6 +24,7 @@ export function Relations({
   act: Act;
   busy: boolean;
 }) {
+  const [view, setView] = useState("people");
   const [selected, setSelected] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const members = save.relationships ?? [];
@@ -39,141 +41,229 @@ export function Relations({
         isEvent,
       ),
   });
-  const positions = members.map((_, index) => {
-    const angle = (index * 2 * Math.PI) / members.length - Math.PI / 2;
-    return { x: 50 + Math.cos(angle) * 34, y: 50 + Math.sin(angle) * 34 };
+  const state = save.state as StateV3;
+  const positions = members.map((relation, index) => {
+    const angle = (index * 2 * Math.PI) / members.length - (3 * Math.PI) / 4;
+    const intention = state.relationship?.intention;
+    const boundary = relation.id === "sun" && intention === "professional";
+    const support =
+      relation.id === "wang" ||
+      (relation.id === "zhang" && !!state.work?.facts?.supported);
+    const label =
+      relation.id === "sun"
+        ? boundary
+          ? "边界 · 职业关系"
+          : intention === "friendship"
+            ? "友谊 · 修复意愿"
+            : "同事 · 待决定"
+        : relation.id === "li"
+          ? "工作 · 同僚"
+          : relation.id === "zhang"
+            ? support
+              ? "合作 · 支持"
+              : "合作 · 项目"
+            : relation.id === "wang"
+              ? "前辈 · 忘年交"
+              : "人物关系";
+    return {
+      x: 50 + Math.cos(angle) * 45,
+      y: 50 + Math.sin(angle) * 45,
+      label,
+      tone: boundary ? "boundary" : support ? "support" : "work",
+    };
   });
   function select(id: string) {
     setSelected(id);
     setEventId(null);
   }
   return (
-    <>
-      <div className={s.relationGraph} aria-label="以周菱菱为中心的关系图">
-        <svg
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
+    <div className={s.relationsPage}>
+      <nav className={s.relationsTabs} aria-label="关系图视图">
+        <Button
+          variant="secondary"
+          aria-pressed={view === "people"}
+          onClick={() => setView("people")}
         >
-          {positions.map((point, index) => (
-            <line key={index} x1="50" y1="50" x2={point.x} y2={point.y} />
-          ))}
-        </svg>
-        <div className={s.graphCenter}>周菱菱 · 我</div>
-        {members.map((relation, index) => (
-          <Button
-            variant="secondary"
-            key={relation.id}
-            className={s.graphPerson}
-            style={{
-              left: `${positions[index]!.x}%`,
-              top: `${positions[index]!.y}%`,
-            }}
-            aria-pressed={selected === relation.id}
-            onClick={() => select(relation.id)}
-          >
-            {relation.name}
-          </Button>
-        ))}
-      </div>
-      <nav className={s.relationList} aria-label="人物关系列表">
-        {members.map((relation) => (
-          <Button
-            variant="secondary"
-            key={relation.id}
-            aria-pressed={selected === relation.id}
-            onClick={() => select(relation.id)}
-          >
-            {relation.name} · {relation.role}
-          </Button>
-        ))}
+          人物关系
+        </Button>
+        <Button
+          variant="secondary"
+          aria-pressed={view === "response"}
+          onClick={() => setView("response")}
+        >
+          回应与协作
+        </Button>
       </nav>
-      {person ? (
-        <section aria-label="关系与事实依据">
-          <h3>{person.name}</h3>
-          <p>{person.description}</p>
-          {person.evidence_event_ids?.length ? (
-            person.evidence_event_ids.map((id, index) => (
-              <Button
-                variant="secondary"
-                key={id}
-                onClick={() => setEventId(id)}
+      <div className={s.relationsContent}>
+        {view === "people" ? (
+          <>
+            <div className={graph.graph} aria-label="以周菱菱为中心的关系图">
+              <svg
+                className={graph.lines}
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
               >
-                查看依据 {index + 1}
-              </Button>
-            ))
-          ) : (
-            <p>本局尚无支持关系变化的事件。</p>
-          )}
-          {eventId && (
-            <article>
-              {detail.isPending && <p role="status">正在读取原始记录…</p>}
-              {detail.error && (
-                <p role="alert">
-                  无法读取这条记录。
+                {positions.map((point, index) => (
+                  <line
+                    key={members[index]!.id}
+                    x1="50"
+                    y1="50"
+                    x2={point.x}
+                    y2={point.y}
+                    data-tone={point.tone}
+                  />
+                ))}
+              </svg>
+              {positions.map((point, index) => (
+                <span
+                  key={members[index]!.id}
+                  className={graph.label}
+                  data-tone={point.tone}
+                  style={{
+                    left: `${50 + (point.x - 50) * 0.56}%`,
+                    top: `${50 + (point.y - 50) * 0.56}%`,
+                  }}
+                >
+                  {point.label}
+                </span>
+              ))}
+              <div className={graph.center}>
+                <strong>周菱菱 · 我</strong>
+                <small>研发专员 · 主角</small>
+              </div>
+              {members.map((relation, index) => (
+                <Button
+                  variant="secondary"
+                  key={relation.id}
+                  className={graph.node}
+                  data-tone={positions[index]!.tone}
+                  style={{
+                    left: `${positions[index]!.x}%`,
+                    top: `${positions[index]!.y}%`,
+                  }}
+                  aria-label={relation.name}
+                  aria-pressed={selected === relation.id}
+                  onClick={() => select(relation.id)}
+                >
+                  <strong>{relation.name}</strong>
+                  <small>{relation.role}</small>
+                </Button>
+              ))}
+            </div>
+            <div className={graph.legend} aria-label="关系连线图例">
+              <span>
+                <i />
+                工作联系
+              </span>
+              <span>
+                <i />
+                支持与交情
+              </span>
+              <span>
+                <i />
+                已明确的边界
+              </span>
+            </div>
+            {person ? (
+              <section aria-label="关系与事实依据">
+                <h3>
+                  {person.name} <small>{person.role}</small>
+                </h3>
+                <p>{person.description}</p>
+                {person.evidence_event_ids?.length ? (
+                  person.evidence_event_ids.map((id, index) => (
+                    <Button
+                      variant="secondary"
+                      key={id}
+                      onClick={() => setEventId(id)}
+                    >
+                      查看依据 {index + 1}
+                    </Button>
+                  ))
+                ) : (
+                  <p>本局尚无支持关系变化的事件。</p>
+                )}
+                {eventId && (
+                  <article>
+                    {detail.isPending && <p role="status">正在读取原始记录…</p>}
+                    {detail.error && (
+                      <p role="alert">
+                        无法读取这条记录。
+                        <Button
+                          variant="secondary"
+                          onClick={() => void detail.refetch()}
+                        >
+                          重试
+                        </Button>
+                      </p>
+                    )}
+                    {detail.data && (
+                      <>
+                        <small>
+                          {detail.data.speaker === "system"
+                            ? "事件记录"
+                            : "本局互动"}
+                        </small>
+                        <p>{detail.data.text}</p>
+                      </>
+                    )}
+                  </article>
+                )}
+              </section>
+            ) : (
+              <p>选择一个人物，查看当前关系及其依据。</p>
+            )}
+          </>
+        ) : (
+          <>
+            {save.story_version === 3 && (
+              <RelationshipScene
+                state={save.state as StateV3}
+                saveId={save.id}
+              />
+            )}
+            <h3>接下来，我想怎样回应</h3>
+            <Actions
+              options={options.filter(
+                (a) =>
+                  !a.completed &&
+                  [
+                    "cut_ties",
+                    "keep_distance",
+                    "repair_friendship",
+                    "acknowledge_harm",
+                    "complete_remedy",
+                  ].includes(a.action),
+              )}
+              act={act}
+              busy={busy}
+            />
+            {options.some((a) => a.action === "follow_up" && a.enabled) && (
+              <section>
+                <h3>下一次协作</h3>
+                <p>
+                  孙淼：这次部门聚餐，你想参加吗？工作资料会单独发给你。你可以自己决定。
+                </p>
+                {followUpChoices.map(([response, label]) => (
                   <Button
                     variant="secondary"
-                    onClick={() => void detail.refetch()}
+                    key={response}
+                    isDisabled={busy}
+                    onClick={() =>
+                      act("follow_up", "sun", {
+                        params: { boundary_response: response },
+                      })
+                    }
                   >
-                    重试
+                    {label}
                   </Button>
-                </p>
-              )}
-              {detail.data && (
-                <>
-                  <small>
-                    {detail.data.speaker === "system" ? "事件记录" : "本局互动"}
-                  </small>
-                  <p>{detail.data.text}</p>
-                </>
-              )}
-            </article>
-          )}
-        </section>
-      ) : (
-        <p>选择一个人物，查看当前关系及其依据。</p>
-      )}
-      {save.story_version === 3 && (
-        <RelationshipScene state={save.state as StateV3} saveId={save.id} />
-      )}
-      <h3>接下来，我想怎样回应</h3>
-      <Actions
-        options={options.filter(
-          (a) =>
-            !a.completed &&
-            [
-              "cut_ties",
-              "keep_distance",
-              "repair_friendship",
-              "acknowledge_harm",
-              "complete_remedy",
-            ].includes(a.action),
+                ))}
+              </section>
+            )}
+          </>
         )}
-        act={act}
-        busy={busy}
-      />
-      {options.some((a) => a.action === "follow_up" && a.enabled) && (
-        <section>
-          <h3>下一次协作</h3>
-          <p>
-            孙淼：这次部门聚餐，你想参加吗？工作资料会单独发给你。你可以自己决定。
-          </p>
-          {followUpChoices.map(([response, label]) => (
-            <Button
-              variant="secondary"
-              key={response}
-              isDisabled={busy}
-              onClick={() =>
-                act("follow_up", "sun", {
-                  params: { boundary_response: response },
-                })
-              }
-            >
-              {label}
-            </Button>
-          ))}
-        </section>
-      )}
-    </>
+      </div>
+    </div>
   );
 }

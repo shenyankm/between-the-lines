@@ -163,7 +163,9 @@ def test_purchase_starts_with_original_evidence_and_vague_return():
     assert state.work.purchase == "returned"
     assert state.pressure == 40
     assert state.work.submissions[0].evidence == ["quote", "purpose"]
-    assert "不太规范" in state.work.reviews[0].detail
+    assert state.work.reviews[0].detail == "材料不符合要求"
+    assert state.work.reviews[0].time == "2026-09-08 14:32"
+    assert state.work.submissions[0].submitted_at == "2026-09-07 09:20"
     with pytest.raises(RuleError):
         transition_v3(state, "submit_purchase")
     # A review can establish compliance without inventing missing attachments.
@@ -387,7 +389,13 @@ def test_act_three_follows_document_dialogue_order(revision):
     assert "采购单的事情还没有完全结束" in lines[0].text
     assert "听说周菱菱准备跳槽了" in lines[1].text
     assert "最近项目进度需要重新确认" in lines[2].text
-    assert "项目" in lines[3].text and "去留" in lines[3].text
+    assert (
+        lines[3].text
+        == "项目没有问题，我会按计划交付。\n至于跳槽的事情，我没有说过，也没有做出决定。"
+    )
+    assert story.acts[3].title == "第三幕 · 谣言战"
+    assert lines[1].portraits == ["player"]
+    assert lines[2].portraits == ["player", "zhang"]
     assert "项目节点和交付记录整理给我" in lines[4].text
     assert [choice.action for choice in story.acts[3].choices] == [
         "clarify",

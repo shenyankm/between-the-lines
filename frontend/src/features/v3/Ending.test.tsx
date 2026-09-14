@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import { server } from "../../testing/server";
 import { save } from "../../testing/fixtures";
 import type { StateV3 } from "./Work";
 import { Ending } from "./Ending";
+
 function state(over: Partial<StateV3> = {}): StateV3 {
   return {
     ...save().state,
@@ -30,111 +30,127 @@ function mount(value: StateV3) {
         id: "ending",
         kind: "ending",
         status: "completed",
-        result: { text: "已确认的经历" },
+        result: {
+          text: "已确认的经历。\n\n尚未解决的工作，仍按记录保留。",
+          label: "AI 演出",
+          interactions: [{ event_summary: "不应另列的互动报告" }],
+        },
       }),
     ),
   );
   return render(
-    <MemoryRouter>
-      <QueryClientProvider
-        client={
-          new QueryClient({ defaultOptions: { queries: { retry: false } } })
-        }
-      >
-        <Ending userId="test-user" save={save()} state={value} />
-      </QueryClientProvider>
-    </MemoryRouter>,
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <Ending userId="reader" save={save()} state={value} />
+    </QueryClientProvider>,
   );
 }
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
+function finishOpening() {
+  fireEvent.click(screen.getByRole("button", { name: "继续" }));
+  fireEvent.click(screen.getByRole("button", { name: "查看本局结算" }));
+}
 it.each([
-  [20, "professional", "清晰守界"],
-  [50, "friendship", "审慎修复"],
-  [80, "undecided", "主动表达"],
+  ["rules_rewritten", "改写规则", "E01", "rules"],
+  ["professional_boundary", "各自为界", "E02", "boundary"],
+  ["limited_repair", "有限修复", "E03", "repair"],
+  ["active_exit", "主动转身", "E04", "exit"],
+  ["career_cost", "付出代价", "E05", "cost"],
+  ["unresolved", "尚未破局", "E06", "unresolved"],
 ] as const)(
-  "presents facts and costs at metric %s without inventing an outcome",
-  async (value, intention, style) => {
+  "shows only the %s card with its own text and art",
+  (id, title, code, asset) => {
     mount(
       state({
-        heat: value,
-        credit: value,
-        rumination: value,
-        pressure: value,
-        relationship: {
-          intention,
-          facts: { boundary: { event_id: "fact", detail: "已表达边界" } },
-        },
+        ending: title,
         outcome: {
-          id: "unresolved",
-          title: "仍在观察",
-          achievements: ["完成工作"],
-          unresolved: ["争议待核实"],
+          id,
+          title,
+          achievements: ["已确认事实"],
+          unresolved: ["待处理事项"],
           key_event_ids: [],
         },
       }),
     );
-    expect(screen.getByText(`我的职场人格 · ${style}`)).toBeTruthy();
-    expect(screen.getByText("完成工作")).toBeTruthy();
-    expect(screen.getByText("争议待核实")).toBeTruthy();
-    await screen.findByText("已确认的经历");
+    expect(screen.queryByRole("region", { name: "故事结局" })).toBeNull();
+    finishOpening();
+    expect(screen.getByRole("img").getAttribute("alt")).toBe(
+      `${code} ${title}：文档原版结局卡片`,
+    );
+    expect(screen.getByRole("img").getAttribute("src")).toContain(
+      `ending-${asset}-941-`,
+    );
+    expect(screen.queryByText("已确认的经历。")).toBeNull();
+    for (const text of [
+      "结局回顾",
+      "已保存事实",
+      "回看关键互动",
+      "我的职场人格",
+      "留下一张本局记录",
+      "复制文案",
+      "不应另列的互动报告",
+      "AI 演出",
+    ])
+      expect(screen.queryByText(text)).toBeNull();
+    fireEvent.error(screen.getByRole("img"));
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.getByText("结局卡片暂时未能加载，请刷新重试。")).toBeTruthy();
   },
 );
-it("previews locally and handles copy failure without sharing private messages", async () => {
-  const write = vi.fn().mockResolvedValue(undefined);
-  Object.defineProperty(navigator, "clipboard", {
-    configurable: true,
-    value: { writeText: write },
-  });
-  const draw = {
-    fillRect: vi.fn(),
-    fillText: vi.fn(),
-    strokeRect: vi.fn(),
-    measureText: (text: string) => ({ width: text.length * 30 }),
-  };
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-    draw as unknown as CanvasRenderingContext2D,
-  );
-  const saveImage = vi
-    .spyOn(HTMLAnchorElement.prototype, "click")
-    .mockImplementation(() => {});
-  const toBlob = vi
-    .spyOn(HTMLCanvasElement.prototype, "toBlob")
-    .mockImplementation((cb) => cb(new Blob(["image"])));
-  const create = vi.fn(() => "blob:local-card"),
-    revoke = vi.fn();
-  vi.stubGlobal(
-    "URL",
-    class extends URL {
-      static createObjectURL = create;
-      static revokeObjectURL = revoke;
-    },
-  );
-  mount(state());
-  expect(screen.getByText("我的职场人格 · 保留空间")).toBeTruthy();
-  fireEvent.click(screen.getByText("复制文案"));
-  await screen.findByText("文案已复制");
-  expect(write.mock.calls[0]?.[0]).toContain("不是心理测评");
-  write.mockRejectedValue(new Error("denied"));
-  fireEvent.click(screen.getByText("复制文案"));
-  await screen.findByText("复制失败，请从预览手动复制");
-  fireEvent.click(screen.getByText("预览分享卡"));
-  await waitFor(() => expect(draw.fillText).toHaveBeenCalled());
-  fireEvent.click(screen.getByText("导出图片"));
-  expect(saveImage).toHaveBeenCalledOnce();
-  await waitFor(() => expect(revoke).toHaveBeenCalledWith("blob:local-card"), {
-    timeout: 2000,
-  });
-  toBlob.mockImplementation((cb) => cb(null));
-  fireEvent.click(screen.getByText("导出图片"));
-  expect(saveImage).toHaveBeenCalledOnce();
+it("keeps unknown historical endings readable without assigning a new type", () => {
+  mount(state({ ending: "历史结局" }));
+  finishOpening();
+  expect(screen.getByRole("heading", { name: "历史结局" })).toBeTruthy();
+  expect(screen.queryByRole("img")).toBeNull();
+  expect(screen.queryByText("已确认的经历。")).toBeNull();
 });
-it("keeps text readable if canvas is unsupported", async () => {
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
-  mount(state());
-  fireEvent.click(screen.getByText("预览分享卡"));
-  await screen.findByText("已确认的经历");
-  expect(screen.getByText("导出图片")).toBeTruthy();
-});
+it.each(["transfer", "withdraw", "resign"] as const)(
+  "preserves submitted %s and completed work in opening",
+  (kind) => {
+    mount(
+      state({
+        exit_draft: {
+          kind,
+          reason: "自主选择",
+          event_id: "exit",
+          submitted: true,
+        },
+        work: {
+          purchase: "approved",
+          submissions: [],
+          reviews: [],
+          facts: { delivered: { event_id: "d", detail: "交付完成" } },
+        },
+      }),
+    );
+    expect(screen.getByText(/采购申请已经通过审核/)).toBeTruthy();
+    expect(screen.getByText(/项目交付已经留下记录/)).toBeTruthy();
+    expect(screen.queryByText(/还要继续维持吗/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    expect(
+      screen.getByText(
+        new RegExp(
+          `我已经提交了${kind === "transfer" ? "转岗" : kind === "withdraw" ? "退出项目" : "离职"}申请`,
+        ),
+      ),
+    ).toBeTruthy();
+  },
+);
+it.each(["undecided", "friendship", "professional"] as const)(
+  "preserves the player's %s intention without declaring forgiveness",
+  (intention) => {
+    mount(
+      state({
+        relationship: {
+          intention,
+          facts: { boundary: { event_id: "b", detail: "明确边界" } },
+        },
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    expect(screen.getByText(/边界不是翻脸/)).toBeTruthy();
+    expect(screen.queryByText(/已经原谅/)).toBeNull();
+  },
+);

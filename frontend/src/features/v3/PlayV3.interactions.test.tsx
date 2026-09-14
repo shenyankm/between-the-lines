@@ -102,6 +102,7 @@ function mount(p = play(), s = story()) {
   const rendered = render(wrap(p));
   return {
     ...rendered,
+    client,
     rerenderPlay: (next: PlayState) => rendered.rerender(wrap(next)),
   };
   // Each test uses ordinary rerender when testing a new server state.
@@ -119,7 +120,7 @@ beforeEach(() => {
     savedEffects: undefined,
     error: "",
   });
-  ctrl.submit.mockReset();
+  ctrl.submit.mockReset().mockResolvedValue(false);
   ctrl.recover.mockReset();
   vi.stubGlobal(
     "matchMedia",
@@ -371,23 +372,23 @@ it.each(["act_1_invitation", "act_1_farewell", "act_3_follow_up"])(
     expect(screen.getByText(/这几轮没有新增进展/)).toBeTruthy();
   },
 );
-it("shows the interlude before advancement; closing it leaves the story unchanged", () => {
-  const s = story();
-  s.acts[1]!.interlude = {
-    image: "/assets/bg-home.png",
-    location: "家",
-    time: "晚上",
-    text: "私人独白",
-  };
-  mount(play(), s);
-  fireEvent.click(screen.getByText("带着当前进度进入下一幕 →"));
-  expect(screen.getByText("私人独白")).toBeTruthy();
-  expect(ctrl.submit).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByText("返回当前剧情"));
-  fireEvent.click(screen.getByText("带着当前进度进入下一幕 →"));
-  fireEvent.click(screen.getByText("进入下一幕"));
-  expect(ctrl.submit.mock.lastCall?.[1]).toBe("next");
-});
+it.each([true, false])(
+  "advances only after a successful choice: %s",
+  async (completed) => {
+    const p = play();
+    const { client } = mount(p);
+    const latest = { ...p, save: { ...p.save, version: p.save.version + 1 } };
+    client.setQueryData(["play", "test-user", p.save.id], latest);
+    ctrl.submit.mockResolvedValueOnce(completed);
+    fireEvent.click(screen.getByRole("button", { name: "boundary" }));
+    await waitFor(() =>
+      expect(ctrl.submit).toHaveBeenCalledTimes(completed ? 2 : 1),
+    );
+    if (completed) expect(ctrl.submit.mock.lastCall?.[0]).toEqual(latest.save);
+    if (completed) expect(ctrl.submit.mock.lastCall?.[1]).toBe("next");
+    expect(screen.queryByText("带着当前进度进入下一幕 →")).toBeNull();
+  },
+);
 it("proposes a major decision and preserves the original application until confirmation", () => {
   const p = play();
   p.available_actions = [
@@ -629,7 +630,7 @@ it("opens relationship evidence without altering story facts", () => {
   fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: true }));
   expect(screen.queryByRole("button", { name: "完整记录" })).toBeNull();
 });
-it("uses the persisted ending instead of an active scene", async () => {
+it("uses the persisted ending instead of an active scene", () => {
   server.use(
     http.post("/api/saves/save-1/jobs", () =>
       HttpResponse.json({
@@ -653,7 +654,10 @@ it("uses the persisted ending instead of an active scene", async () => {
     },
   };
   mount(p);
-  await screen.findByText("已保存的结局正文");
+  fireEvent.click(screen.getByRole("button", { name: "继续" }));
+  fireEvent.click(screen.getByRole("button", { name: "查看本局结算" }));
+  expect(screen.getByRole("img", { name: /尚未破局：文档原版/ })).toBeTruthy();
+  expect(screen.queryByText("已保存的结局正文")).toBeNull();
   expect(screen.queryByLabelText("自由表达")).toBeNull();
   expect(
     screen.queryByRole("navigation", { name: "故事工具与账户" }),
@@ -795,13 +799,14 @@ it("focuses the decision title before a long confirmation and shows errors insid
   expect(screen.getAllByRole("alert")).toHaveLength(1);
 });
 
-it("labels the recipient before sending and offers an explicit contact switch", () => {
+it("keeps an accessible recipient label and switches contacts through the phone", () => {
   mount();
   expect(screen.getByText("现场 · 对孙淼说")).toBeTruthy();
   expect(
     screen.getByLabelText("自由表达").getAttribute("aria-describedby"),
   ).toBe("scene-recipient");
-  fireEvent.click(screen.getByRole("button", { name: "切换对话对象" }));
+  expect(screen.queryByRole("button", { name: "切换对话对象" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
   fireEvent.click(screen.getByRole("button", { name: /张工/ }));
   expect(screen.getByText("私聊 · 张工")).toBeTruthy();
 });
@@ -954,8 +959,8 @@ it.each(["appeased:act_1", "boundary:act_1", "farewell_requested"])(
       expect(screen.queryByRole("button", { name: choice.label })).toBeNull();
     }
     expect(
-      screen.getByRole("button", { name: "带着当前进度进入下一幕 →" }),
-    ).toBeTruthy();
+      screen.queryByRole("button", { name: "带着当前进度进入下一幕 →" }),
+    ).toBeNull();
   },
 );
 
@@ -1237,4 +1242,49 @@ it("finishes all act-three dialogue before offering the three choices", async ()
   ).toBeTruthy();
   expect(screen.getByRole("button", { name: /联系李姐/ })).toBeTruthy();
   expect(ctrl.submit).not.toHaveBeenCalled();
+});
+
+it.each([
+  "missing",
+  "changed-act",
+  "proposal",
+  "disabled-next",
+  "unrelated-action",
+])("does not auto-advance against %s server state", async (scenario) => {
+  const p = play();
+  const { client } = mount(p);
+  const latest = {
+    ...p,
+    save: {
+      ...p.save,
+      version: p.save.version + 1,
+      state: { ...p.save.state, act: scenario === "changed-act" ? 2 : 1 },
+    },
+    proposal:
+      scenario === "proposal"
+        ? {
+            id: "decision",
+            action: "boundary",
+            label: "待确认",
+            effect: "未执行",
+          }
+        : null,
+    available_actions:
+      scenario === "disabled-next"
+        ? [option("next", { enabled: false })]
+        : p.available_actions,
+  };
+  if (scenario !== "missing")
+    client.setQueryData(["play", "test-user", p.save.id], latest);
+  ctrl.submit.mockResolvedValue(true);
+  if (scenario === "unrelated-action") {
+    fireEvent.change(screen.getByLabelText("自由表达"), {
+      target: { value: "普通对话" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+  } else fireEvent.click(screen.getByRole("button", { name: "boundary" }));
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(ctrl.submit).toHaveBeenCalledTimes(1);
 });

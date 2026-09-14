@@ -7,6 +7,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 manifest = json.loads((ROOT / "frontend/src/assets.json").read_text())
+# Product posters must remain byte-for-byte originals from the referenced document.
+poster_dir = ROOT / "docs/assets/ending-posters"
+posters = json.loads((poster_dir / "provenance.json").read_text())
+assert [poster["code"] for poster in posters] == [f"E{i:02}" for i in range(1, 7)]
+for poster in posters:
+    original = (poster_dir / poster["source"]).read_bytes()
+    product = (ROOT / poster["product"]).read_bytes()
+    assert original == product, poster["code"]
+    assert hashlib.sha256(product).hexdigest() == poster["sha256"], poster["code"]
 largest_background = largest_portrait = largest_ending = 0
 for source, variants in manifest.items():
     assert (ROOT / "frontend/public" / source.lstrip("/")).is_file(), source

@@ -111,3 +111,44 @@ it.each(["failed", "unknown", "completed"])(
     ).toBeNull();
   },
 );
+
+it.each([2341, null])(
+  "labels mock votes %s and inserts a selected view without sending",
+  async (votes) => {
+    server.use(
+      http.post("/api/saves/save-1/jobs", () =>
+        HttpResponse.json({
+          id: "mock-job",
+          kind: "discussion",
+          status: "completed",
+          result: {
+            mock: true,
+            label: "Mock 展示 · 非真实知乎检索",
+            highlight: "总的来说她又对我不错",
+            highlight_votes: votes,
+            cards: [1, 2, 3].map((id) => ({
+              id: String(id),
+              view: `参考观点 ${id}`,
+              expression: `我的回应 ${id}`,
+              sources: [],
+            })),
+          },
+        }),
+      ),
+    );
+    const fill = mount();
+    await screen.findByText("“总的来说她又对我不错”");
+    expect(screen.getByText(/这句话被赞了/).textContent).toContain(
+      votes === null ? "—" : "2,341",
+    );
+    const summary = screen.getByText("查看 3 类观点，选择回应");
+    const details = summary.closest("details")!;
+    expect(details.open).toBe(false);
+    fireEvent.click(summary);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "带入输入框，再由我修改" })[1]!,
+    );
+    expect(fill).toHaveBeenCalledWith("我的回应 2", "mock-job", "2");
+    expect(screen.queryByRole("link")).toBeNull();
+  },
+);

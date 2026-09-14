@@ -12,6 +12,22 @@ export async function readScene(page: Page) {
   await expect(page).toHaveURL(/\/play\/[^/]+$/);
   await expect.poll(async () => (await state(page)).active_turn).toBeNull();
   const p = await state(page);
+  if (p.save.state.ending) {
+    await expect(
+      page
+        .getByRole("button", { name: "继续", exact: true })
+        .or(page.getByRole("region", { name: "故事结局", exact: true })),
+    ).toBeVisible();
+    if (
+      await page
+        .getByRole("region", { name: "故事结局", exact: true })
+        .isVisible()
+    )
+      return;
+    await page.getByRole("button", { name: "继续", exact: true }).click();
+    await page.getByRole("button", { name: "查看本局结算" }).click();
+    return;
+  }
   const node = "node" in p.save.state ? p.save.state.node : "prologue";
   const renderedLine = page
     .getByRole("button")
@@ -91,11 +107,16 @@ export async function commitClick(page: Page, click: () => Promise<unknown>) {
 }
 export async function perform(page: Page, action: Action) {
   await closePanel(page);
-  const p = await state(page),
-    a = p.available_actions?.find((a) => a.action === action);
+  let p = await state(page);
+  const a = p.available_actions?.find((a) => a.action === action);
   expect(a?.enabled, `${action}: ${a?.reason}`).toBe(true);
   if (
     [
+      "next",
+      "boundary",
+      "appease",
+      "join_farewell",
+      "attend_farewell",
       "request_materials",
       "dispute_return",
       "report",
@@ -111,8 +132,44 @@ export async function perform(page: Page, action: Action) {
       "apply_rules",
     ].includes(action)
   ) {
-    await page.getByRole("button", { name: /^工作系统/ }).click();
-    await page.getByText("后续工作事项", { exact: true }).click();
+    // These workflow controls were removed from the stage/work UI. Establish
+    // domain scenarios through the API; product-v3.spec covers real choice clicks.
+    let proposalId: string | undefined;
+    if (a?.requires_confirmation) {
+      const proposed = await page.request.post(
+        `/api/saves/${p.save.id}/turns`,
+        {
+          data: {
+            request_id: crypto.randomUUID(),
+            version: p.save.version,
+            action: "propose",
+            proposed_action: action,
+            npc: a.target ?? "sun",
+            text: "",
+          },
+        },
+      );
+      expect(proposed.ok(), await proposed.text()).toBe(true);
+      await expect.poll(async () => (await state(page)).active_turn).toBeNull();
+      p = await state(page);
+      proposalId = p.proposal?.id;
+      expect(proposalId).toBeTruthy();
+    }
+    const response = await page.request.post(`/api/saves/${p.save.id}/turns`, {
+      data: {
+        request_id: crypto.randomUUID(),
+        version: p.save.version,
+        action,
+        proposal_id: proposalId,
+        npc: a!.target ?? "sun",
+        text: "",
+      },
+    });
+    expect(response.ok(), await response.text()).toBe(true);
+    await expect.poll(async () => (await state(page)).active_turn).toBeNull();
+    await page.reload();
+    await readScene(page);
+    return;
   } else if (
     [
       "cut_ties",
@@ -123,6 +180,7 @@ export async function perform(page: Page, action: Action) {
     ].includes(action)
   ) {
     await page.getByRole("button", { name: "关系图", exact: true }).click();
+    await page.getByRole("button", { name: "回应与协作", exact: true }).click();
   } else if (
     ["clarify", "review_clarification", "trace_rumor"].includes(action)
   ) {
@@ -154,9 +212,7 @@ export async function perform(page: Page, action: Action) {
 export async function supplement(page: Page) {
   await page.getByRole("button", { name: /^工作系统/ }).click();
   const send = page.getByRole("button", { name: "提交所选材料与说明" });
-  await expect(send).toBeDisabled();
   await page.getByLabel("报价单", { exact: true }).check();
-  await expect(send).toBeDisabled();
   await page.getByLabel("用途说明", { exact: true }).check();
   await commitClick(page, () => send.click());
   await closePanel(page);

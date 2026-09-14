@@ -22,17 +22,19 @@ docker run --rm --user 0:0 --entrypoint sh \
     -v "$task_tmp:/input:ro" -v "$task_volume:/tls" "$task_image" -c \
     'cp /input/*.pem /tls/; chown 0:101 /tls /tls/privkey.pem; chmod 0750 /tls; chmod 0640 /tls/privkey.pem; chmod 0644 /tls/fullchain.pem'
 docker run -d --name "$task_name" --network "$task_network" \
-    -p 127.0.0.1:18443:8443 -p 127.0.0.1:18081:8080 \
+    -p 127.0.0.1::8443 -p 127.0.0.1::8080 \
     -v "$(pwd)/deploy/nginx.production.conf:/etc/nginx/conf.d/default.conf:ro" \
     -v "$task_volume:/etc/nginx/tls:ro" "$task_image" >/dev/null
+task_https_port=$(docker port "$task_name" 8443/tcp | cut -d: -f2)
+task_http_port=$(docker port "$task_name" 8080/tcp | cut -d: -f2)
 attempt=0
-until curl --silent --fail --cacert "$task_tmp/fullchain.pem" https://localhost:18443/api/health > /dev/null; do
+until curl --silent --fail --cacert "$task_tmp/fullchain.pem" "https://localhost:$task_https_port/api/health" > /dev/null; do
     attempt=$((attempt + 1))
     if [ "$attempt" -ge 20 ]; then docker logs "$task_name"; exit 1; fi
     sleep 1
 done
 test "$(docker exec "$task_name" id -u)" = 101
 docker exec "$task_name" nginx -t
-curl --silent --fail --cacert "$task_tmp/fullchain.pem" https://localhost:18443/ | grep -q '<html'
-curl --silent -I http://localhost:18081/ | grep -q '308'
+curl --silent --fail --cacert "$task_tmp/fullchain.pem" "https://localhost:$task_https_port/" | grep -q '<html'
+curl --silent -I "http://localhost:$task_http_port/" | grep -q '308'
 printf '%s\n' 'non-root production TLS, redirect, static page and API proxy: passed'

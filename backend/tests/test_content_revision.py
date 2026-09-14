@@ -48,7 +48,7 @@ def test_relationship_projection_uses_current_intention_not_old_flag_order():
     assert "已结束私人来往" not in person.description
 
 
-def test_performance_preserves_purchase_facts_without_promising_delivery():
+def test_performance_matches_document_without_committing_delivery():
     from app.game_types import Fact
 
     state = initial_v3()
@@ -57,9 +57,15 @@ def test_performance_preserves_purchase_facts_without_promising_delivery():
     story = load_story(3)
     pending = story.performance_for(state)
     assert "还没有完全结束" in pending[0].text
-    assert "按计划交付" not in pending[3].text
+    assert (
+        pending[3].text
+        == "项目没有问题，我会按计划交付。\n至于跳槽的事情，我没有说过，也没有做出决定。"
+    )
+    assert "delivered" not in state.work.facts
     state.work.facts["purchase_approved"] = Fact(event_id=str(uuid4()), detail="审核通过")
     approved = story.performance_for(state)
     assert "已经通过" in approved[0].text
     assert "还没有完全结束" in story.scenes["act_3"][0].text
-    assert "没有做出决定" not in approved[3].text
+    assert "没有做出决定" in approved[3].text
+    state.work.facts["delivered"] = Fact(event_id=str(uuid4()), detail="项目已交付")
+    assert "项目已经交付" in story.performance_for(state)[3].text

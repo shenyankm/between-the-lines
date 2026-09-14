@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { start, state, perform, exitStory, commitClick } from "./v3-helpers";
+import {
+  start,
+  state,
+  perform,
+  exitStory,
+  commitClick,
+  readScene,
+} from "./v3-helpers";
 
 test("attending the farewell must not later be described as missing it", async ({
   page,
@@ -35,7 +42,7 @@ test("attending the farewell must not later be described as missing it", async (
   const facts = "work" in save.state ? save.state.work?.facts : {};
   expect(facts?.farewell_attended).toBeTruthy();
   await expect(
-    page.getByRole("heading", { name: "有限修复", exact: true }),
+    page.getByRole("img", { name: /有限修复：文档原版/ }),
   ).toBeVisible();
   const history = await page.request.get(
     `/api/saves/${save.id}/events?limit=100`,
@@ -54,13 +61,15 @@ test("submitted exit application stays committed when the ending is reloaded", a
   await commitClick(page, () =>
     page.getByRole("button", { name: "确认并提交" }).click(),
   );
+  await readScene(page);
   await expect(
-    page.getByRole("heading", { name: "主动转身", exact: true }),
+    page.getByRole("img", { name: /主动转身：文档原版/ }),
   ).toBeVisible();
   // Completed stories restore the ending, with no active work tools.
   await page.reload();
+  await readScene(page);
   await expect(
-    page.getByRole("heading", { name: "主动转身", exact: true }),
+    page.getByRole("img", { name: /主动转身：文档原版/ }),
   ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "故事工具与账户" }),

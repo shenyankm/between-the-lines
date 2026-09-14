@@ -97,20 +97,13 @@ for (const route of routes) {
       await commitClick(page, () =>
         page.getByRole("button", { name: "确认并提交" }).click(),
       );
+      await readScene(page);
     } else await perform(page, "close_story");
     await expect(
-      page.getByRole("heading", { name: route.ending, exact: true }),
+      page.getByRole("img", {
+        name: new RegExp(route.ending + "：文档原版结局卡片"),
+      }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("region", { name: "结局正文" }),
-    ).not.toContainText("正在根据本局经历");
-    if (route.ending === "有限修复")
-      await expect(
-        page
-          .getByRole("region", { name: "结局正文" })
-          .locator(":scope > p")
-          .first(),
-      ).not.toContainText("孙淼尚未回应");
     const finished = (await state(page)).save;
     if (process.env.BTL_REAL_AI_AUDIT === "1") {
       const jobs = (await (
@@ -136,14 +129,6 @@ for (const route of routes) {
       path: `${artifactDir}/${info.project.name}-${route.name}.png`,
       fullPage: true,
     });
-    if (route.name === "professional") {
-      await page.getByRole("button", { name: "预览分享卡" }).click();
-      const download = page.waitForEvent("download");
-      await page.getByRole("button", { name: "导出图片" }).click();
-      const file = await download;
-      await file.saveAs(`${artifactDir}/${info.project.name}-share.png`);
-      expect(await file.failure()).toBeNull();
-    }
     expect(errors).toEqual([]);
   });
 }

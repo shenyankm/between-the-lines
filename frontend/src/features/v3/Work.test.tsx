@@ -4,8 +4,19 @@ import { Actions, Work, type Option, type StateV3 } from "./Work";
 import { SupportForm } from "./SupportForm";
 import { save } from "../../testing/fixtures";
 
+const defaultForm = {
+  applicant: "周菱菱",
+  department: "研发工位",
+  material_category: "电子元器件",
+  quantity: 100,
+  budget: "研发项目经费",
+  expected_arrival: "2026-09-20",
+  notes: "",
+};
+
 const state = {
   ...save().state,
+  act: 2,
   story_version: 3,
   content_revision: 2,
   node: "act_2",
@@ -17,6 +28,26 @@ const state = {
   outcome: null,
   quiet_turns: 0,
 } as StateV3;
+const returnedWork: NonNullable<StateV3["work"]> = {
+  purchase: "returned",
+  facts: {},
+  reviews: [],
+  submissions: [
+    {
+      version: 1,
+      event_id: "purchase-1",
+      kind: "standard",
+      purpose: "用于新产品试制与功能验证。",
+      evidence: [],
+      status: "returned",
+      feedback: "",
+      supplement_note: "",
+      mentions: [],
+      purchase_form: null,
+      submitted_at: "",
+    },
+  ],
+};
 const option = (action: Option["action"], enabled = true): Option => ({
   action,
   enabled,
@@ -45,9 +76,16 @@ it("requires both essential attachments and preserves the submitted application"
   });
   fireEvent.click(screen.getByText("提交第一版申请"));
   expect(submit).toHaveBeenCalledWith("submit_purchase", "sun", {
-    params: { purpose: "实验验证" },
+    params: {
+      purpose: "实验验证",
+      purchase_form: defaultForm,
+      purchase_kind: "standard",
+    },
   });
-  const send = screen.getByText<HTMLButtonElement>("提交所选材料与说明");
+  view.rerender(<Work {...props} state={{ ...state, work: returnedWork }} />);
+  const send = screen.getByRole<HTMLButtonElement>("button", {
+    name: "提交所选材料与说明",
+  });
   expect(send.disabled).toBe(true);
   fireEvent.click(screen.getByLabelText("报价单"));
   expect(send.disabled).toBe(true);
@@ -56,10 +94,14 @@ it("requires both essential attachments and preserves the submitted application"
   fireEvent.click(screen.getByLabelText("加急依据"));
   fireEvent.click(send);
   expect(submit).toHaveBeenLastCalledWith("supplement", "sun", {
-    params: { evidence: ["quote", "purpose"] },
+    params: {
+      evidence: ["quote", "purpose"],
+      purpose: "实验验证",
+      purchase_form: defaultForm,
+    },
   });
-  fireEvent.click(screen.getByText("report"));
-  expect(submit).toHaveBeenLastCalledWith("report", "sun");
+  expect(screen.queryByText("后续工作事项")).toBeNull();
+  expect(screen.queryByRole("button", { name: "report" })).toBeNull();
   view.rerender(
     <Work
       {...props}
@@ -69,6 +111,8 @@ it("requires both essential attachments and preserves the submitted application"
           purchase: "returned",
           submissions: [
             {
+              purchase_form: null,
+              submitted_at: "",
               supplement_note: "",
               kind: "standard",
               version: 1,
@@ -79,6 +123,8 @@ it("requires both essential attachments and preserves the submitted application"
               feedback: "缺少说明",
             },
             {
+              purchase_form: null,
+              submitted_at: "",
               supplement_note: "",
               kind: "standard",
               version: 2,
@@ -107,7 +153,9 @@ it("requires both essential attachments and preserves the submitted application"
   expect(screen.getByText("原申请")).toBeTruthy();
   expect(screen.getByText(/原始附件/)).toBeTruthy();
   expect(screen.getByText(/缺少说明/)).toBeTruthy();
-  view.rerender(<Work {...props} busy />);
+  view.rerender(
+    <Work {...props} state={{ ...state, work: returnedWork }} busy />,
+  );
   expect(send.disabled).toBe(true);
 });
 it("previews an exit application without submitting it and allows returning to work", () => {
@@ -302,7 +350,7 @@ it("requires urgency evidence only when the player explicitly selects urgent pro
   const action = vi.fn();
   render(
     <Work
-      state={{ ...state, content_revision: 3 }}
+      state={{ ...state, content_revision: 3, work: returnedWork }}
       options={[option("supplement")]}
       act={action}
       busy={false}
@@ -324,6 +372,8 @@ it("requires urgency evidence only when the player explicitly selects urgent pro
     params: {
       evidence: ["quote", "purpose", "urgency"],
       purchase_kind: "urgent",
+      purpose: "用于新产品试制与功能验证。",
+      purchase_form: defaultForm,
     },
   });
 });
@@ -413,7 +463,7 @@ it("restores the purchase purpose after closing without submitting it", () => {
       .value,
   ).toBe("下一批实验用途");
   expect(submit).not.toHaveBeenCalled();
-  expect(screen.getByLabelText<HTMLInputElement>("数量").value).toBe("未登记");
+  expect(screen.getByLabelText<HTMLInputElement>("数量").value).toBe("100");
 });
 
 it("requires a note and recipients for the scene entry and restores the whole draft", () => {
@@ -435,6 +485,8 @@ it("requires a note and recipients for the scene entry and restores the whole dr
             evidence: [],
             status: "returned" as const,
             feedback: "",
+            purchase_form: null,
+            submitted_at: "",
             supplement_note: "",
           },
         ],
@@ -466,6 +518,8 @@ it("requires a note and recipients for the scene entry and restores the whole dr
     params: {
       evidence: ["quote", "purpose"],
       supplement_note: "请按模板核对",
+      purpose: "实验",
+      purchase_form: defaultForm,
       mentions: ["li", "zhang"],
     },
   });
@@ -501,4 +555,214 @@ it("requires a note and recipients for the scene entry and restores the whole dr
   );
   expect(screen.getByText("补充说明：已保存说明")).toBeTruthy();
   expect(screen.getByText("已通知：李姐、张工")).toBeTruthy();
+});
+
+it("restores all editable purchase fields and submits their entered values", () => {
+  const act = vi.fn();
+  const props = {
+    state,
+    act,
+    busy: false,
+    options: [option("submit_purchase")],
+    draftIdentity: { userId: "form-user", saveId: "editable-form" },
+  };
+  const view = render(<Work {...props} />);
+  expect(screen.getByLabelText<HTMLInputElement>("材料类别").value).toBe(
+    "电子元器件",
+  );
+  expect(screen.getByLabelText<HTMLInputElement>("预计到货日期").value).toBe(
+    "2026-09-20",
+  );
+  for (const [label, value] of [
+    ["申请人", "周菱菱（研发）"],
+    ["所属部门", "研发二组"],
+    ["材料类别", "传感器"],
+    ["数量", "250"],
+    ["预算归属", "试制经费"],
+    ["预计到货日期", "2026-10-01"],
+    ["备注", "分批送达"],
+    ["实验用途", "样机验证"],
+  ] as const)
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  view.unmount();
+  render(<Work {...props} />);
+  expect(screen.getByLabelText<HTMLInputElement>("数量").value).toBe("250");
+  expect(screen.getByLabelText<HTMLTextAreaElement>("备注").value).toBe(
+    "分批送达",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "提交第一版申请" }));
+  expect(act).toHaveBeenCalledWith("submit_purchase", "sun", {
+    params: {
+      purpose: "样机验证",
+      purchase_kind: "standard",
+      purchase_form: {
+        applicant: "周菱菱（研发）",
+        department: "研发二组",
+        material_category: "传感器",
+        quantity: 250,
+        budget: "试制经费",
+        expected_arrival: "2026-10-01",
+        notes: "分批送达",
+      },
+    },
+  });
+});
+
+it("saves chapter-one drafts without a turn and enables chapter-two resubmission with existing attachments", () => {
+  const act = vi.fn();
+  const draftIdentity = { userId: "stage-user", saveId: "stage-draft" };
+  const view = render(
+    <Work
+      state={{ ...state, act: 1 }}
+      options={[]}
+      act={act}
+      busy={false}
+      draftIdentity={draftIdentity}
+    />,
+  );
+  expect(screen.queryByRole("button", { name: "提交第一版申请" })).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "提交所选材料与说明" }),
+  ).toBeNull();
+  fireEvent.change(screen.getByLabelText("备注"), {
+    target: { value: "请核对交期" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+  expect(screen.getByText("草稿已暂存 · 尚未提交")).toBeTruthy();
+  expect(act).not.toHaveBeenCalled();
+  view.unmount();
+  render(
+    <Work
+      state={{
+        ...state,
+        content_revision: 3,
+        work: {
+          ...returnedWork,
+          submissions: [
+            {
+              ...returnedWork.submissions![0]!,
+              evidence: ["quote", "purpose"],
+            },
+          ],
+        },
+      }}
+      options={[option("supplement")]}
+      act={act}
+      busy={false}
+      draftIdentity={draftIdentity}
+    />,
+  );
+  expect(screen.getByLabelText<HTMLTextAreaElement>("备注").value).toBe(
+    "请核对交期",
+  );
+  expect(screen.getByLabelText<HTMLInputElement>("报价单").checked).toBe(true);
+  expect(screen.getByLabelText<HTMLInputElement>("用途说明").checked).toBe(
+    true,
+  );
+  const resubmit = screen.getByRole<HTMLButtonElement>("button", {
+    name: "提交所选材料与说明",
+  });
+  expect(resubmit.disabled).toBe(false);
+  fireEvent.click(resubmit);
+  expect(act).toHaveBeenCalledWith("supplement", "sun", {
+    params: {
+      evidence: ["quote", "purpose"],
+      purpose: "用于新产品试制与功能验证。",
+      purchase_kind: "standard",
+      purchase_form: { ...defaultForm, notes: "请核对交期" },
+    },
+  });
+});
+
+it("uses persisted form defaults and displays every review without rewriting history", () => {
+  const form = {
+    ...defaultForm,
+    applicant: "实际申请人",
+    quantity: 320,
+    notes: "分批验收",
+  };
+  const first = {
+    ...returnedWork.submissions![0]!,
+    purchase_form: form,
+    submitted_at: "2026-09-07 09:20",
+    evidence: ["legacy-file"],
+    mentions: ["li" as const],
+    supplement_note: "原始补充说明",
+  };
+  const second = {
+    ...first,
+    version: 2,
+    event_id: "v2",
+    kind: "urgent" as const,
+    status: "approved" as const,
+    evidence: ["quote", "purpose", "urgency"],
+  };
+  const work = {
+    purchase: "approved" as const,
+    facts: {},
+    submissions: [first, second],
+    reviews: [
+      {
+        event_id: "r1",
+        version: 1,
+        actor: "sun" as const,
+        decision: "退回",
+        detail: "旧版缺少说明",
+        time: "2026-09-08 14:32",
+      },
+      {
+        event_id: "r2",
+        version: 2,
+        actor: "li" as const,
+        decision: "通过",
+        detail: "复核通过",
+        time: "2026-09-09 10:00",
+      },
+    ],
+  };
+  const snapshot = JSON.stringify(work);
+  render(
+    <Work state={{ ...state, work }} options={[]} act={vi.fn()} busy={false} />,
+  );
+  expect(screen.getByLabelText<HTMLInputElement>("申请人").value).toBe(
+    "实际申请人",
+  );
+  expect(screen.getByLabelText<HTMLInputElement>("数量").value).toBe("320");
+  expect(screen.getByLabelText<HTMLTextAreaElement>("备注").value).toBe(
+    "分批验收",
+  );
+  expect(screen.getByText("旧版缺少说明")).toBeTruthy();
+  expect(screen.getByText("复核通过")).toBeTruthy();
+  expect(screen.getByText("附件：legacy-file")).toBeTruthy();
+  expect(screen.getAllByText("已通知：李姐")).toHaveLength(2);
+  expect(JSON.stringify(work)).toBe(snapshot);
+});
+
+it("opens attachments independently of selection and prevents invalid resubmission", () => {
+  const act = vi.fn();
+  const work = {
+    ...returnedWork,
+    submissions: [
+      { ...returnedWork.submissions![0]!, evidence: ["quote", "purpose"] },
+    ],
+  };
+  render(
+    <Work
+      state={{ ...state, work }}
+      options={[option("supplement")]}
+      act={act}
+      busy={false}
+    />,
+  );
+  fireEvent.click(screen.getAllByRole("button", { name: /点击查看/ })[0]!);
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "关闭附件预览" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByLabelText<HTMLInputElement>("报价单").checked).toBe(true);
+  fireEvent.change(screen.getByLabelText("数量"), { target: { value: "0" } });
+  fireEvent.click(screen.getByRole("button", { name: "提交所选材料与说明" }));
+  expect(act).not.toHaveBeenCalled();
+  expect(screen.getByLabelText<HTMLInputElement>("数量").checkValidity()).toBe(
+    false,
+  );
 });

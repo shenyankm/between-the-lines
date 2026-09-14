@@ -4,6 +4,7 @@ import {
   Sparkles,
   X,
   ArrowLeft,
+  UserRound,
 } from "lucide-react";
 import { Form, TextArea, Button } from "@heroui/react";
 import {
@@ -313,6 +314,9 @@ export function PlayV3({
     clear,
   );
   const busy = controller.busy || !!controller.blocked;
+  const advanceAfterChoice = useRef<{ act: number; action: Action } | null>(
+    null,
+  );
   const act = (
     action: Action,
     npc: Npc = "sun",
@@ -369,7 +373,32 @@ export function PlayV3({
         ...metadata,
         proposed_action: action,
       });
-    } else void controller.submit(save, action, "", npc, metadata);
+    } else
+      void controller
+        .submit(save, action, "", npc, metadata)
+        .then(async (completed) => {
+          if (
+            !completed ||
+            advanceAfterChoice.current?.act !== state.act ||
+            advanceAfterChoice.current.action !== action
+          )
+            return;
+          const latest = client.getQueryData<PlayState>(
+            playKey(userId, save.id),
+          );
+          if (!latest || latest.save.state.act !== state.act || latest.proposal)
+            return;
+          const next = latest.available_actions?.find(
+            (item) => item.action === "next" && item.enabled,
+          );
+          if (!next) return;
+          advanceAfterChoice.current = null;
+          setPanel(null);
+          await controller.submit(latest.save, "next", "", "sun", {
+            channel: "scene",
+            target: "sun",
+          });
+        });
   };
   async function mark(key: string, position: number) {
     setSavingReading(true);
@@ -409,6 +438,9 @@ export function PlayV3({
     ...story.acts[state.act]!,
     ...(currentLine?.location ? { location: currentLine.location } : {}),
     ...(currentLine?.background ? { background: currentLine.background } : {}),
+    ...(state.act === 1 ? { background: "/assets/cafeteria.png" } : {}),
+    ...(state.act === 2 ? { background: "/assets/office.png" } : {}),
+    ...(state.act === 3 ? { background: "/assets/meeting-room-act3.png" } : {}),
   };
   const events = play.events.filter(
     (e) =>
@@ -458,7 +490,7 @@ export function PlayV3({
         });
       }}
     >
-      <div className={dm ? s.sr : s.recipient}>
+      <div className={s.sr}>
         <p id={dm ? "dm-recipient" : "scene-recipient"}>
           {dm
             ? contact === "group"
@@ -466,17 +498,6 @@ export function PlayV3({
               : `私聊 · ${names[target]}`
             : "现场 · 对孙淼说"}
         </p>
-        {!dm && (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setPanel("phone");
-              setContact(null);
-            }}
-          >
-            切换对话对象
-          </Button>
-        )}
       </div>
       <label className={s.sr} htmlFor={dm ? "dm-input" : "scene-input"}>
         自由表达
@@ -489,7 +510,8 @@ export function PlayV3({
         aria-describedby={dm ? "dm-recipient" : "scene-recipient"}
         maxLength={1500}
         value={draft.text}
-        rows={dm ? 2 : undefined}
+        rows={dm ? 2 : 1}
+        style={dm ? undefined : { resize: "none", scrollbarWidth: "none" }}
         onKeyDown={(e) => {
           if (
             !dm ||
@@ -643,7 +665,14 @@ export function PlayV3({
             ? []
             : authoredChoices.length
               ? authoredChoices
-              : sceneOptions.filter((a) => a.enabled).slice(0, 3);
+              : sceneOptions
+                  .filter(
+                    (a) =>
+                      a.enabled &&
+                      a.action !== "next" &&
+                      a.action !== "close_story",
+                  )
+                  .slice(0, 3);
   const feedback = (
     <div className={s.status} aria-label="操作反馈">
       {controller.savedStatus && !controller.saved && (
@@ -677,6 +706,7 @@ export function PlayV3({
   return (
     <main
       className={s.root}
+      data-ending={!!state.ending}
       data-identity={identity}
       data-monologue={monologue}
       data-prologue={state.act === 0 && scripted}
@@ -790,6 +820,7 @@ export function PlayV3({
               <Actions
                 options={stageChoices}
                 act={(action, npc) => {
+                  advanceAfterChoice.current = { act: state.act, action };
                   const entry = scene.choices.find(
                     (choice) => choice.action === action,
                   )?.entry;
@@ -837,15 +868,6 @@ export function PlayV3({
                       onClick={() => act("close_story")}
                     >
                       按当前进度结束本局
-                    </Button>
-                  )}
-                  {sceneOptions.some((a) => a.action === "next") && (
-                    <Button
-                      variant="secondary"
-                      isDisabled={busy}
-                      onClick={() => act("next")}
-                    >
-                      带着当前进度进入下一幕 →
                     </Button>
                   )}
                 </div>
@@ -1020,7 +1042,7 @@ export function PlayV3({
       <dialog
         ref={panelDialog}
         id="story-panel"
-        className={`${s.drawer} ${panel === "phone" ? s.phoneDrawer : panel === "work" ? s.workDrawer : panel === "discussion" ? s.discussionDrawer : ""}`}
+        className={`${s.drawer} ${panel === "phone" ? s.phoneDrawer : panel === "work" ? s.workDrawer : panel === "discussion" ? s.discussionDrawer : panel === "relations" ? s.relationsDrawer : ""}`}
         aria-labelledby="story-panel-title"
         onCancel={() => setPanel(null)}
         onPointerDown={(event) => {
@@ -1059,7 +1081,12 @@ export function PlayV3({
           {panel === "work" && (
             <>
               <small className={s.workMotto}>专注当下 · 成就更好的自己</small>
-              <span className={s.workUser}>周菱菱</span>
+              <span className={s.workUser}>
+                <span className={s.workUserIcon} aria-hidden="true">
+                  <UserRound size={23} />
+                </span>
+                周菱菱
+              </span>
             </>
           )}
           {!(panel === "phone" && contact) && (

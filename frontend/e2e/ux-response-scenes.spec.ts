@@ -10,6 +10,7 @@ test("relationship responses are attributed to Sun and leave the player's next c
   await perform(page, "repair_friendship");
   await perform(page, "acknowledge_harm");
   await page.getByRole("button", { name: "关系图", exact: true }).click();
+  await page.getByRole("button", { name: "回应与协作", exact: true }).click();
   const scene = page.getByRole("region", { name: "关系回应场景" });
   await expect(scene).toContainText("孙淼 · 回应与承认伤害");
   await expect(scene).toContainText("孙淼：我也愿意");

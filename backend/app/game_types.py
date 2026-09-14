@@ -1,8 +1,9 @@
 """Shared game vocabulary; no HTTP, storage or model dependencies."""
 
+from datetime import date
 from typing import Literal, TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 Npc = Literal["sun", "li", "zhang", "wang"]
 Action = Literal[
@@ -112,7 +113,20 @@ class Fact(BaseModel):
     detail: str
 
 
+class PurchaseForm(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    applicant: str = Field(min_length=1, max_length=80)
+    department: str = Field(min_length=1, max_length=80)
+    material_category: str = Field(min_length=1, max_length=80)
+    quantity: int = Field(ge=1, le=1000000, strict=True)
+    budget: str = Field(min_length=1, max_length=100)
+    expected_arrival: date
+    notes: str = Field(default="", max_length=300)
+
+
 class Submission(BaseModel):
+    submitted_at: str = ""
+    purchase_form: PurchaseForm | None = None
     supplement_note: str = ""
     mentions: list[Literal["sun", "li", "zhang"]] = Field(default_factory=list)
     kind: Literal["standard", "urgent"] = "standard"

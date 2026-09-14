@@ -254,7 +254,20 @@ test("home saves endings and legacy pages handle empty and long content", async 
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/play/responsive-save");
       await expect(
-        page.getByRole("region", { name: "已保存事实", exact: true }),
+        page
+          .getByRole("button", { name: "继续", exact: true })
+          .or(page.getByRole("region", { name: "故事结局", exact: true })),
+      ).toBeVisible();
+      if (
+        await page
+          .getByRole("button", { name: "继续", exact: true })
+          .isVisible()
+      ) {
+        await page.getByRole("button", { name: "继续", exact: true }).click();
+        await page.getByRole("button", { name: "查看本局结算" }).click();
+      }
+      await expect(
+        page.getByRole("img", { name: /各自为界：文档原版/ }),
       ).toBeVisible();
       await noOverflow(page);
       await capture(page, info, `ending-${status}-${width}`);
@@ -336,21 +349,12 @@ test("long stage history and interlude remain usable with terminal discussion st
     await capture(page, info, `long-history-${width}`);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
-    await page
-      .getByRole("button", { name: "带着当前进度进入下一幕 →", exact: true })
-      .click();
-    const interlude = page.getByRole("dialog");
-    await expect(interlude).toBeVisible();
-    await inViewport(
-      interlude.getByRole("button", { name: "返回当前剧情" }),
-      page,
-    );
-    await interlude
-      .locator('[class*="interludeBody"]')
-      .evaluate((el) => (el.scrollTop = 0));
-    await noOverflow(page);
-    await capture(page, info, `interlude-${width}`);
-    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("button", {
+        name: "带着当前进度进入下一幕 →",
+        exact: true,
+      }),
+    ).toHaveCount(0);
   }
   for (const status of ["running", "failed", "unknown"]) {
     view.jobStatus = status;

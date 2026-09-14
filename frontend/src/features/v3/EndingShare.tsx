@@ -5,6 +5,7 @@ import type { StateV3 } from "./Work";
 import { endingVisual, shareLines } from "./endingPresentation";
 import { drawShareCard, loadShareImage, preparePosterFonts } from "./shareCard";
 import s from "./V3.module.css";
+import modal from "./SharePreview.module.css";
 
 export function EndingShare({ state }: { state: StateV3 }) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -13,6 +14,18 @@ export function EndingShare({ state }: { state: StateV3 }) {
   const [readyText, setReadyText] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!preview) return;
+    const element = dialog.current;
+    const opener = trigger.current;
+    element?.showModal();
+    return () => {
+      element?.close();
+      opener?.focus();
+    };
+  }, [preview]);
   const cachedImage = useRef<{
     source: string;
     promise: Promise<HTMLImageElement | null>;
@@ -51,7 +64,7 @@ export function EndingShare({ state }: { state: StateV3 }) {
         if (source && !image) setMessage("插画暂时不可用，已生成文字分享卡。");
       })
       .catch(() => {
-        if (!cancelled) setMessage("图片预览暂时不可用，可以复制下方文案。");
+        if (!cancelled) setMessage("图片预览暂时不可用，请关闭后重试。");
       })
       .finally(() => {
         if (!cancelled) setRendering(false);
@@ -67,7 +80,7 @@ export function EndingShare({ state }: { state: StateV3 }) {
     try {
       el.toBlob((blob) => {
         if (!blob) {
-          setMessage("导出失败，请重试或复制文案。");
+          setMessage("导出失败，请重试。");
           return;
         }
         try {
@@ -79,11 +92,11 @@ export function EndingShare({ state }: { state: StateV3 }) {
           setTimeout(() => URL.revokeObjectURL(url), 1000);
           setMessage("分享图片已导出。");
         } catch {
-          setMessage("导出失败，请重试或复制文案。");
+          setMessage("导出失败，请重试。");
         }
       }, "image/png");
     } catch {
-      setMessage("导出失败，请重试或复制文案。");
+      setMessage("导出失败，请重试。");
     }
   }
 
@@ -113,19 +126,12 @@ export function EndingShare({ state }: { state: StateV3 }) {
         </fieldset>
       )}
       <div className={s.endingActions}>
-        <Button variant="secondary" onClick={() => setPreview(true)}>
-          预览分享卡
-        </Button>
         <Button
+          ref={trigger}
           variant="secondary"
-          onClick={() =>
-            void Promise.resolve()
-              .then(() => navigator.clipboard.writeText(text))
-              .then(() => setMessage("文案已复制"))
-              .catch(() => setMessage("复制失败，请从预览手动复制"))
-          }
+          onClick={() => setPreview(true)}
         >
-          复制文案
+          预览分享卡
         </Button>
         <a
           href="https://www.zhihu.com/search?type=content&q=职场沟通边界"
@@ -135,16 +141,36 @@ export function EndingShare({ state }: { state: StateV3 }) {
           打开知乎讨论
         </a>
       </div>
-      <p role="status">{rendering ? "正在准备图片与文字…" : message}</p>
       {preview && (
-        <div className={s.sharePreviewGrid}>
-          <div>
+        <dialog
+          ref={dialog}
+          className={modal.dialog}
+          aria-labelledby="share-preview-title"
+          onCancel={(event) => {
+            event.preventDefault();
+            setPreview(false);
+          }}
+        >
+          <header>
+            <h2 id="share-preview-title">分享卡预览</h2>
+            <Button
+              variant="secondary"
+              onClick={() => setPreview(false)}
+              aria-label="关闭分享卡预览"
+            >
+              关闭
+            </Button>
+          </header>
+          <div className={modal.body}>
             <canvas
               ref={canvas}
-              className={s.share}
+              className={modal.canvas}
               aria-label={text}
               hidden={readyText !== text}
             />
+          </div>
+          <footer>
+            <p role="status">{rendering ? "正在准备图片与文字…" : message}</p>
             <Button
               variant="secondary"
               isDisabled={readyText !== text || rendering}
@@ -152,9 +178,8 @@ export function EndingShare({ state }: { state: StateV3 }) {
             >
               导出图片
             </Button>
-          </div>
-          <pre className={s.shareCopy}>{text}</pre>
-        </div>
+          </footer>
+        </dialog>
       )}
     </section>
   );

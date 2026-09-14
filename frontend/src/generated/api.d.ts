@@ -502,6 +502,7 @@ export interface components {
         };
         /** ActionParameters */
         ActionParameters: {
+            purchase_form?: components["schemas"]["PurchaseForm"] | null;
             /** Purpose */
             purpose?: string | null;
             /** Evidence */
@@ -1055,6 +1056,29 @@ export interface components {
             zhang: components["schemas"]["PublicNpc"];
             wang?: components["schemas"]["PublicNpc"] | null;
         };
+        /** PurchaseForm */
+        PurchaseForm: {
+            /** Applicant */
+            applicant: string;
+            /** Department */
+            department: string;
+            /** Material Category */
+            material_category: string;
+            /** Quantity */
+            quantity: number;
+            /** Budget */
+            budget: string;
+            /**
+             * Expected Arrival
+             * Format: date
+             */
+            expected_arrival: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
         /** ReadingInput */
         ReadingInput: {
             /** Key */
@@ -1235,6 +1259,13 @@ export interface components {
         };
         /** Submission */
         Submission: {
+            /**
+             * Submitted At
+             * @default
+             */
+            submitted_at: string;
+            /** @default null */
+            purchase_form: components["schemas"]["PurchaseForm"] | null;
             /**
              * Supplement Note
              * @default

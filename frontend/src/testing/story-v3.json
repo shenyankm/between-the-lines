@@ -70,12 +70,12 @@
       ]
     },
     {
-      "title": "第三幕 · 流言的回声",
-      "chapter_title": "流言的回声",
+      "title": "第三幕 · 谣言战",
+      "chapter_title": "谣言战",
       "location": "项目会议室",
       "time": "周四 · 09:00",
       "intro": "办公室里传出你准备跳槽的说法。你可以澄清、向张工同步项目事实，或向李姐核对传播环节。",
-      "background": "/assets/meeting-morning.png",
+      "background": "/assets/meeting-room-act3.png",
       "choices": [
         {
           "label": "直接在群里澄清谣言。",
@@ -277,15 +277,15 @@
         "text": "采购单的事情还没有完全结束，办公室里却出现了新的传言。",
         "portraits": [],
         "location": "办公室",
-        "background": "/assets/office-morning.png"
+        "background": "/assets/meeting-room-act3.png"
       },
       {
         "id": "act_3-opening-1",
         "speaker": "group",
         "text": "听说周菱菱准备跳槽了。\n好像已经在看新的机会。\n难怪最近总是在整理工作记录。",
-        "portraits": [],
+        "portraits": ["player"],
         "location": "办公室",
-        "background": "/assets/office-morning.png"
+        "background": "/assets/meeting-room-act3.png"
       },
       {
         "id": "act_3-opening-2",
@@ -293,7 +293,7 @@
         "text": "菱菱，最近项目进度需要重新确认。\n你这边是不是有什么安排？如果有变动，要尽早告诉我。",
         "portraits": ["player", "zhang"],
         "location": "项目会议室",
-        "background": "/assets/meeting-morning.png"
+        "background": "/assets/meeting-room-act3.png"
       },
       {
         "id": "act_3-opening-3",
@@ -301,7 +301,7 @@
         "text": "项目没有问题，我会按计划交付。\n至于跳槽的事情，我没有说过，也没有做出决定。",
         "portraits": ["player"],
         "location": "项目会议室",
-        "background": "/assets/meeting-morning.png"
+        "background": "/assets/meeting-room-act3.png"
       },
       {
         "id": "act_3-opening-4",
@@ -309,7 +309,7 @@
         "text": "好，那就先把项目节点和交付记录整理给我。\n工作上的事情，还是以事实和记录为准。",
         "portraits": ["player", "zhang"],
         "location": "项目会议室",
-        "background": "/assets/meeting-morning.png"
+        "background": "/assets/meeting-room-act3.png"
       }
     ],
     "act_3_follow_up": [

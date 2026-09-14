@@ -85,10 +85,15 @@ test("stage controls and grouped metrics fit narrow and wide screens", async ({
     await expect(dialogue(page)).toBeVisible();
     await expect(page.getByRole("meter")).toHaveCount(4);
     const next = page.getByRole("button", { name: "带着当前进度进入下一幕 →" });
-    await expect(next).toBeVisible();
-    const inputBox = await dialogue(page).boundingBox();
-    const nextBox = await next.boundingBox();
-    expect(nextBox!.y).toBeGreaterThan(inputBox!.y + inputBox!.height);
+    await expect(next).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "切换对话对象" }),
+    ).toHaveCount(0);
+    expect(
+      await dialogue(page).evaluate(
+        (el) => getComputedStyle(el).scrollbarWidth,
+      ),
+    ).toBe("none");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

@@ -321,7 +321,7 @@ async def test_visit_does_not_change_plot_version(v2):
     assert (await client.get("/api/saves")).json()[0]["last_played_at"] == stamp
 
 
-async def test_reflection_and_cards_are_persistent_and_sourced(v2):
+async def test_reflection_and_mock_cards_are_persistent_and_save_scoped(v2):
     client, runtime = v2
     save = await create(client)
     await act(client, save, "begin")
@@ -347,7 +347,10 @@ async def test_reflection_and_cards_are_persistent_and_sourced(v2):
     await asyncio.gather(*runtime.jobs.tasks)
     jobs = (await client.get(f"/api/saves/{save['id']}/jobs")).json()
     card = jobs[0]["result"]["cards"][0]
-    assert card["sources"][0]["author"] == "作者"
+    assert jobs[0]["result"]["mock"] is True
+    assert card["sources"] == []
+    assert len(jobs[0]["result"]["cards"]) == 3
+    assert "非真实知乎检索" in jobs[0]["result"]["label"]
     await act(
         client,
         save,

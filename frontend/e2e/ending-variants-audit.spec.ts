@@ -31,8 +31,9 @@ for (const kind of ["transfer", "withdraw"] as const) {
     await commitClick(page, () =>
       page.getByRole("button", { name: "确认并提交" }).click(),
     );
+    await readScene(page);
     await expect(
-      page.getByRole("heading", { name: "主动转身", exact: true }),
+      page.getByRole("img", { name: /主动转身：文档原版/ }),
     ).toBeVisible();
     await page.reload();
     const s = (await state(page)).save.state;
@@ -66,7 +67,7 @@ for (const label of [
     await readScene(page);
     await perform(page, "close_story");
     await expect(
-      page.getByRole("heading", { name: "各自为界", exact: true }),
+      page.getByRole("img", { name: /各自为界：文档原版/ }),
     ).toBeVisible();
   });
 }
@@ -95,7 +96,7 @@ test("actual rule changes outrank repaired friendship without erasing it", async
     await perform(page, action);
   await closePanel(page);
   await expect(
-    page.getByRole("heading", { name: "改写规则", exact: true }),
+    page.getByRole("img", { name: /改写规则：文档原版/ }),
   ).toBeVisible();
   const s = (await state(page)).save.state;
   expect("relationship" in s && s.relationship?.facts?.remedy).toBeTruthy();

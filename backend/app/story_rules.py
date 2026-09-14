@@ -12,6 +12,7 @@ from .game_types import (
     ExitDraft,
     Fact,
     GameStateV3,
+    PurchaseForm,
     ReviewRecord,
     Submission,
     SupportApplication,
@@ -333,10 +334,20 @@ def transition_v3(
                 Submission(
                     event_id=event_id,
                     version=1,
-                    purpose="当前实验项目耗材采购（普通申请）",
+                    purpose="用于新产品试制与功能验证。",
+                    submitted_at="2026-09-07 09:20",
+                    purchase_form=PurchaseForm(
+                        applicant="周菱菱",
+                        department="研发工位",
+                        material_category="电子元器件",
+                        quantity=100,
+                        budget="研发项目经费",
+                        expected_arrival="2026-09-20",
+                        notes="",
+                    ),
                     evidence=["quote", "purpose"],
                     status="returned",
-                    feedback="有些地方不太规范，你先重新整理吧。",
+                    feedback="材料不符合要求",
                 )
             )
             s.work.reviews.append(
@@ -345,8 +356,8 @@ def transition_v3(
                     version=1,
                     actor="sun",
                     decision="退回",
-                    detail="有些地方不太规范，你先重新整理吧。",
-                    time="周二 · 开屏前",
+                    detail="材料不符合要求",
+                    time="2026-09-08 14:32",
                 )
             )
             record(
@@ -379,6 +390,10 @@ def transition_v3(
                 event_id=event_id,
                 version=1,
                 purpose=purpose,
+                purchase_form=PurchaseForm.model_validate(params["purchase_form"])
+                if params.get("purchase_form") is not None
+                else None,
+                kind=params.get("purchase_kind", "standard"),
                 evidence=[],
                 status="returned",
                 feedback=text,
@@ -406,7 +421,10 @@ def transition_v3(
                     event_id=event_id,
                     version=len(s.work.submissions) + 1,
                     kind=purchase_kind if s.content_revision >= 3 else "standard",
-                    purpose=s.work.submissions[-1].purpose,
+                    purpose=str(params.get("purpose", latest.purpose)),
+                    purchase_form=PurchaseForm.model_validate(params["purchase_form"])
+                    if params.get("purchase_form") is not None
+                    else latest.purchase_form,
                     evidence=sorted(set(evidence)),
                     status="resubmitted",
                     supplement_note=params.get("supplement_note", ""),

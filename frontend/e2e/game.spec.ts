@@ -35,14 +35,17 @@ for (const branch of ["cut_ties", "keep_distance"] as const) {
     const p = await state(page);
     expect(p.save.state.ending).toBeTruthy();
     await expect(
-      page.getByRole("heading", { name: p.save.state.ending!, exact: true }),
+      page.getByRole("img", {
+        name: new RegExp(p.save.state.ending! + "：文档原版"),
+      }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("region", { name: "结局正文" }),
-    ).not.toContainText("正在根据本局经历");
+    await expect(page.getByRole("region", { name: "结局正文" })).toHaveCount(0);
     await page.reload();
+    await readScene(page);
     await expect(
-      page.getByRole("heading", { name: p.save.state.ending!, exact: true }),
+      page.getByRole("img", {
+        name: new RegExp(p.save.state.ending! + "：文档原版"),
+      }),
     ).toBeVisible();
     expect((await state(page)).save.state).toEqual(p.save.state);
     expect(

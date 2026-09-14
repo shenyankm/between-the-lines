@@ -2591,6 +2591,16 @@
       },
       "ActionParameters": {
         "properties": {
+          "purchase_form": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PurchaseForm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "purpose": {
             "anyOf": [
               {
@@ -4346,6 +4356,62 @@
         ],
         "title": "PublicNpcs"
       },
+      "PurchaseForm": {
+        "additionalProperties": false,
+        "properties": {
+          "applicant": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Applicant",
+            "type": "string"
+          },
+          "department": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Department",
+            "type": "string"
+          },
+          "material_category": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Material Category",
+            "type": "string"
+          },
+          "quantity": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "budget": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Budget",
+            "type": "string"
+          },
+          "expected_arrival": {
+            "format": "date",
+            "title": "Expected Arrival",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Notes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "applicant",
+          "department",
+          "material_category",
+          "quantity",
+          "budget",
+          "expected_arrival"
+        ],
+        "title": "PurchaseForm",
+        "type": "object"
+      },
       "ReadingInput": {
         "properties": {
           "key": {
@@ -4791,6 +4857,22 @@
       },
       "Submission": {
         "properties": {
+          "submitted_at": {
+            "default": "",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "purchase_form": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PurchaseForm"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "supplement_note": {
             "default": "",
             "title": "Supplement Note",

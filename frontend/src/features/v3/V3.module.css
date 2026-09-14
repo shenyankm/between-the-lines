@@ -847,12 +847,12 @@
   flex: 1;
 }
 
-.root:has(.ending) {
+.root[data-ending="true"] {
   isolation: isolate;
   background-size: 0 0;
   grid-template-areas: "header header" "ending ending" "status status";
 }
-.root:has(.ending)::before {
+.root[data-ending="true"]::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -862,19 +862,19 @@
   background-size: cover;
   background-position: center;
 }
-.root:has(.ending) .toolbar {
+.root[data-ending="true"] .toolbar {
   display: flex;
   flex-wrap: wrap;
 }
-.root:has(.ending) .storyTools,
-.root:has(.ending) .accountTools {
+.root[data-ending="true"] .storyTools,
+.root[data-ending="true"] .accountTools {
   display: flex;
   flex-wrap: wrap;
 }
-.root:has(.ending) .toolbar button {
+.root[data-ending="true"] .toolbar button {
   width: auto;
 }
-.root:has(.ending) .accountTools {
+.root[data-ending="true"] .accountTools {
   border: 0;
   padding: 0;
 }
@@ -884,7 +884,7 @@
     grid-template-areas: "header" "tools" "portraits" "dialogue" "status";
     gap: 16px;
   }
-  .root:has(.ending) {
+  .root[data-ending="true"] {
     grid-template-areas: "header" "ending" "status";
   }
   .header {
@@ -1089,7 +1089,7 @@
     grid-template-areas: "header" "portraits" "dialogue" "status" "tools";
     gap: 12px;
   }
-  .root:has(.ending) {
+  .root[data-ending="true"] {
     grid-template-areas: "header" "ending" "status";
   }
   .header {
@@ -1120,7 +1120,7 @@
   .root {
     grid-template-areas: "header" "portraits" "dialogue" "status" "tools";
   }
-  .root:has(.ending) {
+  .root[data-ending="true"] {
     grid-template-areas: "header" "ending" "status";
   }
   .header {
@@ -1490,7 +1490,7 @@
   padding: 6px 10px;
 }
 @media (min-width: 1001px) {
-  .root:not(:has(.ending)) {
+  .root:not([data-ending="true"]) {
     grid-template-rows: auto minmax(220px, 1fr) auto auto;
     min-height: 100dvh;
   }
@@ -2141,20 +2141,6 @@
   padding: 20px;
   border-radius: 8px;
 }
-.workDrawer .workForm fieldset label::before {
-  content: "文";
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 28px;
-  border-radius: 3px;
-  color: white;
-  background: #cf6876;
-  font-size: 12px;
-}
-.workDrawer .workForm fieldset > div:nth-of-type(2) label::before {
-  background: #6b92cd;
-}
 .workDrawer .drawerBody {
   display: flex;
   flex-direction: column;
@@ -2202,64 +2188,324 @@
   overflow-y: auto;
   min-height: 0;
 }
-@media (min-width: 801px) {
-  .workDrawer .purchaseHeading {
-    padding: 10px 20px;
-  }
-  .workDrawer .workForm,
-  .workDrawer .reviewCard {
-    padding: 12px;
-  }
-  .workDrawer .purchaseFields {
-    gap: 6px 16px;
-  }
-  .workDrawer .purchaseFields input {
-    padding: 6px 10px;
-  }
-  .workDrawer .purchaseFields textarea {
-    min-height: 42px;
-    height: 42px;
-  }
-  .workDrawer .purchaseKind {
-    font-size: 12px;
-  }
-  .workDrawer .purchaseKind select {
-    width: auto;
-    flex: 1;
-    padding: 6px;
-  }
-  .workDrawer .workForm fieldset {
-    margin-top: 10px;
-  }
+/* Match the reference window proportions without compressing its form. */
+.workDrawer {
+  width: calc(100vw - 60px);
+  height: calc(100dvh - 28px);
+  max-height: calc(100dvh - 28px);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px #ead8af33,
+    0 20px 80px #08182b55;
 }
-.workDrawer .workActions {
-  padding: 4px 16px;
+.workDrawer .drawerHeader {
+  min-height: 62px;
+  padding: 10px 40px;
+  gap: 28px;
+}
+.workDrawer .drawerHeader h2 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.workUser {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  padding-right: 32px;
+  border-right: 1px solid #b7ac9255;
+}
+.workUserIcon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #dbe5f044;
+}
+.workDrawer .drawerBody {
+  padding: 0;
+  font-size: 16px;
+}
+.workDrawer .tabs {
+  position: absolute;
+  top: 18px;
+  right: 300px;
+  padding: 0;
+}
+.purchasePage {
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(120deg, #fffdf9, #eef1f6);
+}
+.workDrawer .purchaseHeading {
+  margin: 0 16px;
+  padding: 20px 18px 10px;
+  min-height: 92px;
+}
+.workDrawer .purchaseHeading h3 {
+  position: relative;
+  font-size: 32px;
+  line-height: 1.25;
+  font-weight: 700;
+  padding-left: 20px;
+}
+.workDrawer .purchaseHeading h3::before,
+.workDrawer .workForm h3::before,
+.workDrawer .reviewCard h3::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 7px;
+  border-radius: 3px;
+  background: linear-gradient(#f5dca7, #ab8953);
+}
+.workDrawer .purchaseHeading p {
+  font-size: 17px;
+  margin: 4px 0 0 20px;
+  color: #8591a4;
+}
+.workDrawer .purchaseHeading > small {
+  font-size: 18px;
+  color: #8b96a9;
+  font-family: "Kaiti SC", "STKaiti", serif;
+}
+.purchaseHeading h3 span {
+  font-size: 17px;
+  font-weight: 500;
+  padding: 5px 18px;
+}
+.workDrawer .purchaseHeading span[data-status="returned"] {
+  color: white;
+  background: linear-gradient(#f18794, #df4a63);
+}
+.workWorkspace {
+  flex: 1;
+  gap: 10px;
+  padding: 8px 16px 10px;
+}
+.workDrawer .workForm,
+.workDrawer .reviewCard {
+  padding: 20px 26px 14px;
+  border-radius: 13px;
+  box-shadow: 0 1px 4px #23384e12;
+}
+.workDrawer .workReview {
+  gap: 10px;
+}
+.workDrawer .workForm h3,
+.workDrawer .reviewCard h3 {
+  position: relative;
+  border: 0;
+  padding-left: 22px;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+.workDrawer .workForm h3 small {
+  font-size: 15px;
+  color: #8591a4;
+  line-height: 32px;
+}
+.workDrawer .formBand,
+.workDrawer .workForm legend {
+  padding: 7px 14px;
+  border-left-width: 5px;
+  border-radius: 5px;
+  font-size: 17px;
+  font-weight: 700;
+  background: linear-gradient(100deg, #eff0f3, #f1f3f6);
+}
+.workDrawer .formBand {
+  margin-bottom: 14px;
+}
+.purchaseFields {
+  gap: 14px 36px;
+}
+.workDrawer .purchaseFields label {
+  grid-template-columns: 118px minmax(0, 1fr);
+  font-size: 16px;
+}
+.workDrawer .purchaseFields input {
+  height: 41px;
+  padding: 8px 14px;
+  border-radius: 5px;
+}
+.workDrawer .purchaseFields textarea {
+  min-height: 68px;
+  padding: 10px 14px;
+  resize: vertical;
+  box-shadow: none;
+}
+.workDrawer .purchaseKind {
+  font-size: 14px;
+}
+.workDrawer .workForm fieldset {
+  margin-top: 18px;
 }
 .workDrawer .workForm fieldset label {
-  min-height: 36px;
+  min-height: 43px;
+  font-size: 16px;
 }
 .workDrawer .workForm fieldset details {
   padding: 0;
+  font-size: 14px;
 }
-@media (min-width: 801px) {
+.workDrawer .workForm legend small {
+  font-size: 14px;
+  color: #8b99ae;
+}
+.workDrawer .reviewCard:first-child {
+  min-height: 300px;
+}
+.reviewer {
+  padding: 20px 6px;
+  gap: 18px;
+}
+.reviewer > span {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  font-size: 30px;
+  background: linear-gradient(135deg, #7d8da4, #54627a);
+}
+.reviewer strong {
+  font-size: 21px;
+}
+.workDrawer .reviewer small,
+.workDrawer .submissionTimeline small {
+  font-size: 15px;
+  color: #8a98af;
+}
+.reviewer b {
+  font-size: 16px;
+  padding: 5px 16px;
+}
+.workDrawer .reviewComment {
+  padding: 24px 28px;
+  min-height: 92px;
+  margin: 4px 0 20px;
+  font-size: 22px;
+  font-weight: 600;
+  border-radius: 13px;
+}
+.workDrawer .submissionTimeline {
+  border-top: 1px solid #e6eaf0;
+  padding-top: 24px;
+}
+.workDrawer .submissionTimeline > li {
+  padding-left: 38px;
+  padding-bottom: 24px;
+  font-size: 17px;
+}
+.timelineReview {
+  position: relative;
+  border-top: 0;
+  margin-top: 24px;
+}
+.timelineReview::before {
+  content: "";
+  position: absolute;
+  left: -44px;
+  top: 16px;
+  width: 12px;
+  height: 12px;
+  border: 3px solid #e7667a;
+  background: white;
+  border-radius: 50%;
+}
+.workDrawer .purchaseFooter {
+  padding: 10px 34px;
+  min-height: 68px;
+  border-top: 1px solid #c2b696;
+}
+.workDrawer .purchaseFooter small {
+  font-size: 16px;
+}
+.workDrawer .purchaseFooter button {
+  min-width: 228px;
+  min-height: 46px;
+  font-size: 18px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px #fff3d777;
+}
+.workDrawer .workActions {
+  padding: 4px 26px;
+}
+@media (max-width: 1200px) {
+  .workMotto {
+    display: none;
+  }
+  .workDrawer .purchaseFields label {
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
+  .purchaseFields {
+    column-gap: 18px;
+  }
+  .workDrawer .workForm,
+  .workDrawer .reviewCard {
+    padding: 16px;
+  }
+  .workDrawer .workForm h3 small {
+    display: none;
+  }
+}
+@media (max-width: 800px) {
+  .workDrawer {
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+  .workDrawer .drawerHeader {
+    padding: 8px 12px;
+    gap: 12px;
+  }
+  .workDrawer .drawerHeader h2 {
+    font-size: 20px;
+  }
+  .workUser {
+    font-size: 14px;
+    padding-right: 0;
+    border: 0;
+  }
+  .workUserIcon {
+    display: none;
+  }
+  .workDrawer .tabs {
+    position: static;
+    padding: 4px 12px;
+  }
   .workDrawer .purchaseHeading {
-    padding-block: 8px;
+    margin: 0 8px;
+    padding: 14px 8px;
+    min-height: 80px;
   }
   .workDrawer .purchaseHeading h3 {
-    font-size: 22px;
-    line-height: 1.2;
+    font-size: 23px;
   }
   .workDrawer .purchaseHeading p {
-    margin: 4px 0 0;
+    font-size: 14px;
   }
-  .workDrawer .tabs button {
-    min-height: 24px;
+  .purchaseHeading h3 span {
+    font-size: 13px;
+    margin-left: 4px;
+    padding: 4px 10px;
   }
-  .workDrawer .workActions > summary {
-    min-height: 24px;
+  .workWorkspace {
+    padding: 8px;
   }
   .workDrawer .purchaseFooter {
-    padding-block: 8px;
+    padding: 12px;
+  }
+  .workDrawer .purchaseFooter button {
+    min-width: 160px;
+    font-size: 16px;
   }
 }
 
@@ -2679,4 +2925,784 @@
     padding: 8px;
     font-size: 13px;
   }
+}
+
+.workDrawer .workForm fieldset > div:has(.attachmentLink) {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+}
+.workDrawer .workForm .attachmentLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #233b5b;
+  padding: 6px 0;
+  text-align: left;
+  font-size: 16px;
+  cursor: pointer;
+}
+.attachmentLink span {
+  color: #426b9b;
+  font-size: 14px;
+}
+.attachmentLink:hover {
+  text-decoration: underline;
+}
+.attachmentLink:focus-visible {
+  outline: 2px solid #426b9b;
+  outline-offset: 2px;
+}
+
+/* Keep relationship navigation and detail reading within one fitted panel. */
+.relationsDrawer {
+  width: min(820px, calc(100vw - 32px));
+  overflow: hidden;
+}
+.relationsDrawer .drawerHeader {
+  padding: 16px 24px;
+}
+.relationsDrawer .drawerBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 24px;
+}
+.relationsPage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.relationsTabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #52637966;
+}
+.relationsContent {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  padding-top: 12px;
+}
+.relationsContent::-webkit-scrollbar {
+  display: none;
+}
+.relationsDrawer .relationGraph {
+  height: clamp(180px, 30dvh, 270px);
+}
+.relationsDrawer .relationList {
+  display: none;
+}
+.relationsDrawer .relationsContent h3 {
+  margin: 8px 0;
+}
+.relationsDrawer .relationsContent section {
+  margin: 12px 0;
+  padding: 16px;
+}
+.relationsDrawer .relationsContent p {
+  margin: 8px 0;
+}
+.relationsDrawer .relationsContent .actions {
+  margin-top: 12px;
+}
+@media (max-width: 700px) {
+  .relationsDrawer .drawerBody {
+    padding: 12px 16px;
+  }
+  .relationsDrawer .relationList {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .relationsDrawer .relationList button {
+    border-radius: 12px;
+    padding: 10px;
+    font-size: 14px;
+    min-height: 64px;
+  }
+}
+
+/* Share the phone's blue and white palette across the work system. */
+.workDrawer {
+  color-scheme: light;
+  color: #192639;
+  background: #f3f7fc;
+  border-color: #ccd7e5;
+  box-shadow: 0 20px 80px #18314e33;
+}
+.workDrawer .drawerHeader,
+.workDrawer .purchaseFooter {
+  background: #f3f7fc;
+  border-color: #d9e0e9;
+}
+.workDrawer .drawerHeader h2,
+.workDrawer .workUser {
+  color: #192639;
+}
+.workDrawer .workMotto {
+  color: #68778b;
+  border-color: #ccd7e5;
+}
+.workDrawer .workUser {
+  border-color: #ccd7e5;
+}
+.workDrawer .workUserIcon {
+  background: #e1ebfa;
+  color: #3776dc;
+}
+.workDrawer .drawerHeader button {
+  color: #3776dc;
+  background: transparent;
+}
+.workDrawer .drawerBody,
+.workDrawer .purchasePage,
+.workDrawer .hrPage {
+  background: #f3f7fc;
+}
+.workDrawer .purchaseHeading {
+  background: transparent;
+  border-color: #d9e0e9;
+}
+.workDrawer .purchaseHeading h3::before,
+.workDrawer .workForm h3::before,
+.workDrawer .reviewCard h3::before {
+  background: #397ce0;
+}
+.workDrawer .workForm,
+.workDrawer .reviewCard {
+  background: #fff;
+  border-color: #d9e0e9;
+  box-shadow: 0 1px 4px #23384e0a;
+}
+.workDrawer .formBand,
+.workDrawer .workForm legend {
+  background: #edf3fc;
+  border-color: #397ce0;
+}
+.workDrawer .drawerBody .tabs button {
+  color: #68778b;
+  background: transparent;
+  border: 0;
+}
+.workDrawer .drawerBody .tabs button[aria-pressed="true"] {
+  color: #245fb8;
+  box-shadow: inset 0 -2px #397ce0;
+}
+.workDrawer .purchaseFields input,
+.workDrawer .purchaseFields textarea,
+.workDrawer .drawerBody select,
+.workDrawer .supplementFields textarea {
+  color: #192639;
+  background: #fff;
+  border-color: #ccd7e5;
+}
+.workDrawer .drawerBody input[type="checkbox"] {
+  accent-color: #397ce0;
+}
+.workDrawer .drawerBody input:focus-visible,
+.workDrawer .drawerBody textarea:focus-visible,
+.workDrawer .drawerBody select:focus-visible,
+.workDrawer button:focus-visible {
+  outline: 2px solid #3776dc;
+  outline-offset: 2px;
+}
+.workDrawer .purchaseFooter small,
+.workDrawer .purchaseFooter p {
+  color: #52647b;
+}
+.workDrawer .drawerBody .purchaseFooter button,
+.workDrawer .hrPage button[type="submit"] {
+  background: #397ce0;
+  color: #fff;
+  border-color: #397ce0;
+  box-shadow: none;
+}
+.workDrawer .drawerBody .purchaseFooter button:disabled {
+  background: #e1ebfa;
+  color: #68778b;
+  border-color: #ccd7e5;
+  opacity: 1;
+}
+.workDrawer .drawerBody .purchaseFooter button:not(:disabled):hover {
+  background: #245fb8;
+}
+.workDrawer .reviewer > span {
+  background: #e1ebfa;
+  color: #245fb8;
+}
+
+/* Discussion is a public topic followed by distinct, source-backed viewpoints. */
+.discussionDrawer .drawerBody .discussionTopic {
+  margin: 0 0 10px;
+  font-size: 19px;
+  line-height: 1.5;
+  color: #263d59;
+}
+.discussionDrawer .discussionIntro,
+.discussionDrawer .discussionSourceStatus {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+.discussionDrawer .discussionViews {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+.discussionDrawer .discussionView {
+  margin: 0;
+  padding: 16px 0;
+  border: 0;
+  border-top: 1px solid #d9e0e9;
+  border-radius: 0;
+  background: transparent;
+}
+.discussionDrawer .discussionView h3 {
+  margin: 6px 0 10px;
+  color: #192639;
+  font-size: 17px;
+  line-height: 1.6;
+}
+.discussionDrawer .discussionView > small {
+  color: #3776dc;
+}
+.discussionDrawer .discussionView details {
+  margin: 10px 0 14px;
+  font-size: 14px;
+}
+.discussionDrawer .discussionView summary {
+  color: #245fb8;
+  cursor: pointer;
+}
+.discussionDrawer .discussionView blockquote {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-left: 3px solid #397ce0;
+  background: #eaf1fc;
+  color: #263d59;
+}
+.discussionDrawer .discussionView button {
+  width: 100%;
+  white-space: normal;
+}
+.discussionDrawer .discussionPrivacy {
+  line-height: 1.6;
+}
+
+.submissionBadge {
+  float: right;
+  padding: 3px 12px;
+  border-radius: 6px;
+  background: #e1ebfa;
+  color: #3776dc;
+  font-size: 14px;
+}
+.submissionBadge[data-status="returned"] {
+  background: #fde7eb;
+  color: #b42d46;
+}
+
+/* Compact, frosted discussion card matching the supplied concept. */
+.discussionDrawer {
+  width: min(460px, calc(100vw - 24px));
+  background: #fffffff0;
+  border: 1px solid #ffffffbb;
+  border-radius: 26px;
+  backdrop-filter: blur(22px);
+  box-shadow: 0 16px 48px #14283d33;
+}
+.discussionDrawer .drawerHeader {
+  padding: 24px 26px 4px;
+}
+.discussionDrawer .drawerHeader h2 {
+  font-size: 25px;
+  font-weight: 750;
+  color: #14283d;
+}
+.discussionDrawer .drawerBody {
+  padding: 14px 26px 24px;
+}
+.discussionDrawer .drawerBody .discussionTopic {
+  color: #5c6a7e;
+  font-size: 19px;
+}
+.discussionDrawer .discussionHighlight {
+  margin: 16px 0;
+  padding: 0 0 18px;
+  border-bottom: 1px solid #dce4ef;
+}
+.discussionDrawer .discussionHighlight p {
+  margin: 0 0 6px;
+  color: #52647b;
+  font-size: 20px;
+  line-height: 1.7;
+}
+.discussionDrawer .discussionHighlight small {
+  font-size: 13px;
+  color: #68778b;
+}
+.discussionDrawer .discussionView {
+  padding: 12px 0;
+}
+.discussionDrawer .discussionView h3 {
+  font-weight: 600;
+  font-size: 16px;
+}
+.discussionDrawer .discussionView button {
+  min-height: 36px;
+  font-size: 13px;
+  background: #eaf1fc;
+}
+.discussionDrawer .discussionIntro,
+.discussionDrawer .discussionSourceStatus,
+.discussionDrawer .discussionPrivacy {
+  font-size: 12px;
+}
+
+.discussionDrawer .discussionChoices {
+  margin: 16px 0;
+}
+.discussionDrawer .discussionChoices > summary {
+  color: #245fb8;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* One consistent choice panel for every playable chapter. */
+.root:not([data-prologue="true"]) .dialogue {
+  padding: 24px 32px 20px;
+  background: #101827e8;
+  border: 1px solid #8194ab55;
+  border-radius: 16px;
+  box-shadow: none;
+}
+.root:not([data-prologue="true"]) .dialogue > strong,
+.root:not([data-prologue="true"]) .dialogue .script > strong {
+  text-align: left;
+  justify-self: start;
+  color: #efcb79;
+  font-size: 16px;
+}
+.root:not([data-prologue="true"]) .dialogue .current {
+  margin: 18px 0 32px;
+  font-family: inherit;
+  font-size: 20px;
+  line-height: 1.7;
+  color: #f5f6fa;
+}
+.root:not([data-prologue="true"]) .dialogue .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+}
+.root:not([data-prologue="true"]) .dialogue .actions button {
+  flex: 0 1 auto;
+  width: auto;
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1px solid #ffffff30;
+  border-radius: 10px;
+  background: #ffffff12;
+  color: #f0f4f9;
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+}
+.root:not([data-prologue="true"])
+  .dialogue
+  .actions
+  button:not(:disabled):hover {
+  background: #ffffff20;
+  border-color: #e6c87b88;
+}
+.root:not([data-prologue="true"]) .dialogueControls {
+  padding-top: 14px;
+  gap: 6px;
+}
+.root:not([data-prologue="true"]) .dialogue .composer {
+  gap: 8px 10px;
+}
+.root:not([data-prologue="true"]) .dialogue .composer textarea {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 46px;
+  height: 46px;
+  padding: 11px 15px;
+  border: 1px solid #ffffff30;
+  border-radius: 10px;
+  background: #ffffff0d;
+  color: #f0f4f9;
+  resize: vertical;
+}
+.root:not([data-prologue="true"]) .dialogue .composer button[type="submit"] {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 72px;
+  min-height: 46px;
+  align-self: start;
+  border-radius: 10px;
+  background: #e6c374;
+  color: #192639;
+}
+.root:not([data-prologue="true"]) .dialogue .recipient {
+  grid-row: 2;
+  justify-content: flex-start;
+  gap: 12px;
+  color: #b4bdca;
+}
+.root:not([data-prologue="true"]) .dialogue .recipient button {
+  min-height: 28px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: #c8d4e5;
+}
+.root:not([data-prologue="true"]) .dialogue .progressActions button {
+  min-height: 30px;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+@media (max-width: 700px) {
+  .root:not([data-prologue="true"]) .dialogue {
+    padding: 18px 16px 14px;
+  }
+  .root:not([data-prologue="true"]) .dialogue .current {
+    margin: 12px 0 20px;
+    font-size: 18px;
+  }
+  .root:not([data-prologue="true"]) .dialogue .actions {
+    gap: 8px;
+  }
+  .root:not([data-prologue="true"]) .dialogue .actions button {
+    padding: 9px 12px;
+    font-size: 14px;
+  }
+  .root:not([data-prologue="true"]) .dialogue .composer button[type="submit"] {
+    min-width: 60px;
+  }
+}
+
+/* Compact discussion rows without removing source details or choices. */
+.discussionDrawer .drawerHeader {
+  padding: 16px 20px 0;
+}
+.discussionDrawer .drawerHeader h2 {
+  font-size: 22px;
+}
+.discussionDrawer .drawerBody {
+  padding: 10px 20px 16px;
+  line-height: 1.5;
+}
+.discussionDrawer .drawerBody > * + * {
+  margin-top: 8px;
+}
+.discussionDrawer .drawerBody .discussionTopic {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.45;
+}
+.discussionDrawer .discussionHighlight {
+  margin: 10px 0;
+  padding-bottom: 10px;
+}
+.discussionDrawer .discussionHighlight p {
+  margin: 0 0 4px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.discussionDrawer .discussionIntro {
+  display: none;
+}
+.discussionDrawer .discussionSourceStatus {
+  margin: 6px 0;
+  font-size: 11px;
+}
+.discussionDrawer .discussionChoices,
+.discussionDrawer .discussionViews {
+  margin: 8px 0;
+}
+.discussionDrawer .discussionView {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  padding: 10px 0;
+}
+.discussionDrawer .discussionView > small,
+.discussionDrawer .discussionView > h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.discussionDrawer .discussionView > h3 {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.discussionDrawer .discussionView > details {
+  min-width: 0;
+  margin: 0;
+  align-self: center;
+  font-size: 12px;
+}
+.discussionDrawer .discussionView > details[open] {
+  grid-column: 1 / -1;
+}
+.discussionDrawer .discussionView > button {
+  width: auto;
+  min-height: 32px;
+  padding: 5px 10px;
+  margin: 0;
+  font-size: 12px;
+  align-self: center;
+  justify-self: end;
+}
+.discussionDrawer .discussionView > details[open] + button {
+  grid-column: 2;
+}
+.discussionDrawer .discussionPrivacy {
+  font-size: 11px;
+  line-height: 1.45;
+}
+@media (max-width: 420px) {
+  .discussionDrawer .discussionView {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .discussionDrawer .discussionView > button,
+  .discussionDrawer .discussionView > details[open] + button {
+    grid-column: 1;
+    justify-self: start;
+  }
+}
+
+/* Relationship network uses the same blue and white palette as the phone. */
+.relationsDrawer {
+  width: min(960px, calc(100vw - 24px));
+  color: #263c59;
+  background: #f7faff;
+  border: 1px solid #d8e4f3;
+}
+.relationsDrawer .drawerHeader {
+  background: #f7faff;
+  border-bottom: 1px solid #dce6f2;
+}
+.relationsDrawer .drawerHeader h2 {
+  color: #233b59;
+}
+.relationsDrawer button {
+  color: #37649e;
+  background: #eaf1fc;
+}
+.relationsDrawer .relationsTabs {
+  border-color: #dce6f2;
+}
+.relationsDrawer .relationsTabs button[aria-pressed="true"] {
+  background: #316bc5;
+  color: white;
+  outline: none;
+}
+.relationsDrawer .relationsContent section {
+  background: white;
+  border: 1px solid #dce6f2;
+  border-radius: 12px;
+}
+.relationsDrawer .relationsContent h3 {
+  color: #253e60;
+}
+.relationsDrawer .relationsContent p {
+  color: #526984;
+}
+@media (max-width: 520px) {
+  .relationsDrawer .drawerBody {
+    padding: 12px;
+  }
+}
+
+.root:not([data-prologue="true"]) .composer textarea {
+  resize: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  line-height: 22px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+.root:not([data-prologue="true"]) .composer textarea::-webkit-scrollbar {
+  display: none;
+}
+.progressActions:empty {
+  display: none;
+}
+
+/* Keep the settlement readable without oversized text blocks and empty rows. */
+.ending {
+  line-height: 1.65;
+}
+.endingDetails {
+  padding: 20px;
+}
+.ending .endingNarrative {
+  padding: 0;
+  font-size: 15px;
+  line-height: 1.75;
+}
+.ending h2 {
+  font-size: 20px;
+  margin: 0 0 12px;
+}
+.ending h3 {
+  font-size: 16px;
+  margin: 18px 0 8px;
+}
+.ending .endingNarrative blockquote {
+  margin: 10px 0;
+  padding: 10px 14px;
+  border-radius: 7px;
+}
+.ending .endingNarrative blockquote p {
+  margin: 0;
+}
+.ending .endingNarrative blockquote p + p {
+  margin-top: 6px;
+}
+.ending .endingColumns {
+  padding: 0;
+}
+.ending .endingFacts {
+  margin-top: 20px;
+  padding-top: 18px;
+  font-size: 14px;
+}
+.ending .endingFacts > p {
+  margin: 6px 0;
+}
+.ending .endingFacts ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.ending .endingFacts li {
+  margin: 4px 0;
+}
+.ending .endingActions {
+  margin: 20px 0 0;
+  padding: 16px 0 0;
+}
+.ending .endingShare {
+  margin-top: 18px;
+  padding: 16px;
+}
+@media (min-width: 1200px) {
+  .ending {
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 20px;
+  }
+}
+@media (max-width: 600px) {
+  .endingDetails {
+    padding: 16px;
+  }
+  .ending .endingNarrative {
+    font-size: 14px;
+  }
+}
+
+.root[data-ending="true"]:has([aria-label="终幕开屏"]) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "ending";
+  align-content: center;
+}
+.root[data-ending="true"]:has([aria-label="终幕开屏"]) > .header {
+  display: none;
+}
+
+/* The final screen is a single illustrated ending card, with prose on the card. */
+.root .ending {
+  display: block;
+  width: min(460px, 100%);
+  margin: 0 auto;
+  background: #f5f0e5;
+  border: 1px solid #a6aa91;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.root .endingPoster {
+  position: static;
+  width: 100%;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+}
+.endingCardText {
+  padding: 20px 28px 28px;
+  color: #3b4535;
+  font:
+    16px/1.85 "Ending Serif",
+    "Songti SC",
+    serif;
+}
+.endingCardText p {
+  margin: 0 0 12px;
+}
+.endingCardText p:last-child {
+  margin-bottom: 0;
+}
+@media (max-width: 600px) {
+  .endingCardText {
+    padding: 18px 22px 24px;
+    font-size: 15px;
+  }
+}
+
+/* Keep the document poster intact and wholly visible at every viewport size. */
+.root[data-ending="true"]:has(.endingOriginal) {
+  height: 100dvh;
+  min-height: 0;
+  padding: 12px;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 44px minmax(0, 1fr);
+  grid-template-areas: "header" "ending";
+  overflow: hidden;
+}
+.root[data-ending="true"]:has(.endingOriginal) .header {
+  display: flex;
+  justify-content: flex-end;
+}
+.root[data-ending="true"]:has(.endingOriginal) .header > div:first-child,
+.root[data-ending="true"]:has(.endingOriginal) .metrics {
+  display: none;
+}
+.root[data-ending="true"]:has(.endingOriginal) .metricPanel {
+  width: auto;
+  padding: 0;
+  background: transparent;
+}
+.root .ending.endingOriginal {
+  width: fit-content;
+  height: auto;
+  min-height: 0;
+  max-width: 100%;
+  align-self: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+.endingOriginalImage {
+  display: block;
+  width: auto;
+  height: min(calc(100dvh - 80px), calc((100vw - 24px) * 1672 / 941));
+  max-width: 100%;
+  object-fit: contain;
 }

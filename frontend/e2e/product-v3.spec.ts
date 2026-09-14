@@ -1,12 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  start,
-  state,
-  perform,
-  readScene,
-  commitClick,
-  closePanel,
-} from "./v3-helpers";
+import { start, state, readScene, commitClick, closePanel } from "./v3-helpers";
 for (const kind of ["leave", "help"] as const)
   test(`v3 ${kind} application requires submission, review and actual completion`, async ({
     page,
@@ -62,17 +55,42 @@ test("guest completion preserves progress and blocks act two until binding", asy
   page,
 }) => {
   await start(page, true);
-  await perform(page, "boundary");
-  const before = (await state(page)).save;
   const denied = page.waitForResponse(
     (r) => r.url().endsWith("/turns") && r.status() === 422,
   );
-  await page.getByRole("button", { name: "带着当前进度进入下一幕 →" }).click();
+  await page
+    .getByRole("button", {
+      name: "既然知道我可能会生气，为什么不直接问我？",
+      exact: true,
+    })
+    .click();
   await denied;
   await expect(
     page.getByText("第一幕已完成，绑定知乎后继续；试玩进度会保留。"),
   ).toBeVisible();
+  const before = (await state(page)).save;
+  expect(before.state.act).toBe(1);
   await page.reload();
   await readScene(page);
   expect((await state(page)).save.state).toEqual(before.state);
+});
+
+test("a committed opening choice automatically enters act two using the new save version", async ({
+  page,
+}) => {
+  await start(page);
+  const before = (await state(page)).save;
+  await page
+    .getByRole("button", {
+      name: "既然知道我可能会生气，为什么不直接问我？",
+      exact: true,
+    })
+    .click();
+  await expect.poll(async () => (await state(page)).save.state.act).toBe(2);
+  const after = (await state(page)).save;
+  expect(after.version).toBeGreaterThan(before.version);
+  expect(after.state.flags).toContain("boundary:act_1");
+  await expect(
+    page.getByRole("button", { name: "带着当前进度进入下一幕 →" }),
+  ).toHaveCount(0);
 });

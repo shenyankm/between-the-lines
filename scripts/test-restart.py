@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -37,7 +38,7 @@ async def paused(turn, checkpointer):
     yield 'unreachable'
 main.app.state.dependencies.reply = paused
 import uvicorn
-uvicorn.run(main.app, host='127.0.0.1', port=8002, log_level='error')
+uvicorn.run(main.app, host='127.0.0.1', port=int(os.environ['TEST_PORT']), log_level='error')
 """
 
 
@@ -55,15 +56,18 @@ async def ready(client, process):
 
 
 async def main():
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
     with tempfile.TemporaryDirectory(prefix="btl-restart-") as directory:
         marker = Path(directory) / "committed"
         process = subprocess.Popen(
             [sys.executable, "-c", child_code],
             cwd=root / "backend",
-            env={**env, "TEST_MARKER": str(marker)},
+            env={**env, "TEST_MARKER": str(marker), "TEST_PORT": str(port)},
             stdout=subprocess.DEVNULL,
         )
-        async with httpx.AsyncClient(base_url="http://127.0.0.1:8002", timeout=15) as client:
+        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=15) as client:
             try:
                 await ready(client, process)
                 (await client.post("/api/auth/dev", json={"name": "重启验证"})).raise_for_status()
@@ -88,7 +92,7 @@ async def main():
                             "version": save["version"],
                             "action": "speak",
                             "npc": "sun",
-                            "text": "请确认材料要求",
+                            "text": "请明确材料要求",
                         },
                     )
                 )
@@ -109,7 +113,7 @@ async def main():
                         "--host",
                         "127.0.0.1",
                         "--port",
-                        "8002",
+                        str(port),
                         "--log-level",
                         "error",
                     ],

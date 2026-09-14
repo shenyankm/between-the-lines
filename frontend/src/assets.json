@@ -50,6 +50,23 @@
       "bytes": 156076
     }
   ],
+  "/assets/cafeteria.png": [
+    {
+      "width": 768,
+      "src": "/assets/cafeteria-768-518d919678eb.webp",
+      "bytes": 59506
+    },
+    {
+      "width": 1280,
+      "src": "/assets/cafeteria-1280-750650f22722.webp",
+      "bytes": 129670
+    },
+    {
+      "width": 1672,
+      "src": "/assets/cafeteria-1672-842dc62484e9.webp",
+      "bytes": 184060
+    }
+  ],
   "/assets/company-exterior.png": [
     {
       "width": 768,
@@ -87,103 +104,103 @@
   "/assets/ending-boundary.png": [
     {
       "width": 480,
-      "src": "/assets/ending-boundary-480-2b3a60f443a2.webp",
-      "bytes": 35080
+      "src": "/assets/ending-boundary-480-daa5bc88b497.webp",
+      "bytes": 56028
     },
     {
       "width": 768,
-      "src": "/assets/ending-boundary-768-8d9469c314a1.webp",
-      "bytes": 67480
+      "src": "/assets/ending-boundary-768-ca4127a29321.webp",
+      "bytes": 106094
     },
     {
       "width": 941,
-      "src": "/assets/ending-boundary-941-661f29bd0edc.webp",
-      "bytes": 87162
+      "src": "/assets/ending-boundary-941-4e0ac9ed8a29.webp",
+      "bytes": 138316
     }
   ],
   "/assets/ending-cost.png": [
     {
       "width": 480,
-      "src": "/assets/ending-cost-480-169199cf7c98.webp",
-      "bytes": 33656
+      "src": "/assets/ending-cost-480-930f283d52dd.webp",
+      "bytes": 54712
     },
     {
       "width": 768,
-      "src": "/assets/ending-cost-768-fc1e1c91e290.webp",
-      "bytes": 62448
+      "src": "/assets/ending-cost-768-74b4d1feeafe.webp",
+      "bytes": 100078
     },
     {
       "width": 941,
-      "src": "/assets/ending-cost-941-47113bc63542.webp",
-      "bytes": 80830
+      "src": "/assets/ending-cost-941-75147cdba570.webp",
+      "bytes": 128696
     }
   ],
   "/assets/ending-exit.png": [
     {
       "width": 480,
-      "src": "/assets/ending-exit-480-bf3ac7826727.webp",
-      "bytes": 35026
+      "src": "/assets/ending-exit-480-3ccaa1a04f4e.webp",
+      "bytes": 62214
     },
     {
       "width": 768,
-      "src": "/assets/ending-exit-768-d1be06baaa42.webp",
-      "bytes": 65078
+      "src": "/assets/ending-exit-768-bfacb17d3eb5.webp",
+      "bytes": 114012
     },
     {
       "width": 941,
-      "src": "/assets/ending-exit-941-3487cdfdc253.webp",
-      "bytes": 84256
+      "src": "/assets/ending-exit-941-4751163a1c37.webp",
+      "bytes": 146800
     }
   ],
   "/assets/ending-repair.png": [
     {
       "width": 480,
-      "src": "/assets/ending-repair-480-43392d6c2ca4.webp",
-      "bytes": 35920
+      "src": "/assets/ending-repair-480-84dca5f104d6.webp",
+      "bytes": 60390
     },
     {
       "width": 768,
-      "src": "/assets/ending-repair-768-5732ba5d5fd2.webp",
-      "bytes": 66378
+      "src": "/assets/ending-repair-768-3925fb686aa6.webp",
+      "bytes": 111892
     },
     {
       "width": 941,
-      "src": "/assets/ending-repair-941-7d3b8a327f7e.webp",
-      "bytes": 85932
+      "src": "/assets/ending-repair-941-9e9ac154a295.webp",
+      "bytes": 145294
     }
   ],
   "/assets/ending-rules.png": [
     {
       "width": 480,
-      "src": "/assets/ending-rules-480-3407718b9203.webp",
-      "bytes": 31480
+      "src": "/assets/ending-rules-480-7ba9aad188cd.webp",
+      "bytes": 51970
     },
     {
       "width": 768,
-      "src": "/assets/ending-rules-768-a71aee93a44f.webp",
-      "bytes": 59076
+      "src": "/assets/ending-rules-768-661b1ed4a789.webp",
+      "bytes": 96464
     },
     {
       "width": 941,
-      "src": "/assets/ending-rules-941-059e53cf5326.webp",
-      "bytes": 75304
+      "src": "/assets/ending-rules-941-d7da367d6c18.webp",
+      "bytes": 124508
     }
   ],
   "/assets/ending-unresolved.png": [
     {
       "width": 480,
-      "src": "/assets/ending-unresolved-480-8e9b2233c1f7.webp",
-      "bytes": 31424
+      "src": "/assets/ending-unresolved-480-c003fffffc0c.webp",
+      "bytes": 56528
     },
     {
       "width": 768,
-      "src": "/assets/ending-unresolved-768-6993c1e7e820.webp",
-      "bytes": 58518
+      "src": "/assets/ending-unresolved-768-0f590431536d.webp",
+      "bytes": 104312
     },
     {
       "width": 941,
-      "src": "/assets/ending-unresolved-941-a4c70f99d9df.webp",
-      "bytes": 75748
+      "src": "/assets/ending-unresolved-941-3925b21faec6.webp",
+      "bytes": 134240
     }
   ],
   "/assets/finance-rain.png": [
@@ -252,6 +269,40 @@
       "width": 1672,
       "src": "/assets/meeting-morning-1672-a8eba8111359.webp",
       "bytes": 129966
+    }
+  ],
+  "/assets/meeting-room-act2.png": [
+    {
+      "width": 768,
+      "src": "/assets/meeting-room-act2-768-56dcc73038ab.webp",
+      "bytes": 44450
+    },
+    {
+      "width": 1280,
+      "src": "/assets/meeting-room-act2-1280-e0b0f3b7a828.webp",
+      "bytes": 95478
+    },
+    {
+      "width": 1672,
+      "src": "/assets/meeting-room-act2-1672-d536b2f87169.webp",
+      "bytes": 137020
+    }
+  ],
+  "/assets/meeting-room-act3.png": [
+    {
+      "width": 768,
+      "src": "/assets/meeting-room-act3-768-56dcc73038ab.webp",
+      "bytes": 44450
+    },
+    {
+      "width": 1280,
+      "src": "/assets/meeting-room-act3-1280-e0b0f3b7a828.webp",
+      "bytes": 95478
+    },
+    {
+      "width": 1672,
+      "src": "/assets/meeting-room-act3-1672-d536b2f87169.webp",
+      "bytes": 137020
     }
   ],
   "/assets/office-morning.png": [
@@ -473,23 +524,6 @@
       "width": 1024,
       "src": "/assets/zhang-1024-efcbc89ac8ae.webp",
       "bytes": 112630
-    }
-  ],
-  "/assets/meeting-room-act2.png": [
-    {
-      "width": 768,
-      "src": "/assets/meeting-room-act2-768-56dcc73038ab.webp",
-      "bytes": 44450
-    },
-    {
-      "width": 1280,
-      "src": "/assets/meeting-room-act2-1280-e0b0f3b7a828.webp",
-      "bytes": 95478
-    },
-    {
-      "width": 1672,
-      "src": "/assets/meeting-room-act2-1672-d536b2f87169.webp",
-      "bytes": 137020
     }
   ]
 }

@@ -154,13 +154,10 @@ class StoryDefinition(BaseModel):
         for line in lines:
             if line.id == "act_3-opening-0" and "purchase_approved" in state.work.facts:
                 line.text = "采购申请已经通过，办公室里却出现了新的传言。"
-            if line.id == "act_3-opening-3":
-                # Reading a scripted line must not promise delivery or choose a career path.
-                line.text = (
-                    "项目已经交付，我会把交付记录整理给你。"
-                    if "delivered" in state.work.facts
-                    else "我会把当前项目进度和需要协调的问题整理给你。"
-                ) + "\n整理工作记录并不代表决定跳槽。关于去留，请以我自己的说明为准。"
+            if line.id == "act_3-opening-3" and "delivered" in state.work.facts:
+                # Preserve the document's default dialogue. Only an already committed
+                # delivery needs different wording; reading never commits delivery.
+                line.text = "项目已经交付，我会把交付记录整理给你。\n" + line.text.split("\n", 1)[1]
         return lines
 
     def narrative_flags(self, state: GameState) -> set[str]:

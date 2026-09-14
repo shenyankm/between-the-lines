@@ -15,14 +15,25 @@ test("review warns before loss; cancellation preserves facts; extension avoids t
   await perform(page, "next");
   await perform(page, "next");
   const before = (await state(page)).save.state;
-  await page.getByRole("button", { name: /^工作系统/ }).click();
-  await page.getByText("后续工作事项", { exact: true }).click();
-  await expect(
-    page.getByRole("region", { name: "项目复核后果" }),
-  ).toContainText("专业信用 -20");
-  await commitClick(page, () =>
-    page.getByRole("button", { name: "进入项目复核", exact: true }).click(),
+  // Project controls were removed from the work panel; exercise the same
+  // persisted proposal through the API and its restored confirmation UI.
+  const current = await state(page);
+  const proposed = await page.request.post(
+    `/api/saves/${current.save.id}/turns`,
+    {
+      data: {
+        request_id: crypto.randomUUID(),
+        version: current.save.version,
+        action: "propose",
+        proposed_action: "project_review",
+        npc: "zhang",
+        text: "",
+      },
+    },
   );
+  expect(proposed.ok()).toBe(true);
+  await expect.poll(async () => (await state(page)).active_turn).toBeNull();
+  await page.reload();
   await expect(page.getByRole("alertdialog")).toContainText("现在复核将转交");
   await page.screenshot({
     path: `../artifacts/issue-27-${info.project.name}.png`,

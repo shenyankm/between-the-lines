@@ -5,6 +5,7 @@ import {
   type DraftIdentity,
 } from "./useFormDraft";
 import { useEffect, useRef, useState } from "react";
+import { AttachmentPreview, workAttachments } from "./AttachmentPreview";
 import { SupportForm } from "./SupportForm";
 import type { Action, Npc, TurnInput } from "../../types";
 import type { components } from "../../generated/api";
@@ -58,22 +59,6 @@ export function Actions({
     </div>
   );
 }
-const procurement = new Set([
-  "request_materials",
-  "dispute_return",
-  "report",
-  "support_project",
-  "approve_purchase",
-  "joint_review",
-  "request_extension",
-  "deliver",
-  "project_review",
-  "correct_loss",
-  "confirm_responsibility",
-  "change_rules",
-  "apply_rules",
-  "review_clarification",
-]);
 export function Work({
   state,
   options,
@@ -89,10 +74,12 @@ export function Work({
   draftIdentity?: DraftIdentity;
   requireMentions?: boolean;
 }) {
+  const latest = state.work?.submissions?.at(-1);
+  const [draftSaved, setDraftSaved] = useState(false);
   const supplement = useFormDraft(draftIdentity, "supplement", {
     note: "",
     mentions: "",
-    evidence: "",
+    ...(latest ? { evidence: latest.evidence.join(",") } : {}),
     kind: state.work?.submissions?.at(-1)?.kind ?? "standard",
   });
   const purchaseKind =
@@ -117,10 +104,26 @@ export function Work({
     }
   }, [requireMentions]);
   const purchaseDraft = useFormDraft(draftIdentity, "purchase", {
-    purpose: "实验项目耗材采购",
+    purpose: latest?.purpose ?? "用于新产品试制与功能验证。",
+    applicant: latest?.purchase_form?.applicant ?? "周菱菱",
+    department: latest?.purchase_form?.department ?? "研发工位",
+    material_category: latest?.purchase_form?.material_category ?? "电子元器件",
+    quantity: String(latest?.purchase_form?.quantity ?? 100),
+    budget: latest?.purchase_form?.budget ?? "研发项目经费",
+    expected_arrival: latest?.purchase_form?.expected_arrival ?? "2026-09-20",
+    notes: latest?.purchase_form?.notes ?? "",
   });
   const purpose = purchaseDraft.value.purpose ?? "";
-  const latest = state.work?.submissions?.at(-1);
+  const purchaseForm = useRef<HTMLFormElement>(null);
+  const application = {
+    applicant: purchaseDraft.value.applicant!.trim(),
+    department: purchaseDraft.value.department!.trim(),
+    material_category: purchaseDraft.value.material_category!.trim(),
+    quantity: Number(purchaseDraft.value.quantity),
+    budget: purchaseDraft.value.budget!.trim(),
+    expected_arrival: purchaseDraft.value.expected_arrival!,
+    notes: purchaseDraft.value.notes ?? "",
+  };
   const review = state.work?.reviews?.at(-1);
   const names = { sun: "孙淼", li: "李姐", zhang: "张工", wang: "王会计" };
   const status = {
@@ -140,26 +143,48 @@ export function Work({
     : "resign";
   const reason = exit.value.reason ?? "";
   const [reasonError, setReasonError] = useState(false);
+  const [attachment, setAttachment] = useState<
+    keyof typeof workAttachments | null
+  >(null);
   const [tab, setTab] = useState("purchase");
   const enabled = (name: Action) =>
     !busy && options.some((a) => a.action === name && a.enabled);
-  const materialReason =
-    unavailableReason(options, "supplement", busy) ||
-    ((requireMentions || mentions.length > 0) && !note.trim()
-      ? "请填写补充说明。"
-      : "") ||
-    (requireMentions && mentions.length === 0
-      ? "请至少选择一位相关人员。"
-      : "") ||
-    (!evidence.includes("quote") ||
-    !evidence.includes("purpose") ||
-    (purchaseKind === "urgent" && !evidence.includes("urgency"))
-      ? purchaseKind === "urgent"
-        ? "加急申请还需选择加急依据。"
-        : "请同时选择报价单和用途说明。"
-      : "");
+  const purchaseUnavailableReason = (
+    action: "submit_purchase" | "supplement",
+  ) =>
+    !busy &&
+    !options.some((option) => option.action === action) &&
+    state.act < 2
+      ? "采购流程从第二幕开始，当前填写内容可暂存，进入第二幕后再提交。"
+      : unavailableReason(options, action, busy);
+  const materialReason = !latest
+    ? ""
+    : purchaseUnavailableReason("supplement") ||
+      ((requireMentions || mentions.length > 0) && !note.trim()
+        ? "请填写补充说明。"
+        : "") ||
+      (requireMentions && mentions.length === 0
+        ? "请至少选择一位相关人员。"
+        : "") ||
+      (!evidence.includes("quote") ||
+      !evidence.includes("purpose") ||
+      (purchaseKind === "urgent" && !evidence.includes("urgency"))
+        ? purchaseKind === "urgent"
+          ? "加急申请还需选择加急依据。"
+          : "请同时选择报价单和用途说明。"
+        : "");
+  const draftOnly = !latest && state.act < 2 && !state.ending;
+  const purchaseReason =
+    !latest && !draftOnly ? purchaseUnavailableReason("submit_purchase") : "";
+  const sharedReason = !!materialReason && materialReason === purchaseReason;
   return (
     <>
+      {attachment && (
+        <AttachmentPreview
+          attachment={attachment}
+          onClose={() => setAttachment(null)}
+        />
+      )}
       <nav className={s.tabs}>
         {(
           [
@@ -200,33 +225,54 @@ export function Work({
               </h3>
               <h4 className={s.formBand}>申请信息</h4>
               <Form
+                ref={purchaseForm}
                 id="purchase-application"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (enabled("submit_purchase"))
-                    act("submit_purchase", "sun", { params: { purpose } });
+                    act("submit_purchase", "sun", {
+                      params: {
+                        purpose: purpose.trim(),
+                        purchase_form: application,
+                        purchase_kind: purchaseKind,
+                      },
+                    });
                 }}
               >
                 <div className={s.purchaseFields}>
-                  {[
-                    ["申请人", "周菱菱"],
-                    ["所属部门", "研发工位"],
-                    ["材料类别", "实验耗材"],
-                    ["数量", "未登记"],
-                    ["预算归属", "未登记"],
-                    ["预计到货日期", "未登记"],
-                  ].map(([label, value]) => (
-                    <label key={label}>
+                  {(
+                    [
+                      ["applicant", "申请人", "text", 80],
+                      ["department", "所属部门", "text", 80],
+                      ["material_category", "材料类别", "text", 80],
+                      ["quantity", "数量", "number", undefined],
+                      ["budget", "预算归属", "text", 100],
+                      ["expected_arrival", "预计到货日期", "date", undefined],
+                    ] as const
+                  ).map(([field, label, type, maxLength]) => (
+                    <label key={field}>
                       {label}
-                      <input readOnly value={value} />
+                      <input
+                        type={type}
+                        required
+                        disabled={busy}
+                        maxLength={maxLength}
+                        min={type === "number" ? 1 : undefined}
+                        max={type === "number" ? 1000000 : undefined}
+                        step={type === "number" ? 1 : undefined}
+                        value={purchaseDraft.value[field] ?? ""}
+                        onChange={(event) =>
+                          purchaseDraft.update({ [field]: event.target.value })
+                        }
+                      />
                     </label>
                   ))}
                   <label className={s.fullField}>
                     采购用途
                     <TextArea
                       aria-label="实验用途"
-                      value={latest?.purpose ?? purpose}
-                      readOnly={!!latest}
+                      value={purpose}
+                      disabled={busy}
                       maxLength={1000}
                       required
                       onChange={(e) =>
@@ -236,7 +282,16 @@ export function Work({
                   </label>
                   <label className={s.fullField}>
                     备注
-                    <TextArea readOnly value="" placeholder="暂无备注" />
+                    <TextArea
+                      aria-label="备注"
+                      value={purchaseDraft.value.notes ?? ""}
+                      placeholder="请输入备注信息（可选）"
+                      maxLength={300}
+                      disabled={busy}
+                      onChange={(event) =>
+                        purchaseDraft.update({ notes: event.target.value })
+                      }
+                    />
                   </label>
                 </div>
               </Form>
@@ -315,14 +370,14 @@ export function Work({
                 {(
                   [
                     [
-                      "quote",
-                      "报价单",
-                      "供应商报价已核对；用于本项目实验耗材。",
-                    ],
-                    [
                       "purpose",
                       "用途说明",
                       "材料用于当前实验项目，与交付报告对应。",
+                    ],
+                    [
+                      "quote",
+                      "报价单",
+                      "供应商报价已核对；用于本项目实验耗材。",
                     ],
                     [
                       "urgency",
@@ -353,17 +408,28 @@ export function Work({
                         />
                         {label}
                       </label>
-                      <details>
-                        <summary>查看材料</summary>
-                        <article className={s.materialDocument}>
-                          <h4>{label}</h4>
-                          <p>{detail}</p>
-                          <p>采购用途：{latest?.purpose ?? purpose}</p>
-                          <small>
-                            勾选后随本次补充提交，审核结果以审批意见为准。
-                          </small>
-                        </article>
-                      </details>
+                      {id !== "urgency" ? (
+                        <button
+                          type="button"
+                          className={s.attachmentLink}
+                          onClick={() => setAttachment(id)}
+                        >
+                          {workAttachments[id].title}
+                          <span>点击查看</span>
+                        </button>
+                      ) : (
+                        <details>
+                          <summary>查看材料</summary>
+                          <article className={s.materialDocument}>
+                            <h4>{label}</h4>
+                            <p>{detail}</p>
+                            <p>采购用途：{latest?.purpose ?? purpose}</p>
+                            <small>
+                              勾选后随本次补充提交，审核结果以审批意见为准。
+                            </small>
+                          </article>
+                        </details>
+                      )}
                     </div>
                   ))}
               </fieldset>
@@ -378,11 +444,21 @@ export function Work({
                       <div>
                         <strong>{names[review.actor]}</strong>
                         <small>
-                          {review.time} · 材料第 {review.version} 版
+                          {
+                            {
+                              sun: "采购专员",
+                              li: "财务审核",
+                              zhang: "研发负责人",
+                              wang: "会计",
+                            }[review.actor]
+                          }{" "}
+                          ｜ {review.time}
                         </small>
                       </div>
                       <b data-status={state.work?.purchase}>
-                        {review.decision}
+                        {review.decision === "退回"
+                          ? "已退回"
+                          : review.decision}
                       </b>
                     </div>
                     <p
@@ -405,10 +481,18 @@ export function Work({
                       <strong>
                         {row.version === 1 ? "提交申请" : "补充材料"}
                       </strong>
+                      <span className={s.submissionBadge}>已提交</span>
+                      {row.submitted_at && <small>{row.submitted_at}</small>}
                       <small>
                         材料第 {row.version} 版 ·{" "}
                         {row.kind === "urgent" ? "加急采购" : "普通采购"}
                       </small>
+                      <p>
+                        周菱菱{" "}
+                        {row.version === 1
+                          ? "提交了采购申请"
+                          : "补充了采购材料"}
+                      </p>
                       <p>{row.purpose}</p>
                       {row.supplement_note && (
                         <p>补充说明：{row.supplement_note}</p>
@@ -439,7 +523,17 @@ export function Work({
                         ?.filter((r) => r.version === row.version)
                         .map((r, j) => (
                           <div className={s.timelineReview} key={j}>
-                            <strong>{r.decision}</strong>
+                            <strong>
+                              {r.decision === "退回" ? "审核退回" : r.decision}
+                            </strong>
+                            <span
+                              className={s.submissionBadge}
+                              data-status={
+                                r.decision === "退回" ? "returned" : undefined
+                              }
+                            >
+                              {r.decision === "退回" ? "已退回" : r.decision}
+                            </span>
                             <small>
                               {r.time} · {names[r.actor]}
                             </small>
@@ -456,42 +550,23 @@ export function Work({
               </section>
             </aside>
           </div>
-          <details className={s.workActions}>
-            <summary>后续工作事项</summary>
-            {options.find(
-              (a) => a.action === "project_review" && a.enabled,
-            ) && (
-              <section className={s.notice} aria-label="项目复核后果">
-                <h3>复核前核对</h3>
-                <p>
-                  {options.find((a) => a.action === "project_review")?.effect}
-                </p>
-                {options.find((a) => a.action === "project_review")
-                  ?.requires_confirmation && (
-                  <p>
-                    可先处理上方采购与交付事项，或选择“申请延期并获批”；继续复核需要确认。
-                  </p>
-                )}
-              </section>
-            )}
-            <Actions
-              options={options.filter((a) => procurement.has(a.action))}
-              act={act}
-              busy={busy}
-            />
-          </details>
           <footer className={s.purchaseFooter}>
             <div>
               <small>
-                {purchaseDraft.storageIssue
+                {purchaseDraft.storageIssue || supplement.storageIssue
                   ? "输入暂存失败，请保留输入"
-                  : "材料修改 · 尚未提交"}
+                  : latest
+                    ? `第 ${latest.version} 版申请 · ${status}`
+                    : draftSaved
+                      ? "草稿已暂存 · 尚未提交"
+                      : "申请尚未提交"}
               </small>
-              {!latest && !enabled("submit_purchase") && (
-                <p id="purchase-hint">
-                  {unavailableReason(options, "submit_purchase", busy)}
+              {draftOnly && (
+                <p>
+                  采购流程从第二幕开始；草稿保存在本标签页，进入第二幕后可继续填写并提交。
                 </p>
               )}
+              {purchaseReason && <p id="purchase-hint">{purchaseReason}</p>}
               {latest && (
                 <p>
                   本次提交：
@@ -509,42 +584,70 @@ export function Work({
                   {mentions.map((id) => names[id]).join("、") || "不通知"}
                 </p>
               )}
-              {materialReason && <p id="materials-hint">{materialReason}</p>}
+              {materialReason && !sharedReason && (
+                <p id="materials-hint">{materialReason}</p>
+              )}
             </div>
             <div>
-              {!latest && (
+              {draftOnly ? (
                 <Button
                   variant="primary"
-                  type="submit"
-                  form="purchase-application"
-                  isDisabled={!enabled("submit_purchase")}
-                  aria-describedby={
-                    !enabled("submit_purchase") ? "purchase-hint" : undefined
-                  }
+                  isDisabled={busy}
+                  onClick={() => {
+                    purchaseDraft.update({ ...purchaseDraft.value });
+                    setDraftSaved(true);
+                  }}
                 >
-                  提交第一版申请
+                  保存草稿
+                </Button>
+              ) : (
+                !latest && (
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    form="purchase-application"
+                    isDisabled={!enabled("submit_purchase")}
+                    aria-describedby={
+                      !enabled("submit_purchase") ? "purchase-hint" : undefined
+                    }
+                  >
+                    提交第一版申请
+                  </Button>
+                )
+              )}
+              {latest && (
+                <Button
+                  variant="primary"
+                  aria-label="提交所选材料与说明"
+                  aria-describedby={
+                    sharedReason
+                      ? "purchase-hint"
+                      : materialReason
+                        ? "materials-hint"
+                        : undefined
+                  }
+                  isDisabled={!!materialReason}
+                  onClick={() => {
+                    if (!purchaseForm.current?.reportValidity()) return;
+                    act("supplement", "sun", {
+                      params: {
+                        purpose: purpose.trim(),
+                        purchase_form: application,
+                        evidence,
+                        ...(note.trim()
+                          ? { supplement_note: note.trim() }
+                          : {}),
+                        ...(mentions.length ? { mentions } : {}),
+                        ...(state.content_revision >= 3
+                          ? { purchase_kind: purchaseKind }
+                          : {}),
+                      },
+                    });
+                  }}
+                >
+                  重新提交
                 </Button>
               )}
-              <Button
-                variant="primary"
-                aria-label="提交所选材料与说明"
-                aria-describedby={materialReason ? "materials-hint" : undefined}
-                isDisabled={!!materialReason}
-                onClick={() =>
-                  act("supplement", "sun", {
-                    params: {
-                      evidence,
-                      ...(note.trim() ? { supplement_note: note.trim() } : {}),
-                      ...(mentions.length ? { mentions } : {}),
-                      ...(state.content_revision >= 3
-                        ? { purchase_kind: purchaseKind }
-                        : {}),
-                    },
-                  })
-                }
-              >
-                {latest ? "重新提交" : "提交所选材料与说明"}
-              </Button>
             </div>
           </footer>
         </div>

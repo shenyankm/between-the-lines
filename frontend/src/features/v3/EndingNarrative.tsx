@@ -20,9 +20,11 @@ function requestKey(key: string): string {
 export function EndingNarrative({
   save,
   userId,
+  compact = false,
 }: {
   save: Save;
   userId: string;
+  compact?: boolean;
 }) {
   const key = `ending-request:${userId}:${save.id}:${save.version}`;
   const [requestId] = useState(() => requestKey(key));
@@ -51,28 +53,28 @@ export function EndingNarrative({
     ? result.interactions.filter(record)
     : [];
   return (
-    <section aria-label="结局正文">
+    <section aria-label={compact ? "卡片正文" : "结局正文"}>
       {(job.isPending || job.data?.status === "running") && (
-        <p role="status">
-          正在根据本局经历整理结局，已确认的成果和问题仍可在下方阅读。
-        </p>
+        <p role="status">正在根据本局经历整理结局…</p>
       )}
       {job.error && (
         <p role="alert">
-          结局正文暂时无法生成，以下事实总结仍然有效。
+          结局正文暂时无法生成，请重试读取。
           <Button variant="secondary" onClick={() => void job.refetch()}>
             重试读取
           </Button>
         </p>
       )}
       {(job.data?.status === "failed" || job.data?.status === "unknown") && (
-        <p>本次生成未完成，展示已保存事实，不补写新的经历。</p>
+        <p>本次生成未完成，不补写新的经历。</p>
       )}
       {typeof result?.text === "string" && (
         <>
-          <small>
-            {typeof result.label === "string" ? result.label : "结局正文"}
-          </small>
+          {!compact && (
+            <small>
+              {typeof result.label === "string" ? result.label : "结局正文"}
+            </small>
+          )}
           {result.text
             .split(/\n\s*\n/)
             .filter((paragraph) => paragraph.trim())
@@ -83,7 +85,7 @@ export function EndingNarrative({
             ))}
         </>
       )}
-      {!!interactions.length && (
+      {!compact && !!interactions.length && (
         <>
           <h3>回看关键互动</h3>
           {interactions.map((event, i) => (

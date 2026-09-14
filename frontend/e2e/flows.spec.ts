@@ -44,10 +44,10 @@ test("procurement prerequisites and actual role permissions remain authoritative
     p.available_actions?.find((a) => a.action === "approve_purchase")?.enabled,
   ).toBe(false);
   await page.getByRole("button", { name: /^工作系统/ }).click();
-  await page.getByText("后续工作事项", { exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: /提交李姐审核/ }),
-  ).toBeDisabled();
+  await expect(page.getByText("后续工作事项", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /提交李姐审核/ })).toHaveCount(
+    0,
+  );
   await closePanel(page);
   const r = await page.request.post(`/api/saves/${p.save.id}/turns`, {
     data: {
@@ -79,7 +79,7 @@ test("phone, private drafts, suggestions and history preserve unrelated progress
   await closePanel(page);
   expect(await dialogue(page).inputValue()).toBe("现场未发送的草稿");
   await page.getByRole("button", { name: "知乎众议" }).click();
-  await expect(page.getByText(/私人对话不会用于搜索/)).toBeVisible();
+  await expect(page.getByText(/不使用私人对话/)).toBeVisible();
   await closePanel(page);
   expect((await state(page)).save.state).toEqual(before.save.state);
   await page.getByRole("button", { name: "我的手机" }).click();
@@ -110,13 +110,15 @@ for (const act of [1, 2, 3])
     await commitClick(page, () =>
       page.getByRole("button", { name: "确认并提交" }).click(),
     );
+    await readScene(page);
     await expect(
-      page.getByRole("heading", { name: "主动转身", exact: true }),
+      page.getByRole("img", { name: /主动转身：文档原版/ }),
     ).toBeVisible();
     const finished = (await state(page)).save.state;
     await page.reload();
+    await readScene(page);
     await expect(
-      page.getByRole("heading", { name: "主动转身", exact: true }),
+      page.getByRole("img", { name: /主动转身：文档原版/ }),
     ).toBeVisible();
     expect((await state(page)).save.state).toEqual(finished);
     await expect(dialogue(page)).toHaveCount(0);
@@ -173,9 +175,12 @@ test("double clicks and whitespace never create extra actions", async ({
     });
   await expect
     .poll(async () => (await state(page)).save.version)
-    .toBe(before.save.version + 1);
+    .toBe(before.save.version + 2);
   expect(
     (await state(page)).events.filter((e) => e.action === "boundary"),
+  ).toHaveLength(1);
+  expect(
+    (await state(page)).events.filter((e) => e.action === "next"),
   ).toHaveLength(1);
 });
 test("two tabs reconcile a stale version without losing drafts or duplicating facts", async ({

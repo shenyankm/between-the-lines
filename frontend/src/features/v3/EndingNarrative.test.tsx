@@ -83,9 +83,7 @@ it.each(["failed", "unknown"])(
       </QueryClientProvider>,
     );
     expect(await screen.findByText("项目尚未交付")).toBeTruthy();
-    expect(
-      screen.getByText("本次生成未完成，展示已保存事实，不补写新的经历。"),
-    ).toBeTruthy();
+    expect(screen.getByText("本次生成未完成，不补写新的经历。")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByRole("status")).toBeNull();
   },
@@ -124,7 +122,7 @@ it("recovers a failed read and displays event summaries when there was no player
       <EndingNarrative userId="test-user" save={save()} />
     </QueryClientProvider>,
   );
-  await screen.findByText("结局正文暂时无法生成，以下事实总结仍然有效。");
+  await screen.findByText("结局正文暂时无法生成，请重试读取。");
   fireEvent.click(screen.getByText("重试读取"));
   await screen.findByText("提交了实验结果");
   expect(screen.getByText("已收到")).toBeTruthy();
