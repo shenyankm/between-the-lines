@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { start, dialogue } from "./v3-helpers";
+import { start, dialogue, commitClick } from "./v3-helpers";
 
 test("reading preferences survive refresh and narrow layouts keep tools and input reachable", async ({
   page,
@@ -64,5 +64,10 @@ test("reading preferences survive refresh and narrow layouts keep tools and inpu
       });
       expect(before).toBe(true);
     }
+    await dialogue(page).focus();
+    await commitClick(page, () =>
+      page.getByRole("button", { name: "发送", exact: true }).click(),
+    );
+    await expect(dialogue(page)).toHaveValue("");
   }
 });
