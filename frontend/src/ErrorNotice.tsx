@@ -33,7 +33,7 @@ export function ErrorNotice({
   }, [error]);
   if ((!error && !message) || isCancelled(error)) return null;
   const apiError = error instanceof ApiError ? error : undefined;
-  const login = apiError?.status === 401;
+  const login = apiError?.status === 401 || apiError?.recovery === "login";
   const advice = login
     ? "请重新登录后继续。"
     : apiError?.recovery === "contact"

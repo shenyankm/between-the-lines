@@ -7,9 +7,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 
-from ..auth import current_user
+from ..auth import current_player
 from ..db import AIJob, ProductEvent, Save, SaveSnapshot, Turn, User, utcnow
-from ..errors import MUTATION_RESPONSES, SAVE_RESPONSES, SUBMIT_RESPONSES, ApiError
+from ..errors import PLAYER_MUTATION_RESPONSES as MUTATION_RESPONSES
+from ..errors import SAVE_RESPONSES, SUBMIT_RESPONSES, ApiError
 from ..product import branch_save, check_save_capacity, rate_limit, record_product_event
 from ..runtime import runtime_for
 from ..schemas import (
@@ -30,7 +31,7 @@ router = APIRouter(responses=SAVE_RESPONSES)
 
 @router.post("/api/saves/{save_id}/visit", response_model=SaveOut, responses=MUTATION_RESPONSES)
 async def visit(
-    save_id: UUID, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request: Request, user: User = Depends(current_player)
 ) -> dict[str, Any]:
     async with runtime_for(request).sessions.begin() as db:
         save = await owned_save(db, str(save_id), user.id, True)
@@ -40,7 +41,7 @@ async def visit(
 
 @router.post("/api/saves/{save_id}/manage", response_model=SaveOut, responses=MUTATION_RESPONSES)
 async def manage(
-    save_id: UUID, body: SaveManagement, request: Request, user: User = Depends(current_user)
+    save_id: UUID, body: SaveManagement, request: Request, user: User = Depends(current_player)
 ) -> dict[str, Any]:
     runtime = runtime_for(request)
     async with runtime.sessions.begin() as db:
@@ -76,7 +77,7 @@ async def manage(
 
 @router.get("/api/saves/{save_id}/snapshots", response_model=list[SnapshotOut])
 async def snapshots(
-    save_id: UUID, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request: Request, user: User = Depends(current_player)
 ) -> list[dict[str, Any]]:
     async with runtime_for(request).sessions() as db:
         await owned_save(db, str(save_id), user.id)
@@ -92,7 +93,7 @@ async def snapshots(
 
 @router.post("/api/saves/{save_id}/branches", response_model=SaveOut, responses=MUTATION_RESPONSES)
 async def branch(
-    save_id: UUID, body: BranchInput, request: Request, user: User = Depends(current_user)
+    save_id: UUID, body: BranchInput, request: Request, user: User = Depends(current_player)
 ) -> dict[str, Any]:
     runtime = runtime_for(request)
     async with runtime.sessions.begin() as db:
@@ -115,14 +116,14 @@ def job_out(job: AIJob) -> dict[str, Any]:
 
 @router.post("/api/saves/{save_id}/jobs", response_model=JobOut, responses=SUBMIT_RESPONSES)
 async def create_job(
-    save_id: UUID, body: JobInput, request: Request, user: User = Depends(current_user)
+    save_id: UUID, body: JobInput, request: Request, user: User = Depends(current_player)
 ) -> dict[str, Any]:
     return job_out(await runtime_for(request).jobs.submit(str(save_id), user.id, body))
 
 
 @router.get("/api/saves/{save_id}/jobs", response_model=list[JobOut])
 async def jobs(
-    save_id: UUID, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request: Request, user: User = Depends(current_player)
 ) -> list[dict[str, Any]]:
     async with runtime_for(request).sessions() as db:
         await owned_save(db, str(save_id), user.id)
@@ -145,7 +146,7 @@ async def jobs(
 
 @router.post("/api/diagnostics", response_model=dict[str, bool], responses=MUTATION_RESPONSES)
 async def diagnostic(
-    body: DiagnosticInput, request: Request, user: User = Depends(current_user)
+    body: DiagnosticInput, request: Request, user: User = Depends(current_player)
 ) -> dict[str, bool]:
     async with runtime_for(request).sessions.begin() as db:
         await rate_limit(db, "diagnostics:" + user.id, 20, 60)
@@ -161,7 +162,7 @@ async def diagnostic(
 
 @router.post("/api/feedback", response_model=dict[str, bool], responses=MUTATION_RESPONSES)
 async def feedback(
-    body: FeedbackInput, request: Request, user: User = Depends(current_user)
+    body: FeedbackInput, request: Request, user: User = Depends(current_player)
 ) -> dict[str, bool]:
     async with runtime_for(request).sessions.begin() as db:
         await rate_limit(db, "feedback:" + user.id, 5, 3600)
@@ -171,7 +172,7 @@ async def feedback(
 
 @router.post("/api/product-events", response_model=dict[str, bool], responses=MUTATION_RESPONSES)
 async def product_event(
-    body: ProductEventInput, request: Request, user: User = Depends(current_user)
+    body: ProductEventInput, request: Request, user: User = Depends(current_player)
 ) -> dict[str, bool]:
     async with runtime_for(request).sessions.begin() as db:
         await rate_limit(db, "analytics:" + user.id, 60, 60)

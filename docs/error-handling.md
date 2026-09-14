@@ -28,6 +28,7 @@ Except for the independent `/api/ready` probe response, errors use this structur
 
 | HTTP      | Error code                                               | UI behavior                                                                                                  |
 | --------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 403       | `zhihu_login_required`                                   | Sign in with Zhihu; preserve the guest session for binding                                                   |
 | 400       | `request_body_invalid`                                   | Check JSON syntax and encoding; no automatic retry                                                           |
 | 400       | `oauth_failed`                                           | Log in again                                                                                                 |
 | 401       | `not_authenticated`                                      | Pause turn queries, retain the original user's pending request, and log in again                             |

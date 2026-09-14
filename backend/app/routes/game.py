@@ -13,11 +13,15 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import literal, select, tuple_
 
-from ..auth import current_user
+from ..auth import current_player
 from ..db import Event, Save, Turn, User
 from ..errors import (
-    AUTH_RESPONSES,
-    MUTATION_RESPONSES,
+    PLAYER_MUTATION_RESPONSES as MUTATION_RESPONSES,
+)
+from ..errors import (
+    PLAYER_RESPONSES as AUTH_RESPONSES,
+)
+from ..errors import (
     SAVE_RESPONSES,
     SUBMIT_RESPONSES,
     TURN_RESPONSES,
@@ -47,7 +51,7 @@ router = APIRouter()
 @router.get("/api/config", response_model=ConfigOut)
 async def config(request: Request) -> dict[str, Any]:
     return {
-        "guest_login": runtime_for(request).settings.guest_enabled,
+        "guest_login": runtime_for(request).settings.guest_login_enabled,
         "story_version": 3,
         "dev_login": runtime_for(request).settings.dev_login_enabled
         and runtime_for(request).settings.environment != "production",
@@ -82,7 +86,7 @@ async def story(
     response_model=list[SaveOut],
     responses={**AUTH_RESPONSES, 409: SAVE_RESPONSES[409]},
 )
-async def saves(request: Request, user: User = Depends(current_user)) -> list[dict[str, Any]]:
+async def saves(request: Request, user: User = Depends(current_player)) -> list[dict[str, Any]]:
     async with runtime_for(request).sessions() as db:
         items = (
             await db.scalars(
@@ -95,10 +99,10 @@ async def saves(request: Request, user: User = Depends(current_user)) -> list[di
 
 
 @router.post(
-    "/api/saves", response_model=SaveOut, responses={**MUTATION_RESPONSES, **SAVE_RESPONSES}
+    "/api/saves", response_model=SaveOut, responses={**SAVE_RESPONSES, **MUTATION_RESPONSES}
 )
 async def create_save(
-    request: Request, body: CreateSaveInput, user: User = Depends(current_user)
+    request: Request, body: CreateSaveInput, user: User = Depends(current_player)
 ) -> dict[str, Any]:
     async with runtime_for(request).sessions.begin() as db:
         await db.scalar(select(User).where(User.id == user.id).with_for_update())
@@ -118,7 +122,7 @@ async def create_save(
 
 @router.get("/api/saves/{save_id}", response_model=SaveOut, responses=SAVE_RESPONSES)
 async def get_save(
-    save_id: UUID, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request: Request, user: User = Depends(current_player)
 ) -> dict[str, Any]:
     async with runtime_for(request).sessions() as db:
         return snapshot(await owned_save(db, str(save_id), user.id))
@@ -130,7 +134,7 @@ async def get_save(
 async def events(
     save_id: UUID,
     request: Request,
-    user: User = Depends(current_user),
+    user: User = Depends(current_player),
     before: UUID | None = None,
     channel: Channel | None = None,
     target: Npc | None = None,
@@ -167,7 +171,7 @@ async def events(
     "/api/saves/{save_id}/events/{event_id}", response_model=GameEventOut, responses=SAVE_RESPONSES
 )
 async def event_detail(
-    save_id: UUID, event_id: UUID, request: Request, user: User = Depends(current_user)
+    save_id: UUID, event_id: UUID, request: Request, user: User = Depends(current_player)
 ) -> dict[str, Any]:
     async with runtime_for(request).sessions() as db:
         await owned_save(db, str(save_id), user.id)
@@ -183,7 +187,7 @@ async def event_detail(
     responses=TURN_RESPONSES,
 )
 async def get_turn(
-    save_id: UUID, request_id: UUID, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request_id: UUID, request: Request, user: User = Depends(current_player)
 ) -> dict[str, Any]:
     async with runtime_for(request).sessions() as db:
         await owned_save(db, str(save_id), user.id)
@@ -207,7 +211,7 @@ async def get_turn(
     "/api/saves/{save_id}/play-state", response_model=PlayStateOut, responses=SAVE_RESPONSES
 )
 async def play_state(
-    save_id: UUID, request: Request, user: User = Depends(current_user)
+    save_id: UUID, request: Request, user: User = Depends(current_player)
 ) -> PlayStateOut:
     return await runtime_for(request).service.play_state(str(save_id), user.id)
 
@@ -220,7 +224,7 @@ def sse(event: str, data: object) -> str:
     "/api/saves/{save_id}/turns", responses=SUBMIT_RESPONSES, response_class=StreamingResponse
 )
 async def submit(
-    save_id: UUID, body: TurnInput, request: Request, user: User = Depends(current_user)
+    save_id: UUID, body: TurnInput, request: Request, user: User = Depends(current_player)
 ) -> StreamingResponse:
     runtime = runtime_for(request)
     try:
@@ -277,7 +281,7 @@ class ReadingInput(BaseModel):
     "/api/saves/{save_id}/reading", response_model=dict[str, int], responses=SAVE_RESPONSES
 )
 async def reading(
-    save_id: UUID, body: ReadingInput, request: Request, user: User = Depends(current_user)
+    save_id: UUID, body: ReadingInput, request: Request, user: User = Depends(current_player)
 ) -> dict[str, int]:
     async with runtime_for(request).sessions.begin() as db:
         save = await owned_save(db, str(save_id), user.id, True)

@@ -44,7 +44,7 @@ The initial integration monthly AI cap was 2 USD, with automatic intents and per
 
 The PractiQ Java backend and its AI service were stopped and disabled. Their source and dedicated configuration were removed from active directories. The backup is `/var/backups/btl-replacement-20260913/practiq.tar.gz` on the server, in a root-only directory with adjacent `SHA256SUMS`. The database and another independent application were not deleted.
 
-Check `/api/ready`, guest creation, authorization redirects, error callbacks, and redaction in both proxy layers. The user completes final Zhihu authorization personally. Record whether state is returned, token exchange succeeds, a stable user ID exists, and guest saves migrate. Do not record codes, cookies, tokens, or raw profiles.
+Check `/api/ready`, rejection of guest creation, authorization redirects, error callbacks, and redaction in both proxy layers. The user completes final Zhihu authorization personally. Record whether state is returned, token exchange succeeds, a stable user ID exists, and guest saves migrate. Do not record codes, cookies, tokens, or raw profiles.
 
 ## Real integration results (2026-09-13)
 
@@ -56,3 +56,13 @@ Check `/api/ready`, guest creation, authorization redirects, error callbacks, an
 - Caddy, Nginx, and Uvicorn logs did not contain probe authorization codes or state query values.
 - This verifies one real account authorization and guest migration, not the full multi-account, denial, and concurrent-callback launch matrix.
 - At this stage deployment used manually built and uploaded images; no automatic deployment workflow had been created, and local changes had not been committed or pushed. Later automation is documented separately in [CI/CD](cicd.md).
+
+## Production login policy
+
+Production permits gameplay only for member identities issued by Zhihu OAuth. Guest creation and development login return 404 even if `GUEST_ENABLED=true` was left in the environment. Explicitly set `GUEST_ENABLED=false` and keep `DEV_LOGIN_ENABLED=false` in production configuration. Development/test environments retain their existing login settings.
+
+`/api/config` reports effective login switches. User responses include required `can_play`; game clients must check it before requesting saves or mounting a game. Authenticated non-Zhihu identities receive `403 zhihu_login_required` with `recovery=login` on game/product endpoints; anonymous users still receive 401. `/api/auth/me`, OAuth initiation/callback and logout remain available to valid guest sessions for binding. Public story/configuration and health endpoints remain public.
+
+Existing guest sessions keep their original seven-day expiry. Do not revoke cookies, delete trial data, extend expiry, or clear browser drafts before authorization succeeds. Existing state-bound migration transfers saved progress without overwriting member saves and waits for running turns/jobs to finish. A lost or expired guest session cannot be recovered merely by supplying a save ID. No schema migration is needed.
+
+Ship API and Web together through the existing CI/Audit/Deploy workflow. Drain in-flight requests and use the existing backup/release procedure; verify public config, rejected guest/dev endpoints, guest game access and one user-completed real OAuth binding. Tests with provider fixtures are not real OAuth acceptance. Rolling back to an older image can restore access for existing guest sessions even with `GUEST_ENABLED=false`; do not treat such a rollback as preserving this access policy.

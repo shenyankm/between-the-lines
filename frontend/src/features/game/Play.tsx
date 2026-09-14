@@ -1,11 +1,12 @@
 import { Button } from "@heroui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { LoginRequired } from "../LoginRequired";
 import { PlayV3 } from "../v3/PlayV3";
 import { LogOut } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ErrorNotice } from "../../ErrorNotice";
-import { ApiError, gameApi } from "../../api";
+import { gameApi } from "../../api";
 import s from "../../App.module.css";
 import { SceneInterlude } from "../../SceneInterlude";
 import { useUI } from "../../store";
@@ -463,15 +464,14 @@ export function Play() {
     queryKey: ["user"],
     queryFn: ({ signal }) => gameApi.user(signal),
   });
-  if (
-    !user.data ||
-    (user.error instanceof ApiError && user.error.status === 401)
-  )
+  if (!user.data || user.error || !user.data.can_play)
     return (
       <main className={s.page}>
         <Link to="/">返回首页</Link>
         {user.error ? (
           <ErrorNotice error={user.error} onRetry={() => void user.refetch()} />
+        ) : user.data ? (
+          <LoginRequired user={user.data} />
         ) : (
           <p>正在读取身份…</p>
         )}

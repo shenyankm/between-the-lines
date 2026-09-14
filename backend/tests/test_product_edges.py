@@ -227,7 +227,8 @@ async def test_archive_capacity_pagination_and_catalogue_permissions(v2):
     assert cached.headers["cache-control"].startswith("public")
 
 
-async def test_binding_waits_for_inflight_turn_and_expired_guest_is_rejected(v2):
+@pytest.mark.parametrize("production", [False, True])
+async def test_binding_waits_for_inflight_turn_and_expired_guest_is_rejected(v2, production):
     client, runtime = v2
     member = (await client.get("/api/auth/me")).json()["id"]
     await client.post("/api/auth/logout", json={})
@@ -253,6 +254,10 @@ async def test_binding_waits_for_inflight_turn_and_expired_guest_is_rejected(v2)
         )
         await db.flush()
         turn_id = turn.id
+    if production:
+        runtime.settings.environment = "production"
+        assert (await client.get("/api/auth/me")).json()["can_play"] is False
+        assert (await client.get("/api/saves")).status_code == 403
     await process_bindings(runtime.sessions)
     async with runtime.sessions() as db:
         assert (await db.get(Save, save["id"])).user_id == guest["id"]
@@ -261,6 +266,7 @@ async def test_binding_waits_for_inflight_turn_and_expired_guest_is_rejected(v2)
     async with runtime.sessions() as db:
         assert (await db.get(Save, save["id"])).user_id == member
     assert (await client.get("/api/auth/me")).status_code == 401
+    runtime.settings.environment = "test"
     client.cookies.clear()
     expired = (await client.post("/api/auth/guest", json={})).json()
     async with runtime.sessions.begin() as db:
@@ -286,8 +292,9 @@ async def test_public_diagnostic_contains_only_static_stack_frames(v2):
 
 @pytest.mark.parametrize("existing", [False, True])
 @pytest.mark.parametrize("protocol", ["standard", "hackathon"])
+@pytest.mark.parametrize("production", [False, True])
 async def test_oauth_binding_uses_recorded_state_not_callback_identity(
-    v2, existing, protocol, monkeypatch
+    v2, existing, protocol, production, monkeypatch
 ):
     from fastapi import Response
     from fastapi.responses import RedirectResponse
@@ -341,6 +348,12 @@ async def test_oauth_binding_uses_recorded_state_not_callback_identity(
                 request=httpx.Request("GET", url),
             )
 
+    if production:
+        # Only the access policy changes; providers and model stay isolated test doubles.
+        runtime.settings.environment = "production"
+        client.base_url = "https://test"
+        assert (await client.get("/api/auth/me")).json()["can_play"] is False
+        assert (await client.get("/api/saves")).status_code == 403
     provider = Provider()
     monkeypatch.setattr(runtime, "oauth", SimpleNamespace(zhihu=provider))
     redirect = await client.get("/api/auth/zhihu")
@@ -358,11 +371,15 @@ async def test_oauth_binding_uses_recorded_state_not_callback_identity(
 
         monkeypatch.setattr(zhihu_oauth, "exchange", exchange)
     # Another login changes only the identity cookie; the state-bound guest is still the source.
-    await client.post("/api/auth/dev", json={})
+    if production:
+        client.cookies.delete("btl_session")
+    else:
+        await client.post("/api/auth/dev", json={})
     code_field = "authorization_code" if protocol == "hackathon" else "code"
     callback = f"/api/auth/zhihu/callback?{code_field}=fixture&state={provider.state}"
     assert (await client.get(callback)).status_code == 303
     member = (await client.get("/api/auth/me")).json()
+    assert member["can_play"] is True
     if target:
         assert member["id"] == target["id"]
     saves = (await client.get("/api/saves")).json()

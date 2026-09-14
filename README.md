@@ -21,11 +21,11 @@ Talk to colleagues in your own words or choose from the available story actions.
 ## Start playing
 
 1. Open the [game](https://www.openwook.cloud) on your desktop or phone.
-2. Choose **“立即试玩 · 第一幕”** (Try Act 1 now) to begin as a guest, or **“知乎账号登录”** to sign in with Zhihu.
+2. Choose **“知乎授权登录”** (Sign in with Zhihu), then start a new story. The public site requires Zhihu authorization.
 3. Read the scene, choose an action, or write a message to the current character. Use the phone and story panels to revisit conversations, materials, and progress.
 4. Return through **“继续上次的故事”** (Continue your last story), or open **“查看全部存档”** (View all saves) to choose another playthrough.
 
-Guest progress is retained for seven days. Link your Zhihu account to keep that progress and continue into Act 2. Use the same account to return on another device. If a turn is still running when you link your account, progress transfer waits for it to finish.
+Existing guest players must sign in with Zhihu before continuing. Link from the same browser within the original seven-day trial validity period to inherit saved progress; expired or missing guest sessions cannot recover it automatically. If a turn is still running, progress transfer waits for it to finish. Use the same Zhihu account to return on another device.
 
 ## Make room for another response
 

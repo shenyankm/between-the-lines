@@ -120,3 +120,9 @@ def test_removed_environment_limits_are_ignored(monkeypatch):
         monkeypatch.setenv(name, "0")
         assert name.lower() not in Settings.model_fields
     assert build().environment == "production"
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_production_never_enables_guests(enabled):
+    assert not build(guest_enabled=enabled).guest_login_enabled
+    assert build(environment="test", guest_enabled=enabled).guest_login_enabled == enabled

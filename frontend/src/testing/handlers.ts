@@ -19,7 +19,7 @@ export function playHandlers(options: {
   return [
     http.post("/api/saves/:id/visit", () => HttpResponse.json(current())),
     http.get("/api/auth/me", () =>
-      HttpResponse.json({ id: "test-user", name: "试玩者" }),
+      HttpResponse.json({ id: "test-user", name: "试玩者", can_play: true }),
     ),
     http.get("/api/saves/:id/play-state", () =>
       HttpResponse.json({

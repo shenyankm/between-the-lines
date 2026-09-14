@@ -99,10 +99,15 @@ AUTH_RESPONSES: Responses = {
     **ERROR_RESPONSES,
 }
 
+PLAYER_RESPONSES: Responses = {
+    **AUTH_RESPONSES,
+    403: envelope_response(codes(403, "zhihu_login_required")),
+}
+
 # Adds what FastAPI itself documents for a route taking a body or path parameter.
 ROUTE_RESPONSES: Responses = {
     422: envelope_response(codes(422, "validation_failed")),
-    **AUTH_RESPONSES,
+    **PLAYER_RESPONSES,
 }
 
 # Adds the two rejections the mutation guard in main.py returns before a route
@@ -112,6 +117,11 @@ MUTATION_RESPONSES: Responses = {
     403: envelope_response(codes(403, "forbidden_origin")),
     415: envelope_response(codes(415, "json_required")),
     **ERROR_RESPONSES,
+}
+
+PLAYER_MUTATION_RESPONSES: Responses = {
+    **MUTATION_RESPONSES,
+    403: envelope_response(codes(403, "forbidden_origin", "zhihu_login_required")),
 }
 
 # Adds the lookup failure every save-addressed route can answer with. One code
@@ -140,7 +150,7 @@ BODY_RESPONSES: Responses = {
 SUBMIT_RESPONSES: Responses = {
     **BODY_RESPONSES,
     **ROUTE_RESPONSES,
-    **MUTATION_RESPONSES,
+    **PLAYER_MUTATION_RESPONSES,
     404: envelope_response(codes(404, "save_not_found")),
     409: envelope_response(codes(409, *VOCABULARY[409])),
     422: envelope_response(codes(422, *VOCABULARY[422])),

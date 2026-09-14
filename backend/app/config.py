@@ -73,6 +73,10 @@ class Settings(BaseSettings):
         return self
 
     @property
+    def guest_login_enabled(self) -> bool:
+        return self.environment != "production" and self.guest_enabled
+
+    @property
     def oauth_ready(self) -> bool:
         return (self.zhihu_protocol != "hackathon" or bool(self.zhihu_access_secret)) and all(
             (
