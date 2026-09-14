@@ -10,7 +10,7 @@ from typing import Any, cast
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, or_, select
 
-from .agents import MODEL, make_model
+from .agents import make_model, model_text
 from .budget import reserve_job, settle
 from .content import content_hash
 from .db import AIJob, AISpend, Event, Turn, User, ZhihuContent, utcnow
@@ -271,9 +271,9 @@ class JobRunner:
                             payload["act"],
                             payload["sources"],
                             PROMPT_VERSION,
-                            MODEL,
+                            self.service.settings.model_name,
                             self.service.settings.agent_mode,
-                            self.service.settings.deepseek_api_base,
+                            self.service.settings.model_base_url,
                         ],
                         sort_keys=True,
                     ).encode()
@@ -512,7 +512,7 @@ class JobRunner:
                     if isinstance(value, int):
                         usage[key] = usage.get(key, 0) + value
                 try:
-                    raw = json.loads(str(reply.content))
+                    raw = json.loads(model_text(reply.content))
                     self.validate(kind, payload, raw)
                     return raw
                 except (ValueError, KeyError) as exc:

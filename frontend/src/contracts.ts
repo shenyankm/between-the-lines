@@ -132,7 +132,9 @@ export function isConfig(v: unknown): v is Config {
     [v.dev_login, v.zhihu_login, v.model_ready].every(
       (n) => typeof n === "boolean",
     ) &&
-    (v.agent_mode === "mock" || v.agent_mode === "deepseek")
+    (v.agent_mode === "mock" ||
+      v.agent_mode === "deepseek" ||
+      v.agent_mode === "openai")
   );
 }
 export function isEvent(v: unknown): v is GameEvent {
@@ -208,8 +210,11 @@ export function isTurn(v: unknown): v is Turn {
       "elapsed_ms",
     ].every((k) => u[k] === undefined || integer(u[k])) ||
     (u.model != null && typeof u.model !== "string") ||
-    (u.mode != null && u.mode !== "mock" && u.mode !== "deepseek") ||
-    (u.cost_estimate_usd !== undefined &&
+    (u.mode != null &&
+      u.mode !== "mock" &&
+      u.mode !== "deepseek" &&
+      u.mode !== "openai") ||
+    (u.cost_estimate_usd != null &&
       (typeof u.cost_estimate_usd !== "number" ||
         !Number.isFinite(u.cost_estimate_usd) ||
         u.cost_estimate_usd < 0)) ||

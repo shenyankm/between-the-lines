@@ -118,13 +118,13 @@ class LogoutOut(BaseModel):
 
 class TurnUsage(BaseModel):
     model: str | None = None
-    mode: Literal["mock", "deepseek"] | None = None
+    mode: Literal["mock", "deepseek", "openai"] | None = None
     model_calls: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
     elapsed_ms: int = 0
-    cost_estimate_usd: float = 0.0
+    cost_estimate_usd: float | None = 0.0
     billing_complete: bool = False
 
 
@@ -223,7 +223,7 @@ class PlayStateOut(BaseModel):
 class ConfigOut(BaseModel):
     dev_login: bool
     zhihu_login: bool
-    agent_mode: Literal["mock", "deepseek"]
+    agent_mode: Literal["mock", "deepseek", "openai"]
     model_ready: bool
     guest_login: bool = False
     story_version: int = 1

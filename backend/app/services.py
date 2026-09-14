@@ -417,17 +417,8 @@ class GameService:
         correlation_id: str | None = None,
     ) -> dict[str, Any] | None:
         usage["billing_complete"] = not error
-        usage["cost_estimate_usd"] = (
-            0.0
-            if self.settings.agent_mode == "mock"
-            else round(
-                (
-                    usage.get("input_tokens", 0) * self.settings.deepseek_input_usd_per_million
-                    + usage.get("output_tokens", 0) * self.settings.deepseek_output_usd_per_million
-                )
-                / 1_000_000,
-                8,
-            )
+        usage["cost_estimate_usd"] = self.settings.estimate_cost(
+            usage.get("input_tokens", 0), usage.get("output_tokens", 0)
         )
         async with self.sessions.begin() as db:
             turn = cast(Turn, await db.get(Turn, turn_id))
@@ -653,7 +644,7 @@ class GameService:
             )
             - count,
         )
-        ready = self.settings.agent_mode == "mock" or bool(self.settings.deepseek_api_key)
+        ready = self.settings.model_ready
         if ready and self.settings.agent_mode != "mock" and self.settings.monthly_cost_cap_usd > 0:
             ready = (await monthly_commitment(db)) + reservation(
                 self.settings, self.settings.max_model_calls

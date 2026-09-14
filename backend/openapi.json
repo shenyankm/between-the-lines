@@ -2884,7 +2884,8 @@
             "type": "string",
             "enum": [
               "mock",
-              "deepseek"
+              "deepseek",
+              "openai"
             ],
             "title": "Agent Mode"
           },
@@ -5187,7 +5188,8 @@
                 "type": "string",
                 "enum": [
                   "mock",
-                  "deepseek"
+                  "deepseek",
+                  "openai"
                 ]
               },
               {
@@ -5222,7 +5224,14 @@
             "default": 0
           },
           "cost_estimate_usd": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Cost Estimate Usd",
             "default": 0.0
           },

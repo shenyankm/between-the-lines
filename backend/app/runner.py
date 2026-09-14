@@ -8,7 +8,6 @@ from typing import Any
 
 from langgraph.types import Checkpointer
 
-from .agents import MODEL
 from .config import Settings
 from .context import AgentTurn
 from .error_catalog import FailureCode, failure_message
@@ -46,12 +45,7 @@ class TurnRunner:
         reservation = object()
 
         def reserve() -> None:
-            if (
-                body.action == "speak"
-                and body.channel != "group"
-                and self.settings.agent_mode == "deepseek"
-                and not self.settings.deepseek_api_key
-            ):
+            if body.action == "speak" and body.channel != "group" and not self.settings.model_ready:
                 raise ApiError(503, "model_unconfigured")
             if not self.accepting or len(self.active) >= self.settings.max_concurrent_turns:
                 raise ApiError(
@@ -98,7 +92,7 @@ class TurnRunner:
 
     async def execute(self, turn: AgentTurn, reservation: object) -> dict[str, Any] | None:
         usage: dict[str, Any] = {
-            "model": MODEL,
+            "model": self.settings.model_name,
             "mode": self.settings.agent_mode,
             "model_calls": 0,
             "input_tokens": 0,
@@ -148,7 +142,7 @@ class TurnRunner:
                 outcome,
                 time.monotonic() - started,
                 usage["model_calls"],
-                usage.get("cost_estimate_usd", 0.0),
+                usage.get("cost_estimate_usd") or 0.0,
             )
             logger.info(
                 "turn_finished",

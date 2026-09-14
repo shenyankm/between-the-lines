@@ -20,6 +20,7 @@ from langchain_core.messages import HumanMessage, RemoveMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langchain_deepseek import ChatDeepSeek
+from langchain_openai import ChatOpenAI
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Checkpointer
@@ -32,28 +33,63 @@ from .game_types import parse_state
 from .story import StoryDefinition, load_story
 
 MODEL = "deepseek-flash"
-register_harness_profile(
-    "deepseek",
-    HarnessProfile(
-        general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
-        excluded_tools=frozenset({"task", "execute"}),
-        excluded_middleware=frozenset({"SummarizationMiddleware"}),
-        base_system_prompt="在指定游戏角色的身份与权限内回应。不要扮演通用助手。",
-    ),
-)
 
 
-def make_model(settings: Settings) -> ChatDeepSeek:
+def model_text(content: Any) -> str:
+    """Extract public text from Chat Completions or Responses content blocks."""
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    return "".join(
+        block["text"]
+        for block in content
+        if isinstance(block, dict)
+        and block.get("type") in {"text", "output_text"}
+        and isinstance(block.get("text"), str)
+    )
+
+
+for provider in ("deepseek", "openai"):
+    register_harness_profile(
+        provider,
+        HarnessProfile(
+            general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
+            excluded_tools=frozenset({"task", "execute"}),
+            excluded_middleware=frozenset({"SummarizationMiddleware"}),
+            base_system_prompt="在指定游戏角色的身份与权限内回应。不要扮演通用助手。",
+        ),
+    )
+
+
+def make_model(settings: Settings) -> ChatDeepSeek | ChatOpenAI:
     requests = 0
 
     async def guard(request: httpx.Request) -> None:
         nonlocal requests
         requests += 1
-        if requests > max(1, settings.max_model_calls) * (1 + settings.deepseek_max_retries):
+        if requests > max(1, settings.max_model_calls) * (1 + settings.model_retries):
             raise RuntimeError("Physical model call budget exceeded")
         if len(request.content) > settings.ai_input_byte_limit:
             raise RuntimeError("Model input budget exceeded")
 
+    if settings.agent_mode == "openai":
+        if not settings.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY is not configured")
+        return ChatOpenAI(
+            model=settings.openai_model,
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url,
+            use_responses_api=True,
+            reasoning={"effort": "low"},
+            max_tokens=settings.model_output_tokens,
+            timeout=25,
+            max_retries=settings.openai_max_retries,
+            streaming=True,
+            stream_usage=True,
+            http_client=httpx.Client(),
+            http_async_client=httpx.AsyncClient(event_hooks={"request": [guard]}),
+        )
     if settings.agent_mode == "mock":
         from .mock_llm import handle_request
 
@@ -94,7 +130,7 @@ class AgentGateway:
         settings: Settings,
         service: GameTools,
         story: StoryDefinition,
-        model_factory: Callable[[], ChatDeepSeek] | None = None,
+        model_factory: Callable[[], ChatDeepSeek | ChatOpenAI] | None = None,
     ):
         self.settings = settings
         self.service = service
@@ -106,7 +142,7 @@ class AgentGateway:
         self,
         turn: AgentTurn,
         checkpointer: Checkpointer,
-        model: ChatDeepSeek | None = None,
+        model: ChatDeepSeek | ChatOpenAI | None = None,
         story_version: int = 1,
     ) -> CompiledStateGraph[Any, Any, Any, Any]:
         npc = turn.input.npc
@@ -302,9 +338,10 @@ class AgentGateway:
             tokens: Mapping[str, Any] = message.usage_metadata or {}
             for key in ("input_tokens", "output_tokens", "total_tokens"):
                 usage[key] = usage.get(key, 0) + tokens.get(key, 0)
-            if not isinstance(message.content, str) or not message.content.strip():
+            text = model_text(message.content)
+            if not text.strip():
                 raise EmptyReplyError("No epilogue text")
-            return message.content
+            return text
         finally:
             await model.root_async_client.close()
             model.root_client.close()

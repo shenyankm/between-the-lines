@@ -13,12 +13,17 @@ from .errors import ApiError
 
 def reservation(settings: Settings, calls: int = 4) -> float:
     # UTF-8 bytes bound token count conservatively; enforce that byte limit before requests.
+    incoming, outgoing = (
+        (settings.openai_input_usd_per_million, settings.openai_output_usd_per_million)
+        if settings.agent_mode == "openai"
+        else (settings.deepseek_input_usd_per_million, settings.deepseek_output_usd_per_million)
+    )
     return round(
         calls
-        * (1 + settings.deepseek_max_retries)
+        * (1 + settings.model_retries)
         * (
-            settings.ai_input_byte_limit * settings.deepseek_input_usd_per_million
-            + 800 * settings.deepseek_output_usd_per_million
+            settings.ai_input_byte_limit * (incoming or 0)
+            + settings.model_output_tokens * (outgoing or 0)
         )
         / 1_000_000,
         8,
@@ -27,6 +32,13 @@ def reservation(settings: Settings, calls: int = 4) -> float:
 
 async def monthly_commitment(db: AsyncSession) -> float:
     month = utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # Enabling prices later cannot retroactively turn unpriced gateway traffic
+    # into free usage. A capped deployment must reconcile these records first.
+    unpriced = await db.scalar(
+        select(AISpend.id).where(AISpend.created_at >= month, AISpend.status == "unpriced").limit(1)
+    )
+    if unpriced:
+        return float("inf")
     spent = (
         await db.scalar(
             select(func.coalesce(func.sum(AISpend.cost_usd + AISpend.reserved_usd), 0)).where(
@@ -104,7 +116,7 @@ async def reserve_job(
         else reservation(settings, settings.max_model_calls if kind == "turn" else 2)
     )
     if settings.agent_mode != "mock":
-        if not settings.deepseek_api_key:
+        if not settings.model_ready:
             raise ApiError(503, "model_unconfigured")
         spent = await monthly_commitment(db)
         if settings.monthly_cost_cap_usd > 0 and spent + amount > settings.monthly_cost_cap_usd:
@@ -128,18 +140,12 @@ async def reserve_job(
 async def settle(
     db: AsyncSession, job: AIJob, settings: Settings, usage: dict[str, Any], failed: bool
 ) -> None:
-    cost = (
-        0.0
-        if settings.agent_mode == "mock"
-        else round(
-            (
-                usage.get("input_tokens", 0) * settings.deepseek_input_usd_per_million
-                + usage.get("output_tokens", 0) * settings.deepseek_output_usd_per_million
-            )
-            / 1_000_000,
-            8,
-        )
-    )
+    estimated = settings.estimate_cost(usage.get("input_tokens", 0), usage.get("output_tokens", 0))
+    usage["cost_estimate_usd"] = estimated
+    usage["pricing_known"] = settings.pricing_known
+    # Non-null ledger columns carry no booked dollars when the gateway price is
+    # unknown. Public usage preserves null, never reporting those calls as free.
+    cost = estimated or 0.0
     job.cost_usd = cost
     job.reserved_usd = max(0, job.reserved_usd - cost) if failed else 0
     job.status = (
@@ -156,5 +162,5 @@ async def settle(
         ledger.cost_usd, ledger.reserved_usd, ledger.status = (
             job.cost_usd,
             job.reserved_usd,
-            job.status,
+            "unpriced" if estimated is None else job.status,
         )

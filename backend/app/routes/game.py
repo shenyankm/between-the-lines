@@ -53,8 +53,7 @@ async def config(request: Request) -> dict[str, Any]:
         and runtime_for(request).settings.environment != "production",
         "zhihu_login": runtime_for(request).settings.oauth_ready,
         "agent_mode": runtime_for(request).settings.agent_mode,
-        "model_ready": bool(runtime_for(request).settings.deepseek_api_key)
-        or runtime_for(request).settings.agent_mode == "mock",
+        "model_ready": runtime_for(request).settings.model_ready,
     }
 
 

@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -28,7 +28,14 @@ class Settings(BaseSettings):
     session_secret: str = "development-only-change-before-production"  # noqa: S105
     public_origin: str = "http://localhost:5173"
     dev_login_enabled: bool = True
-    agent_mode: Literal["deepseek", "mock"] = "deepseek"
+    agent_mode: Literal["deepseek", "mock", "openai"] = "deepseek"
+    openai_api_key: str = Field(default="", repr=False)
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_model: str = "gpt-6-astra"
+    openai_max_retries: int = Field(default=1, ge=0, le=3)
+    openai_max_output_tokens: int = Field(default=1600, ge=128, le=8192)
+    openai_input_usd_per_million: float | None = Field(default=None, ge=0)
+    openai_output_usd_per_million: float | None = Field(default=None, ge=0)
     deepseek_api_key: str = ""
     deepseek_api_base: str = "https://api.deepseek.com"
     # Retries are mode-gated in agents.py: mock keeps 0 so CI timing is exact and
@@ -68,16 +75,24 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self) -> Self:
+        if self.agent_mode == "openai":
+            if not self.openai_base_url.startswith("https://"):
+                raise ValueError("OPENAI_BASE_URL must use HTTPS")
+            if not self.openai_model.strip():
+                raise ValueError("OPENAI_MODEL must not be empty")
+            if self.monthly_cost_cap_usd > 0 and not self.pricing_known:
+                raise ValueError("OpenAI cost cap requires configured gateway token prices")
         if self.environment == "production":
             if self.dev_login_enabled or self.agent_mode == "mock":
                 raise ValueError("Production forbids development login and mock agents")
             if len(self.session_secret) < 32 or self.session_secret.startswith("development"):
                 raise ValueError("Production requires a unique SESSION_SECRET (32+ characters)")
-            if not self.public_origin.startswith("https://") or not self.deepseek_api_key:
-                raise ValueError("Production requires HTTPS and DEEPSEEK_API_KEY")
+            if not self.public_origin.startswith("https://") or not self.model_ready:
+                key = "OPENAI_API_KEY" if self.agent_mode == "openai" else "DEEPSEEK_API_KEY"
+                raise ValueError(f"Production requires HTTPS and {key}")
             # The key is sent to this base URL on every turn, so a downgrade here
             # is a credential leak rather than a misconfiguration.
-            if not self.deepseek_api_base.startswith("https://"):
+            if self.agent_mode == "deepseek" and not self.deepseek_api_base.startswith("https://"):
                 raise ValueError("Production requires an HTTPS DEEPSEEK_API_BASE")
             # 0 means "no cap", which is right for mock mode where turns are free
             # and unacceptable where they are billed. Refuse to boot without one.
@@ -86,6 +101,49 @@ class Settings(BaseSettings):
             if not self.oauth_ready:
                 raise ValueError("Production requires complete Zhihu OAuth configuration")
         return self
+
+    @property
+    def model_ready(self) -> bool:
+        return self.agent_mode == "mock" or bool(
+            self.openai_api_key if self.agent_mode == "openai" else self.deepseek_api_key
+        )
+
+    @property
+    def model_name(self) -> str:
+        return self.openai_model if self.agent_mode == "openai" else "deepseek-flash"
+
+    @property
+    def model_base_url(self) -> str:
+        return self.openai_base_url if self.agent_mode == "openai" else self.deepseek_api_base
+
+    @property
+    def model_retries(self) -> int:
+        return self.openai_max_retries if self.agent_mode == "openai" else self.deepseek_max_retries
+
+    @property
+    def model_output_tokens(self) -> int:
+        return self.openai_max_output_tokens if self.agent_mode == "openai" else 800
+
+    @property
+    def pricing_known(self) -> bool:
+        return self.agent_mode != "openai" or (
+            self.openai_input_usd_per_million is not None
+            and self.openai_output_usd_per_million is not None
+        )
+
+    def estimate_cost(self, input_tokens: int, output_tokens: int) -> float | None:
+        if self.agent_mode == "mock":
+            return 0.0
+        if not self.pricing_known:
+            return None
+        incoming, outgoing = (
+            (self.openai_input_usd_per_million, self.openai_output_usd_per_million)
+            if self.agent_mode == "openai"
+            else (self.deepseek_input_usd_per_million, self.deepseek_output_usd_per_million)
+        )
+        return round(
+            (input_tokens * (incoming or 0) + output_tokens * (outgoing or 0)) / 1_000_000, 8
+        )
 
     @property
     def oauth_ready(self) -> bool:

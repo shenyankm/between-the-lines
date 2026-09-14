@@ -13,6 +13,15 @@ const result: Result = {
   retryable: false,
   failure: null,
 };
+
+it("accepts GPT6 usage without claiming unknown gateway pricing is zero", () => {
+  expect(
+    isResult({
+      ...result,
+      usage: { mode: "openai", model: "gpt-6-astra", cost_estimate_usd: null },
+    }),
+  ).toBe(true);
+});
 afterEach(() => vi.restoreAllMocks());
 it.each<unknown>([
   null,

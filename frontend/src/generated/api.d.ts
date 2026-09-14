@@ -600,7 +600,7 @@ export interface components {
              * Agent Mode
              * @enum {string}
              */
-            agent_mode: "mock" | "deepseek";
+            agent_mode: "mock" | "deepseek" | "openai";
             /** Model Ready */
             model_ready: boolean;
             /**
@@ -1382,7 +1382,7 @@ export interface components {
             /** Model */
             model?: string | null;
             /** Mode */
-            mode?: ("mock" | "deepseek") | null;
+            mode?: ("mock" | "deepseek" | "openai") | null;
             /**
              * Model Calls
              * @default 0
@@ -1412,7 +1412,7 @@ export interface components {
              * Cost Estimate Usd
              * @default 0
              */
-            cost_estimate_usd: number;
+            cost_estimate_usd: number | null;
             /**
              * Billing Complete
              * @default false
