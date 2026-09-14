@@ -839,3 +839,24 @@ it("restores reading preferences and rejects invalid stored options", () => {
       ?.style.getPropertyValue("--story-text-size"),
   ).toBe("23px");
 });
+
+it("keeps the scene compact after editing without letting private input change its layout", () => {
+  const view = mount();
+  const root = view.container.querySelector("main")!;
+  expect(root.dataset.composing).toBe("false");
+  fireEvent.click(screen.getByRole("button", { name: "我的手机" }));
+  fireEvent.click(screen.getByRole("button", { name: "孙淼打开会话" }));
+  fireEvent.focus(
+    within(screen.getByRole("dialog")).getByLabelText("自由表达"),
+  );
+  expect(root.dataset.composing).toBe("false");
+  fireEvent.click(screen.getByLabelText("关闭面板"));
+  const input = screen.getByLabelText("自由表达");
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: "保留输入" } });
+  fireEvent.blur(input);
+  expect(root.dataset.composing).toBe("true");
+  expect(screen.getByLabelText<HTMLTextAreaElement>("自由表达").value).toBe(
+    "保留输入",
+  );
+});
