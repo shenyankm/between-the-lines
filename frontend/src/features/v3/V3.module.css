@@ -47,18 +47,23 @@
   margin: 14px 0 4px;
 }
 .metrics {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
   align-self: start;
+  width: min(580px, 100%);
+  padding: 16px;
+  border: 1px solid #8797a766;
+  border-radius: 14px;
+  background: #102033f2;
+  box-shadow: 0 6px 24px #0003;
 }
 .metrics > div {
-  background: #142723d9;
-  padding: 12px;
+  min-width: 0;
   display: grid;
   grid-template-columns: 1fr auto;
+  align-items: center;
   gap: 8px;
-  width: 110px;
-  border-radius: 7px;
 }
 .metrics span {
   font-size: 12px;
@@ -371,11 +376,10 @@
     width: 100%;
     gap: 5px;
   }
-  .metrics > div {
-    flex: 1;
-    width: auto;
-    padding: 8px;
-    gap: 4px;
+  .metrics {
+    padding: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 20px;
   }
   .metrics span {
     font-size: 10px;
@@ -484,16 +488,6 @@
     background: transparent;
     color: #d1d8dd;
   }
-  .metrics {
-    gap: 24px;
-  }
-  .metrics > div {
-    background: transparent;
-    width: 128px;
-    padding: 10px 0;
-    border-radius: 0;
-    text-shadow: 0 2px 5px #000;
-  }
   .metrics meter {
     height: 8px;
     accent-color: #e8c568;
@@ -543,9 +537,6 @@
   .toolbar button {
     background: #132238e8;
   }
-  .metrics > div {
-    background: #132238b8;
-  }
 }
 
 .relationGraph {
@@ -591,6 +582,57 @@
     display: none;
   }
   .relationList {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+.dialogueControls {
+  display: grid;
+  gap: 16px;
+  border-top: 1px solid #94a2b833;
+  padding-top: 16px;
+}
+.dialogueControls .composer {
+  margin-top: 0;
+  position: static;
+  padding: 0;
+}
+.progressActions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.progressActions:empty {
+  display: none;
+}
+@media (max-width: 1000px) and (min-width: 701px) {
+  .header {
+    flex-wrap: wrap;
+  }
+  .metrics {
+    width: 100%;
+  }
+  .toolbar {
+    position: relative;
+    inset: auto;
+    width: auto;
+    flex-direction: row;
+  }
+  .dialogue {
+    margin-right: 0;
+    margin-top: 24vh;
+  }
+  .root:has(.dialogue) .header {
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 700px) {
+  .progressActions > button {
+    width: 100%;
+  }
+  .dialogue .actions {
     display: grid;
     grid-template-columns: 1fr;
   }
