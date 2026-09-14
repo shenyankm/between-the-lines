@@ -48,7 +48,7 @@ it("keeps service errors distinct from missing authentication on the saves page"
   expect(screen.queryByRole("link", { name: "返回首页登录" })).toBeNull();
   server.use(http.get("/api/saves", () => HttpResponse.json([save()])));
   fireEvent.click(screen.getByRole("button", { name: "重新加载" }));
-  expect(await screen.findByText(/我的故事 · save-1/)).toBeTruthy();
+  expect(await screen.findByText("存档 save-1")).toBeTruthy();
 });
 it("handles login and new-save failures in place, then permits an explicit retry", async () => {
   setup();
@@ -201,10 +201,10 @@ it("archive and recycle operations are explicit and recoverable", async () => {
     }),
   );
   mount(true);
-  await screen.findByText("重玩分支 · save-1");
+  await screen.findByRole("heading", { name: "重玩分支" });
   fireEvent.click(screen.getAllByRole("button", { name: "归档" })[1]!);
   await waitFor(() =>
-    expect(screen.queryByText("重玩分支 · save-1")).toBeNull(),
+    expect(screen.queryByRole("heading", { name: "重玩分支" })).toBeNull(),
   );
   fireEvent.click(screen.getByRole("button", { name: "归档" }));
   fireEvent.click(await screen.findByText("恢复归档"));

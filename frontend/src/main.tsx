@@ -10,6 +10,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import App from "./App";
 import { ErrorBoundary } from "./ErrorBoundary";
+import "./theme.css";
 import "./global.css";
 import { installGlobalErrorHandlers, report } from "./reporting";
 
