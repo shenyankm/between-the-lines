@@ -1,3 +1,5 @@
+import { Form } from "@heroui/react";
+import { TextArea, Button, Modal } from "@heroui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +8,7 @@ import type { GameEvent } from "../../types";
 import { Link, useNavigate } from "react-router";
 import { api, gameApi } from "../../api";
 import type { Action, Npc, PlayState, Story, TurnInput } from "../../types";
-import { useTurnController } from "../game/useTurnController";
+import { playKey, useTurnController } from "../game/useTurnController";
 import { clearIdentityDrafts, readDraft, writeDraft } from "../game/drafts";
 import { ProductPanel } from "../game/ProductPanel";
 import { EventHistory } from "../game/EventHistory";
@@ -78,7 +80,6 @@ export function PlayV3({
   );
   const [interlude, setInterlude] = useState(false);
   const [readError, setReadError] = useState("");
-  const dialog = useRef<HTMLDialogElement>(null);
   const confirmation = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (play.proposal && !confirmation.current?.open)
@@ -169,14 +170,21 @@ export function PlayV3({
       });
     } else void controller.submit(save, action, "", npc, metadata);
   };
-  useEffect(() => {
-    if (panel) dialog.current?.showModal();
-    else dialog.current?.close();
-  }, [panel]);
   async function mark(key: string, position: number) {
     try {
       await api(`/saves/${save.id}/reading`, { key, position });
       setPositions((p) => ({ ...p, [key]: position }));
+      client.setQueryData<PlayState>(playKey(userId, save.id), (cached) =>
+        cached
+          ? {
+              ...cached,
+              reading: {
+                ...cached.reading,
+                [key]: Math.max(cached.reading?.[key] ?? 0, position),
+              },
+            }
+          : cached,
+      );
       setReadError("");
     } catch {
       setReadError("阅读位置尚未保存，请重试。");
@@ -224,7 +232,7 @@ export function PlayV3({
     system: "事件记录",
   };
   const composer = (dm = false) => (
-    <form
+    <Form
       className={s.composer}
       onSubmit={(e) => {
         e.preventDefault();
@@ -243,7 +251,7 @@ export function PlayV3({
       <label className={s.sr} htmlFor={dm ? "dm-input" : "scene-input"}>
         自由表达
       </label>
-      <textarea
+      <TextArea
         id={dm ? "dm-input" : "scene-input"}
         maxLength={1500}
         value={draft.text}
@@ -256,16 +264,18 @@ export function PlayV3({
             : "写下你真正想说的话…"
         }
       />
-      <button
-        disabled={
+      <Button
+        type="submit"
+        variant="secondary"
+        isDisabled={
           busy ||
           !draft.text.trim() ||
           (channel !== "group" && (!play.ai?.available || controller.aiBlocked))
         }
       >
         发送
-      </button>
-    </form>
+      </Button>
+    </Form>
   );
   const conversation = useInfiniteQuery({
     queryKey: ["conversation", userId, save.id, contact, save.version],
@@ -389,7 +399,9 @@ export function PlayV3({
             ["discussion", "知乎众议"],
           ] as const
         ).map(([id, label]) => (
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             key={id}
             onClick={() => {
               setPanel(id);
@@ -400,12 +412,31 @@ export function PlayV3({
             {id === "work" && state.work?.purchase === "returned"
               ? " · 待处理"
               : ""}
-          </button>
+          </Button>
         ))}
-        <button onClick={() => setPanel("history")}>完整记录</button>
-        <button disabled={loggingOut} onClick={() => void logout()}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setPanel("history")}
+        >
+          完整记录
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          isDisabled={busy || !!controller.pending || loggingOut}
+          onClick={() => void navigate("/saves")}
+        >
+          返回存档
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          isDisabled={loggingOut}
+          onClick={() => void logout()}
+        >
           退出登录
-        </button>
+        </Button>
         <label>
           <input
             type="checkbox"
@@ -456,9 +487,11 @@ export function PlayV3({
                 ) && (
                   <div className={s.actions}>
                     {followUpChoices.map(([response, label]) => (
-                      <button
+                      <Button
+                        type="button"
+                        variant="secondary"
                         key={response}
-                        disabled={busy}
+                        isDisabled={busy}
                         onClick={() =>
                           act("follow_up", "sun", {
                             params: { boundary_response: response },
@@ -466,33 +499,49 @@ export function PlayV3({
                         }
                       >
                         {label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
-              {state.act > 0 && composer()}
-              {sceneOptions.some((a) => a.action === "close_story") && (
-                <button disabled={busy} onClick={() => act("close_story")}>
-                  按当前进度结束本局
-                </button>
-              )}
-              {sceneOptions.some((a) => a.action === "next") && (
-                <button disabled={busy} onClick={() => act("next")}>
-                  带着当前进度进入下一幕 →
-                </button>
-              )}
+              <div className={s.dialogueFooter}>
+                {state.act > 0 && composer()}
+                <div className={s.actControls} aria-label="幕次操作">
+                  {sceneOptions.some((a) => a.action === "close_story") && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      isDisabled={busy}
+                      onClick={() => act("close_story")}
+                    >
+                      按当前进度结束本局
+                    </Button>
+                  )}
+                  {sceneOptions.some((a) => a.action === "next") && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      isDisabled={busy}
+                      onClick={() => act("next")}
+                    >
+                      带着当前进度进入下一幕 →
+                    </Button>
+                  )}
+                </div>
+              </div>
             </>
           )}
           {readError && (
             <p role="alert">
               {readError}
-              <button
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={() =>
                   void mark(state.node ?? "prologue", position + 1)
                 }
               >
                 重试保存阅读位置
-              </button>
+              </Button>
             </p>
           )}
           {state.quiet_turns >= 3 && (
@@ -510,9 +559,13 @@ export function PlayV3({
           disabled={loggingOut}
         />
         {controller.pending && (
-          <button onClick={() => void controller.recover()}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void controller.recover()}
+          >
             恢复回合结果
-          </button>
+          </Button>
         )}
         {!play.ai?.available && <p>AI 暂不可用，工作和剧情行动仍可继续。</p>}
       </div>
@@ -544,8 +597,10 @@ export function PlayV3({
                 <p>提交表示开始申请，不代表手续已经完成。</p>
               </>
             )}
-          <button
-            disabled={busy}
+          <Button
+            type="button"
+            variant="secondary"
+            isDisabled={busy}
             onClick={() =>
               act(
                 play.proposal!.action,
@@ -557,10 +612,15 @@ export function PlayV3({
             }
           >
             确认并提交
-          </button>
-          <button disabled={busy} onClick={() => act("cancel_proposal")}>
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            isDisabled={busy}
+            onClick={() => act("cancel_proposal")}
+          >
             暂不执行
-          </button>
+          </Button>
         </dialog>
       )}
       {interlude && (
@@ -573,194 +633,230 @@ export function PlayV3({
           }}
         />
       )}
-      <dialog className={s.drawer} ref={dialog} onCancel={() => setPanel(null)}>
-        <header>
-          <h2>
-            {
-              {
-                phone: "我的手机",
-                work: "工作系统",
-                relations: "关系图",
-                discussion: "知乎众议",
-                history: "本局记录",
-              }[panel ?? "phone"]
-            }
-          </h2>
-          <button aria-label="关闭面板" onClick={() => setPanel(null)}>
-            关闭 ×
-          </button>
-        </header>
-        {panel === "phone" && (
-          <>
-            {contact ? (
-              <>
-                <button onClick={() => setContact(null)}>← 会话列表</button>
-                <h3>{contact === "group" ? "项目工作群" : names[contact]}</h3>
-                <div className={s.messages}>
-                  {conversation.hasNextPage && (
-                    <button
-                      disabled={conversation.isFetchingNextPage}
-                      onClick={() => void conversation.fetchNextPage()}
-                    >
-                      加载更早消息
-                    </button>
-                  )}
-                  {conversation.error && (
-                    <p role="alert">
-                      会话读取失败。
-                      <button onClick={() => void conversation.refetch()}>
-                        重试读取
-                      </button>
-                    </p>
-                  )}
-                  {npcEvents.map((e) => (
-                    <p key={e.id}>
-                      <strong>
-                        {e.speaker === "system"
-                          ? "事件记录"
-                          : e.kind === "npc"
-                            ? names[e.npc]
-                            : "我"}
-                        ：
-                      </strong>
-                      {e.text}
-                    </p>
-                  ))}
-                  {!npcEvents.length && (
-                    <p>
-                      {contact === "group"
-                        ? "群内只发布已核实的工作事实。"
-                        : story.npcs[contact]?.greeting}
-                    </p>
-                  )}
-                </div>
-                {contact === "group" && (
-                  <Actions
-                    options={(play.available_actions ?? []).filter((a) =>
-                      [
-                        "clarify",
-                        "review_clarification",
-                        "trace_rumor",
-                      ].includes(a.action),
+      <Modal
+        isOpen={panel !== null}
+        onOpenChange={(open) => {
+          if (!open) setPanel(null);
+        }}
+      >
+        <Modal.Backdrop>
+          <Modal.Container placement="center" className={s.drawerShell}>
+            <Modal.Dialog className={s.drawer}>
+              <Modal.Header className={s.drawerHeader}>
+                <Modal.Heading>
+                  {
+                    {
+                      phone: "我的手机",
+                      work: "工作系统",
+                      relations: "关系图",
+                      discussion: "知乎众议",
+                      history: "本局记录",
+                    }[panel ?? "phone"]
+                  }
+                </Modal.Heading>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  aria-label="关闭面板"
+                  onClick={() => setPanel(null)}
+                >
+                  关闭 ×
+                </Button>
+              </Modal.Header>
+              <Modal.Body className={s.drawerBody}>
+                {panel === "phone" && (
+                  <>
+                    {contact ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => setContact(null)}
+                        >
+                          ← 会话列表
+                        </Button>
+                        <h3>
+                          {contact === "group" ? "项目工作群" : names[contact]}
+                        </h3>
+                        <div className={s.messages}>
+                          {conversation.hasNextPage && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              isDisabled={conversation.isFetchingNextPage}
+                              onClick={() => void conversation.fetchNextPage()}
+                            >
+                              加载更早消息
+                            </Button>
+                          )}
+                          {conversation.error && (
+                            <p role="alert">
+                              会话读取失败。
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => void conversation.refetch()}
+                              >
+                                重试读取
+                              </Button>
+                            </p>
+                          )}
+                          {npcEvents.map((e) => (
+                            <p key={e.id}>
+                              <strong>
+                                {e.speaker === "system"
+                                  ? "事件记录"
+                                  : e.kind === "npc"
+                                    ? names[e.npc]
+                                    : "我"}
+                                ：
+                              </strong>
+                              {e.text}
+                            </p>
+                          ))}
+                          {!npcEvents.length && (
+                            <p>
+                              {contact === "group"
+                                ? "群内只发布已核实的工作事实。"
+                                : story.npcs[contact]?.greeting}
+                            </p>
+                          )}
+                        </div>
+                        {contact === "group" && (
+                          <Actions
+                            options={(play.available_actions ?? []).filter(
+                              (a) =>
+                                [
+                                  "clarify",
+                                  "review_clarification",
+                                  "trace_rumor",
+                                ].includes(a.action),
+                            )}
+                            act={act}
+                            busy={busy}
+                          />
+                        )}
+                        {composer(true)}
+                      </>
+                    ) : (
+                      <>
+                        {[...contacts, "group" as const].map((n) => {
+                          const messages = play.events.filter(
+                            (e) =>
+                              e.channel === (n === "group" ? "group" : "dm") &&
+                              (n === "group" || e.npc === n),
+                          );
+                          const unread =
+                            play.contacts?.[n]?.unread ??
+                            messages.length >
+                              (positions[n === "group" ? "group" : `dm_${n}`] ??
+                                0);
+                          return (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className={s.contact}
+                              key={n}
+                              onClick={() => {
+                                setContact(n);
+                                void mark(
+                                  n === "group" ? "group" : `dm_${n}`,
+                                  play.contacts?.[n]?.count ?? messages.length,
+                                );
+                              }}
+                            >
+                              <strong>
+                                {n === "group" ? "项目工作群" : names[n]}
+                                {unread ? " · 未读" : ""}
+                              </strong>
+                              <small>
+                                {play.contacts?.[n]?.preview ||
+                                  messages.at(-1)?.text ||
+                                  "打开会话"}
+                              </small>
+                            </Button>
+                          );
+                        })}
+                      </>
                     )}
+                  </>
+                )}
+                {panel === "work" && (
+                  <Work
+                    state={state}
+                    options={play.available_actions ?? []}
                     act={act}
                     busy={busy}
                   />
                 )}
-                {composer(true)}
-              </>
-            ) : (
-              <>
-                {[...contacts, "group" as const].map((n) => {
-                  const messages = play.events.filter(
-                    (e) =>
-                      e.channel === (n === "group" ? "group" : "dm") &&
-                      (n === "group" || e.npc === n),
-                  );
-                  const unread =
-                    play.contacts?.[n]?.unread ??
-                    messages.length >
-                      (positions[n === "group" ? "group" : `dm_${n}`] ?? 0);
-                  return (
-                    <button
-                      className={s.contact}
-                      key={n}
-                      onClick={() => {
-                        setContact(n);
-                        void mark(
-                          n === "group" ? "group" : `dm_${n}`,
-                          play.contacts?.[n]?.count ?? messages.length,
+                {panel === "relations" && (
+                  <Relations
+                    save={save}
+                    userId={userId}
+                    options={play.available_actions ?? []}
+                    act={act}
+                    busy={busy}
+                  />
+                )}
+                {panel === "discussion" && (
+                  <Discussion
+                    save={save}
+                    userId={userId}
+                    fill={(text, job, card) => {
+                      writeDraft(
+                        userId,
+                        save.id,
+                        "sun",
+                        {
+                          text,
+                          act: state.act,
+                          discussion_id: job,
+                          perspective_id: card,
+                        },
+                        "scene:sun",
+                      );
+                      refresh((n) => n + 1);
+                      setPanel(null);
+                    }}
+                  />
+                )}
+                {panel === "history" && (
+                  <>
+                    <EventHistory
+                      userId={userId}
+                      saveId={save.id}
+                      version={save.version}
+                    />
+                    <ProductPanel
+                      save={save}
+                      userId={userId}
+                      events={play.events}
+                      disabled={busy}
+                      initiallyOpen
+                      fillDraft={(text, job, card) => {
+                        writeDraft(
+                          userId,
+                          save.id,
+                          "sun",
+                          {
+                            text,
+                            act: state.act,
+                            discussion_id: job,
+                            perspective_id: card,
+                          },
+                          "scene:sun",
                         );
+                        refresh((n) => n + 1);
+                        setPanel(null);
                       }}
-                    >
-                      <strong>
-                        {n === "group" ? "项目工作群" : names[n]}
-                        {unread ? " · 未读" : ""}
-                      </strong>
-                      <small>
-                        {play.contacts?.[n]?.preview ||
-                          messages.at(-1)?.text ||
-                          "打开会话"}
-                      </small>
-                    </button>
-                  );
-                })}
-              </>
-            )}
-          </>
-        )}
-        {panel === "work" && (
-          <Work
-            state={state}
-            options={play.available_actions ?? []}
-            act={act}
-            busy={busy}
-          />
-        )}
-        {panel === "relations" && (
-          <Relations
-            save={save}
-            userId={userId}
-            options={play.available_actions ?? []}
-            act={act}
-            busy={busy}
-          />
-        )}
-        {panel === "discussion" && (
-          <Discussion
-            save={save}
-            userId={userId}
-            fill={(text, job, card) => {
-              writeDraft(
-                userId,
-                save.id,
-                "sun",
-                {
-                  text,
-                  act: state.act,
-                  discussion_id: job,
-                  perspective_id: card,
-                },
-                "scene:sun",
-              );
-              refresh((n) => n + 1);
-              setPanel(null);
-            }}
-          />
-        )}
-        {panel === "history" && (
-          <>
-            <EventHistory
-              userId={userId}
-              saveId={save.id}
-              version={save.version}
-            />
-            <ProductPanel
-              save={save}
-              userId={userId}
-              events={play.events}
-              disabled={busy}
-              initiallyOpen
-              fillDraft={(text, job, card) => {
-                writeDraft(
-                  userId,
-                  save.id,
-                  "sun",
-                  {
-                    text,
-                    act: state.act,
-                    discussion_id: job,
-                    perspective_id: card,
-                  },
-                  "scene:sun",
-                );
-                refresh((n) => n + 1);
-                setPanel(null);
-              }}
-            />
-          </>
-        )}
-      </dialog>
+                    />
+                  </>
+                )}
+              </Modal.Body>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </main>
   );
 }

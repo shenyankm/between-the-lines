@@ -58,6 +58,7 @@ export async function start(page: Page, guest = false) {
 export async function closePanel(page: Page) {
   const close = page.getByRole("button", { name: "关闭面板" });
   if (await close.isVisible()) await close.click();
+  await expect(close).toHaveCount(0);
 }
 export async function commitClick(page: Page, click: () => Promise<unknown>) {
   const response = page.waitForResponse(

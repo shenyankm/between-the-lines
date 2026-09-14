@@ -1,3 +1,5 @@
+import { Form } from "@heroui/react";
+import { TextArea, Button } from "@heroui/react";
 import { useState } from "react";
 import { Actions, type Act, type Option, type StateV3 } from "./Work";
 
@@ -20,7 +22,7 @@ export function SupportForm({
   return (
     <section aria-label="请假与求助申请">
       <h3>请假与求助</h3>
-      <form
+      <Form
         onSubmit={(event) => {
           event.preventDefault();
           act("draft_support", "sun", {
@@ -28,9 +30,10 @@ export function SupportForm({
           });
         }}
       >
-        <label>
+        <label htmlFor="support-kind">
           申请事项
           <select
+            id="support-kind"
             value={kind}
             disabled={processing}
             onChange={(event) =>
@@ -41,9 +44,10 @@ export function SupportForm({
             <option value="help">请求协作支持</option>
           </select>
         </label>
-        <label>
+        <label htmlFor="support-reason">
           原因
-          <textarea
+          <TextArea
+            id="support-reason"
             required
             maxLength={1000}
             value={reason}
@@ -51,9 +55,10 @@ export function SupportForm({
             onChange={(event) => setReason(event.target.value)}
           />
         </label>
-        <label>
+        <label htmlFor="support-plan">
           交接或分工安排
-          <textarea
+          <TextArea
+            id="support-plan"
             required
             maxLength={1000}
             value={plan}
@@ -61,8 +66,14 @@ export function SupportForm({
             onChange={(event) => setPlan(event.target.value)}
           />
         </label>
-        <button disabled={busy || processing}>保存并预览申请</button>
-      </form>
+        <Button
+          type="submit"
+          variant="secondary"
+          isDisabled={busy || processing}
+        >
+          保存并预览申请
+        </Button>
+      </Form>
       {current && (
         <article>
           <h4>{current.kind === "leave" ? "请假" : "求助"}申请预览</h4>

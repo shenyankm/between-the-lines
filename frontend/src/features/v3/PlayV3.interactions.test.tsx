@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../../testing/server";
@@ -29,6 +29,7 @@ const ctrl = vi.hoisted(() => ({
   completed: undefined as ((input: Partial<TurnInput>) => void) | undefined,
 }));
 vi.mock("../game/useTurnController", () => ({
+  playKey: (userId: string, saveId: string) => ["play", userId, saveId],
   useTurnController: (
     _u: unknown,
     _s: unknown,
@@ -86,7 +87,13 @@ function mount(p = play(), s = story()) {
   const wrap = (next: PlayState) => (
     <MemoryRouter>
       <QueryClientProvider client={client}>
-        <PlayV3 userId="test-user" play={next} story={s} />
+        <Routes>
+          <Route
+            path="/"
+            element={<PlayV3 userId="test-user" play={next} story={s} />}
+          />
+          <Route path="/saves" element={<h1>存档列表入口</h1>} />
+        </Routes>
       </QueryClientProvider>
     </MemoryRouter>
   );
@@ -653,4 +660,60 @@ it("uses the persisted ending instead of an active scene", async () => {
   mount(p);
   await screen.findByText("已保存的结局正文");
   expect(screen.queryByLabelText("自由表达")).toBeNull();
+});
+
+it("returns to saves without logging out, submitting a turn, or clearing a draft", async () => {
+  const logout = vi.fn();
+  server.use(
+    http.post("/api/auth/logout", () => {
+      logout();
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+  const p = play();
+  mount(p);
+  fireEvent.change(screen.getByLabelText("自由表达"), {
+    target: { value: "稍后继续编辑" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "返回存档" }));
+  await screen.findByRole("heading", { name: "存档列表入口" });
+  expect(readDraft("test-user", p.save.id, "sun", "scene:sun").text).toBe(
+    "稍后继续编辑",
+  );
+  expect(logout).not.toHaveBeenCalled();
+  expect(ctrl.submit).not.toHaveBeenCalled();
+  expect(p.save.state.ending).toBeNull();
+});
+
+it.each(["busy", "pending", "blocked"] as const)(
+  "prevents leaving while the controller is %s",
+  (mode) => {
+    if (mode === "pending") ctrl.pending = "original-request";
+    else ctrl[mode] = true;
+    mount();
+    const leave = screen.getByRole("button", {
+      name: "返回存档",
+    });
+    expect(leave.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(leave);
+    expect(screen.queryByText("存档列表入口")).toBeNull();
+  },
+);
+
+it("keeps all four meter values and their labels", () => {
+  const p = play();
+  mount(p);
+  const meters = screen.getAllByRole("meter");
+  expect(meters.map((m) => m.getAttribute("aria-label"))).toEqual([
+    "舆论温度",
+    "专业信用",
+    "内耗",
+    "工作压力",
+  ]);
+  expect(meters.map((m) => Number(m.getAttribute("value")))).toEqual([
+    p.save.state.heat,
+    p.save.state.credit,
+    25,
+    25,
+  ]);
 });

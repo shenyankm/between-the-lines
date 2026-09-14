@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "../../api";
 import { isEvent } from "../../contracts";
@@ -37,14 +38,19 @@ export function EventHistory({
         />
       )}
       {history.hasNextPage && (
-        <button
-          disabled={history.isFetchingNextPage}
+        <Button
+          type="button"
+          variant="secondary"
+          isDisabled={history.isFetchingNextPage}
           onClick={() => void history.fetchNextPage()}
         >
           加载更早记录
-        </button>
+        </Button>
       )}
       {history.isPending && <p role="status">正在读取历史…</p>}
+      {!history.isPending && !history.error && !rows.length && (
+        <p>本局尚无已保存的历史记录。</p>
+      )}
       {rows.map((event) => (
         <article key={event.id}>
           <small>

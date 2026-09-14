@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
@@ -58,7 +59,9 @@ export function Relations({
         </svg>
         <div className={s.graphCenter}>周菱菱 · 我</div>
         {members.map((relation, index) => (
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             key={relation.id}
             className={s.graphPerson}
             style={{
@@ -69,29 +72,36 @@ export function Relations({
             onClick={() => select(relation.id)}
           >
             {relation.name}
-          </button>
+          </Button>
         ))}
       </div>
       <nav className={s.relationList} aria-label="人物关系列表">
         {members.map((relation) => (
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             key={relation.id}
             aria-pressed={selected === relation.id}
             onClick={() => select(relation.id)}
           >
             {relation.name} · {relation.role}
-          </button>
+          </Button>
         ))}
       </nav>
       {person ? (
-        <section aria-label="关系与事实依据">
+        <section aria-label="关系与事实依据" className={s.panelSection}>
           <h3>{person.name}</h3>
           <p>{person.description}</p>
           {person.evidence_event_ids?.length ? (
             person.evidence_event_ids.map((id, index) => (
-              <button key={id} onClick={() => setEventId(id)}>
+              <Button
+                type="button"
+                variant="secondary"
+                key={id}
+                onClick={() => setEventId(id)}
+              >
                 查看依据 {index + 1}
-              </button>
+              </Button>
             ))
           ) : (
             <p>本局尚无支持关系变化的事件。</p>
@@ -102,7 +112,13 @@ export function Relations({
               {detail.error && (
                 <p role="alert">
                   无法读取这条记录。
-                  <button onClick={() => void detail.refetch()}>重试</button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void detail.refetch()}
+                  >
+                    重试
+                  </Button>
                 </p>
               )}
               {detail.data && (
@@ -139,9 +155,11 @@ export function Relations({
             孙淼：这次部门聚餐，你想参加吗？工作资料会单独发给你。你可以自己决定。
           </p>
           {followUpChoices.map(([response, label]) => (
-            <button
+            <Button
+              type="button"
+              variant="secondary"
               key={response}
-              disabled={busy}
+              isDisabled={busy}
               onClick={() =>
                 act("follow_up", "sun", {
                   params: { boundary_response: response },
@@ -149,7 +167,7 @@ export function Relations({
               }
             >
               {label}
-            </button>
+            </Button>
           ))}
         </section>
       )}

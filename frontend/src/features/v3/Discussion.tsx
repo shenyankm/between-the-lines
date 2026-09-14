@@ -1,3 +1,4 @@
+import { Button } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../../api";
@@ -38,11 +39,23 @@ export function Discussion({
       {query.error && (
         <p role="alert">
           暂时无法读取。
-          <button onClick={() => void query.refetch()}>重试</button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void query.refetch()}
+          >
+            重试
+          </Button>
         </p>
       )}
       <p>{prose(result?.label)}</p>
       {query.data?.status === "running" && <p>正在整理来源…</p>}
+      {query.data?.status === "failed" && (
+        <p role="status">本次观点整理未完成，已有故事进度不受影响。</p>
+      )}
+      {query.data?.status === "completed" && !objects(result?.cards).length && (
+        <p>本幕暂无可展示的观点。</p>
+      )}
       {objects(result?.cards).map((card, i) => (
         <article className={s.notice} key={i}>
           <h3>{prose(card.view)}</h3>
@@ -69,13 +82,15 @@ export function Discussion({
               </p>
             ) : null;
           })}
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={() =>
               fill(prose(card.expression), query.data!.id, prose(card.id))
             }
           >
             带入输入框，再由我修改
-          </button>
+          </Button>
         </article>
       ))}
     </>

@@ -1,3 +1,5 @@
+import { Form } from "@heroui/react";
+import { Button, TextArea } from "@heroui/react";
 import { useState } from "react";
 import { SupportForm } from "./SupportForm";
 import type { Action, Npc, TurnInput } from "../../types";
@@ -22,16 +24,18 @@ export function Actions({
   return (
     <div className={s.actions}>
       {options.map((a) => (
-        <button
+        <Button
+          type="button"
+          variant="secondary"
           key={a.action}
-          disabled={busy || !a.enabled}
-          title={a.reason || a.effect}
+          isDisabled={busy || !a.enabled}
+          aria-description={a.reason || a.effect}
           onClick={() => act(a.action, a.target ?? "sun")}
         >
           {a.completed ? "✓ " : ""}
           {a.label}
           {!a.enabled && !a.completed && <small>{a.reason}</small>}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -83,9 +87,15 @@ export function Work({
             ["hr", "人事申请"],
           ] as const
         ).map(([id, label]) => (
-          <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
+          <Button
+            type="button"
+            variant="secondary"
+            key={id}
+            aria-pressed={tab === id}
+            onClick={() => setTab(id)}
+          >
             {label}
-          </button>
+          </Button>
         ))}
       </nav>
       {tab === "purchase" ? (
@@ -105,25 +115,30 @@ export function Work({
             普通采购需报价及用途说明；加急依据仅在申请加急时使用。原始申请与每次处理意见分别保留。
           </p>
           {!state.work?.submissions?.length && (
-            <form
+            <Form
               onSubmit={(e) => {
                 e.preventDefault();
                 act("submit_purchase", "sun", { params: { purpose } });
               }}
             >
-              <label>
+              <label htmlFor="purchase-purpose">
                 实验用途
-                <textarea
+                <TextArea
+                  id="purchase-purpose"
                   value={purpose}
                   maxLength={1000}
                   required
                   onChange={(e) => setPurpose(e.target.value)}
                 />
               </label>
-              <button disabled={!enabled("submit_purchase")}>
+              <Button
+                type="submit"
+                variant="secondary"
+                isDisabled={!enabled("submit_purchase")}
+              >
                 提交第一版申请
-              </button>
-            </form>
+              </Button>
+            </Form>
           )}
           <fieldset>
             <legend>游戏内材料附件</legend>
@@ -164,8 +179,10 @@ export function Work({
               </div>
             ))}
           </fieldset>
-          <button
-            disabled={
+          <Button
+            type="button"
+            variant="secondary"
+            isDisabled={
               !enabled("supplement") ||
               !evidence.includes("quote") ||
               !evidence.includes("purpose")
@@ -173,51 +190,60 @@ export function Work({
             onClick={() => act("supplement", "sun", { params: { evidence } })}
           >
             提交所选材料与说明
-          </button>
-          <h3>处理时间线</h3>
-          {state.work?.submissions?.length ? (
-            <ol>
-              {state.work.submissions.map((row, i) => (
+          </Button>
+          <section className={s.panelSection} aria-label="处理时间线">
+            <h3>处理时间线</h3>
+            <h4>材料提交</h4>
+            {state.work?.submissions?.length ? (
+              <ol>
+                {state.work.submissions.map((row, i) => (
+                  <li key={i}>
+                    材料第 {row.version} 版 ·{" "}
+                    {row.version === 1 ? "昨日提交" : "本次补充"}
+                    <p>{row.purpose}</p>
+                    <p>
+                      附件：
+                      {row.evidence
+                        .map(
+                          (id) =>
+                            ({
+                              quote: "报价单",
+                              purpose: "用途说明",
+                              urgency: "加急依据",
+                            })[id as "quote" | "purpose" | "urgency"] ?? id,
+                        )
+                        .join("、")}
+                    </p>
+                    <details>
+                      <summary>记录标识</summary>
+                      <small>事件 {row.event_id.slice(0, 8)}</small>
+                    </details>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p>尚未提交。聊天不会推进截止时间。</p>
+            )}
+            <h4>审核处理记录</h4>
+            {!state.work?.reviews?.length && <p>尚无审核处理记录。</p>}
+            <ol aria-label="审核处理记录">
+              {state.work?.reviews?.map((row, i) => (
                 <li key={i}>
-                  材料第 {row.version} 版 ·{" "}
-                  {row.version === 1 ? "昨日提交" : "本次补充"}
-                  <p>{row.purpose}</p>
+                  {row.time} ·{" "}
+                  {
+                    { sun: "孙淼", li: "李姐", zhang: "张工", wang: "王会计" }[
+                      row.actor
+                    ]
+                  }{" "}
+                  · {row.decision}
                   <p>
-                    附件：
-                    {row.evidence
-                      .map(
-                        (id) =>
-                          ({
-                            quote: "报价单",
-                            purpose: "用途说明",
-                            urgency: "加急依据",
-                          })[id as "quote" | "purpose" | "urgency"] ?? id,
-                      )
-                      .join("、")}
+                    针对材料第 {row.version} 版：{row.detail}
                   </p>
-                  <small>事件 {row.event_id.slice(0, 8)}</small>
                 </li>
               ))}
             </ol>
-          ) : (
-            <p>尚未提交。聊天不会推进截止时间。</p>
-          )}
-          <ol aria-label="审核处理记录">
-            {state.work?.reviews?.map((row, i) => (
-              <li key={i}>
-                {row.time} ·{" "}
-                {
-                  { sun: "孙淼", li: "李姐", zhang: "张工", wang: "王会计" }[
-                    row.actor
-                  ]
-                }{" "}
-                · {row.decision}
-                <p>
-                  针对材料第 {row.version} 版：{row.detail}
-                </p>
-              </li>
-            ))}
-          </ol>
+          </section>
+          <h3>可执行操作</h3>
           <Actions
             options={options.filter((a) => procurement.has(a.action))}
             act={act}
@@ -228,7 +254,7 @@ export function Work({
         <>
           <SupportForm state={state} options={options} act={act} busy={busy} />
           <h3>退出申请</h3>
-          <form
+          <Form
             onSubmit={(e) => {
               e.preventDefault();
               act("draft_exit", "sun", { params: { kind, reason } });
@@ -247,17 +273,24 @@ export function Work({
                 <option value="withdraw">退出合作</option>
               </select>
             </label>
-            <label>
+            <label htmlFor="exit-reason">
               申请理由
-              <textarea
+              <TextArea
+                id="exit-reason"
                 required
                 maxLength={1000}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
             </label>
-            <button disabled={!enabled("draft_exit")}>保存并预览</button>
-          </form>
+            <Button
+              type="submit"
+              variant="secondary"
+              isDisabled={!enabled("draft_exit")}
+            >
+              保存并预览
+            </Button>
+          </Form>
           {state.exit_draft && (
             <section className={s.notice}>
               <h4>
