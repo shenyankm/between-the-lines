@@ -35,7 +35,8 @@ class World:
         self.state = initial_v3()
         path = ["begin"]
         if sample["act"] >= 2:
-            path += ["next", "submit_purchase"]
+            # Chapter entry already records the original returned application.
+            path += ["next"]
         if "materials" in sample["flags"]:
             path += ["supplement"]
         if "reported" in sample["flags"]:
@@ -44,7 +45,11 @@ class World:
             path += ["next"]
         for action in path:
             self.state, _ = transition(
-                self.state, action, V3_CATALOG[action][2] or "sun", event_id=str(uuid4())
+                self.state,
+                action,
+                V3_CATALOG[action][2] or "sun",
+                params={"evidence": ["quote", "purpose"]} if action == "supplement" else None,
+                event_id=str(uuid4()),
             )
         # Seed private and other-role history, then apply the same audience boundary
         # used by the DB adapter. The sentinel must never enter a workplace prompt.

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { dialogue, start, state, exitStory, commitClick } from "./v3-helpers";
+import type { Turn, TurnInput } from "../src/types";
 
 test("GPT6 replies and generates a grounded ending through the real app", async ({
   page,
@@ -15,16 +16,35 @@ test("GPT6 replies and generates a grounded ending through the real app", async 
     model_ready: true,
   });
   await start(page);
+  const before = await state(page);
+  const priorEvents = new Set(before.events.map((event) => event.id));
   await dialogue(page).fill("我想先听清楚，你刚刚那句话具体是什么意思？");
+  const submitted = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" && request.url().endsWith("/turns"),
+  );
   await page.getByRole("button", { name: "发送", exact: true }).last().click();
+  const requestId = ((await submitted).postDataJSON() as TurnInput).request_id;
   await expect(dialogue(page)).toHaveValue("", { timeout: 90_000 });
   await expect
     .poll(async () => (await state(page)).active_turn, { timeout: 90_000 })
     .toBeNull();
   const after = await state(page);
+  const response = await page.request.get(
+    `/api/saves/${after.save.id}/turns/${requestId}`,
+  );
+  expect(response.ok()).toBe(true);
+  const turn = (await response.json()) as Turn;
+  expect(turn.status).toBe("completed");
+  expect(turn.usage).toMatchObject({ mode: "openai", model: "gpt-6-astra" });
+  expect(turn.usage.model_calls).toBeGreaterThan(0);
+  expect(turn.usage.total_tokens).toBeGreaterThan(0);
   expect(
     after.events.some(
-      (event) => event.kind === "npc" && event.text.trim().length > 0,
+      (event) =>
+        !priorEvents.has(event.id) &&
+        event.kind === "npc" &&
+        event.text.trim().length > 0,
     ),
   ).toBe(true);
   await exitStory(page);

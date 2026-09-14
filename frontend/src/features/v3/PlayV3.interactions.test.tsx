@@ -278,6 +278,45 @@ it("persists a reading position and retries a failed save without submitting a t
   fireEvent.click(screen.getByLabelText("减少动态"));
   expect(localStorage.getItem("reduced-motion:test-user")).toBe("false");
 });
+it("does not rewind reading when an earlier duplicate request finishes late", async () => {
+  localStorage.setItem("reduced-motion:test-user", "true");
+  const replies: (() => void)[] = [];
+  server.use(
+    http.post("/api/saves/save-1/reading", async () => {
+      await new Promise<void>((resolve) => replies.push(resolve));
+      return HttpResponse.json({ act_1: 2 });
+    }),
+  );
+  const s = story();
+  s.scenes = {
+    act_1: ["第一句", "第二句", "第三句"].map((text, i) => ({
+      id: String(i),
+      speaker: "li",
+      text,
+    })),
+  };
+  mount(play(), s);
+  fireEvent.click(screen.getByText("第一句"));
+  fireEvent.click(screen.getByText("第一句"));
+  await waitFor(() => expect(replies).toHaveLength(2));
+  await act(async () => {
+    replies[0]!();
+    await Promise.resolve();
+  });
+  fireEvent.click(await screen.findByText("第二句"));
+  await waitFor(() => expect(replies).toHaveLength(3));
+  await act(async () => {
+    replies[2]!();
+    await Promise.resolve();
+  });
+  await screen.findByText("第三句");
+  await act(async () => {
+    replies[1]!();
+    await Promise.resolve();
+  });
+  await waitFor(() => expect(screen.queryByText("第二句")).toBeNull());
+  expect(screen.getByText("第三句")).toBeTruthy();
+});
 it("waits for the matching scene version and honors storage restrictions", () => {
   vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
     throw new Error("denied");

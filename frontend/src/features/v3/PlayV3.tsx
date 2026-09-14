@@ -173,7 +173,9 @@ export function PlayV3({
   async function mark(key: string, position: number) {
     try {
       await api(`/saves/${save.id}/reading`, { key, position });
-      setPositions((p) => ({ ...p, [key]: position }));
+      // Requests can finish out of order after rapid clicks. Match the API's
+      // monotonic position so a late response cannot replay an earlier line.
+      setPositions((p) => ({ ...p, [key]: Math.max(p[key] ?? 0, position) }));
       client.setQueryData<PlayState>(playKey(userId, save.id), (cached) =>
         cached
           ? {
