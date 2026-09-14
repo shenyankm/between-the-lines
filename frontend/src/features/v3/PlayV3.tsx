@@ -6,7 +6,7 @@ import type { GameEvent } from "../../types";
 import { Link, useNavigate } from "react-router";
 import { api, gameApi } from "../../api";
 import type { Action, Npc, PlayState, Story, TurnInput } from "../../types";
-import { useTurnController } from "../game/useTurnController";
+import { playKey, useTurnController } from "../game/useTurnController";
 import { clearIdentityDrafts, readDraft, writeDraft } from "../game/drafts";
 import { ProductPanel } from "../game/ProductPanel";
 import { EventHistory } from "../game/EventHistory";
@@ -78,6 +78,7 @@ export function PlayV3({
   );
   const [interlude, setInterlude] = useState(false);
   const [readError, setReadError] = useState("");
+  const [savingReading, setSavingReading] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const confirmation = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -174,12 +175,20 @@ export function PlayV3({
     else dialog.current?.close();
   }, [panel]);
   async function mark(key: string, position: number) {
+    setSavingReading(true);
     try {
       await api(`/saves/${save.id}/reading`, { key, position });
       setPositions((p) => ({ ...p, [key]: position }));
+      client.setQueryData<PlayState>(playKey(userId, save.id), (cached) =>
+        cached
+          ? { ...cached, reading: { ...cached.reading, [key]: position } }
+          : cached,
+      );
       setReadError("");
     } catch {
       setReadError("阅读位置尚未保存，请重试。");
+    } finally {
+      setSavingReading(false);
     }
   }
   const performanceReady =
@@ -403,6 +412,22 @@ export function PlayV3({
           </button>
         ))}
         <button onClick={() => setPanel("history")}>完整记录</button>
+        <button
+          disabled={
+            controller.busy ||
+            !!controller.pending ||
+            savingReading ||
+            loggingOut
+          }
+          onClick={() => void navigate("/saves")}
+          title={
+            controller.busy || controller.pending
+              ? "当前回合处理完成后可返回存档"
+              : undefined
+          }
+        >
+          返回存档
+        </button>
         <button disabled={loggingOut} onClick={() => void logout()}>
           退出登录
         </button>

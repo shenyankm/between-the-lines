@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Routes, Route } from "react-router";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../../testing/server";
@@ -28,7 +28,8 @@ const ctrl = vi.hoisted(() => ({
   error: "",
   completed: undefined as ((input: Partial<TurnInput>) => void) | undefined,
 }));
-vi.mock("../game/useTurnController", () => ({
+vi.mock("../game/useTurnController", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../game/useTurnController")>()),
   useTurnController: (
     _u: unknown,
     _s: unknown,
@@ -653,4 +654,54 @@ it("uses the persisted ending instead of an active scene", async () => {
   mount(p);
   await screen.findByText("已保存的结局正文");
   expect(screen.queryByLabelText("自由表达")).toBeNull();
+});
+
+it.each(["busy", "pending"] as const)(
+  "prevents leaving during %s without discarding the draft",
+  (phase) => {
+    if (phase === "busy") ctrl.busy = true;
+    else ctrl.pending = "unfinished-request";
+    mount();
+    fireEvent.change(screen.getByLabelText("自由表达"), {
+      target: { value: "保留我的草稿" },
+    });
+    const leave = screen.getByRole<HTMLButtonElement>("button", {
+      name: "返回存档",
+    });
+    expect(leave.disabled).toBe(true);
+    fireEvent.click(leave);
+    expect(readDraft("test-user", "save-1", "sun", "scene:sun").text).toBe(
+      "保留我的草稿",
+    );
+    expect(ctrl.submit).not.toHaveBeenCalled();
+  },
+);
+it("returns without logging out or clearing identity cache and drafts", () => {
+  const client = new QueryClient();
+  client.setQueryData(["user"], { id: "test-user" });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={["/play/save-1"]}>
+        <Routes>
+          <Route
+            path="/play/:id"
+            element={
+              <PlayV3 userId="test-user" play={play()} story={story()} />
+            }
+          />
+          <Route path="/saves" element={<h1>存档列表</h1>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  fireEvent.change(screen.getByLabelText("自由表达"), {
+    target: { value: "下次继续" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "返回存档" }));
+  expect(screen.getByRole("heading", { name: "存档列表" })).toBeTruthy();
+  expect(client.getQueryData(["user"])).toEqual({ id: "test-user" });
+  expect(readDraft("test-user", "save-1", "sun", "scene:sun").text).toBe(
+    "下次继续",
+  );
+  expect(ctrl.submit).not.toHaveBeenCalled();
 });
