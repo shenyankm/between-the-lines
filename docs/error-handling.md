@@ -80,3 +80,13 @@ Error messages include local recovery actions and expandable, copyable error cod
 Frontend/backend fault injection, runtime response validation, and recovery tests cover persistence failures against a real database. Browser global setup first reads `/api/config` and permits writes only after confirming `agent_mode=mock`, avoiding accidental use of a real service on the default port.
 
 No schema migration is required. Deploy backend, frontend, and generated contracts together. Run `make contract-generate` to update artifacts, then `make contract` to check drift. See [verification records](verification.md) for results and limitations.
+
+## Saved-state explanations
+
+Turn feedback separates transport uncertainty from server evidence. A lost submission response says acceptance is unconfirmed and queries the original request. A `running` lookup establishes acceptance, not any particular action or reward. A failed terminal result with persisted effects says the action is saved and the reply is incomplete, and displays those effects' recorded text. Without effects it does not claim an action occurred. A completed result remains completed even when subsequent page refresh fails.
+
+The original request identity, one replay only after explicit `turn_not_found`, login pause, and matching-draft clearing rules remain unchanged. This change does not infer failure from a proxy status or automatically repeat a completed turn. Diagnostic details retain the existing expandable error presentation.
+
+Validation distinguishes a real Mock turn with a dropped browser response from UI response substitution. Backend failure integration checks establish that committed effect evidence survives a provider failure and a repeated request; browser recovery checks establish visible wording and no duplicate POST. Physical networking and real-model readiness are separate acceptance scopes.
+
+For the recovery-status change, the current isolated Mock drills were rerun: `scripts/test-restart.py` confirmed the committed tool survived process kill/restart without an incomplete reply, and `scripts/test-disconnect.py` confirmed TCP disconnection did not duplicate tools or replies. These checks use the disposable test database, not production or private saves.
