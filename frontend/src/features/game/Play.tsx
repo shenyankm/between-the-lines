@@ -19,23 +19,11 @@ import { Conversation } from "./Conversation";
 import { GameDrawer } from "./GameDrawer";
 import { GameStage } from "./GameStage";
 import { playKey, useTurnController } from "./useTurnController";
-function LegacyPlaySession({
-  userId,
-  guest = false,
-}: {
-  userId: string;
-  guest?: boolean;
-}) {
+function LegacyPlaySession({ userId }: { userId: string; guest?: boolean }) {
   const { id = "" } = useParams(),
     navigate = useNavigate(),
     client = useQueryClient();
   const { npc, panel, selectNpc, setPanel } = useUI();
-  const [guestGate, setGuestGate] = useState(false);
-  const config = useQuery({
-    queryKey: ["config"],
-    queryFn: ({ signal }) => gameApi.config(signal),
-    enabled: guest,
-  });
   const playQuery = useQuery({
     queryKey: playKey(userId, id),
     queryFn: ({ signal }) => gameApi.playState(id, signal),
@@ -265,31 +253,9 @@ function LegacyPlaySession({
         pending={pending}
         recover={recover}
         onNext={() =>
-          guest && state.act === 1
-            ? setGuestGate(true)
-            : scene.interlude
-              ? setInterludeAct(state.act)
-              : void act("next")
+          scene.interlude ? setInterludeAct(state.act) : void act("next")
         }
       />
-      {guestGate && (
-        <section className={s.confirmation} aria-label="试玩完成">
-          <h2>第一幕已完成</h2>
-          <p>试玩进度已保存。绑定知乎后，可继承进度进入第二幕。</p>
-          {config.data?.zhihu_login ? (
-            <a href="/api/auth/zhihu">绑定知乎并继续</a>
-          ) : (
-            <p>知乎登录尚未配置，当前进度会保留。</p>
-          )}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setGuestGate(false)}
-          >
-            稍后再说
-          </Button>
-        </section>
-      )}
       {playQuery.data?.proposal && (
         <section className={s.confirmation} aria-label="重要选择确认">
           <h2>{playQuery.data.proposal.label}</h2>

@@ -372,6 +372,13 @@ class AgentGateway:
         ]
         reply = ""
         streamed = ""
+        # V3 has no model tools: DeepSeek non-thinking Chat Completions carries
+        # public text in content and reasoning separately in reasoning_content.
+        stream_plain_dialogue = (
+            context.story_version == 3
+            and self.settings.agent_mode == "openai"
+            and self.settings.openai_model.startswith("deepseek-")
+        )
         phases: dict[tuple[str, int], str] = {}
         call_scope = _physical_calls.set({"count": 0})
         timing_scope = current_timing.set(timing)
@@ -392,8 +399,20 @@ class AgentGateway:
                 if mode == "messages":
                     timing.mark("model_first_event_ms")
                     chunk, _metadata = cast(tuple[Any, Any], update)
-                    # Never preview reasoning, commentary or tool-call arguments.
-                    # Providers without an explicit final phase remain buffered.
+                    if (
+                        stream_plain_dialogue
+                        and getattr(chunk, "type", "") == "AIMessageChunk"
+                        and isinstance(chunk.content, str)
+                        and chunk.content
+                        and not chunk.tool_calls
+                        and not chunk.tool_call_chunks
+                    ):
+                        # Do not inspect additional_kwargs: it may contain reasoning.
+                        streamed += chunk.content
+                        timing.mark("model_first_text_ms")
+                        yield chunk.content
+                    # Responses still requires an explicit public final phase.
+                    # Legacy tool-enabled graphs keep plain text buffered.
                     if getattr(chunk, "type", "") == "AIMessageChunk" and isinstance(
                         chunk.content, list
                     ):

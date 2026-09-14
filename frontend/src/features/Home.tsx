@@ -166,18 +166,18 @@ export function Home() {
                 isDisabled={busy}
                 onClick={() => void trial()}
               >
-                {config.data?.guest_full_story
-                  ? "立即试玩 · 完整故事"
-                  : "立即试玩 · 第一幕"}
+                立即试玩 · 完整故事
               </Button>
             )}
-            <a
-              className={`${s.primary} ${!config.data?.zhihu_login ? s.disabled : ""}`}
-              href={config.data?.zhihu_login ? "/api/auth/zhihu" : undefined}
-              aria-disabled={!config.data?.zhihu_login}
-            >
-              知乎账号登录 <ArrowRight size={18} />
-            </a>
+            {config.data?.zhihu_login && (
+              <a
+                className={s.primary}
+                href={config.data?.zhihu_login ? "/api/auth/zhihu" : undefined}
+                aria-disabled={!config.data?.zhihu_login}
+              >
+                知乎账号登录（可选） <ArrowRight size={18} />
+              </a>
+            )}
             {config.data?.dev_login && (
               <Button
                 type="button"
@@ -191,18 +191,6 @@ export function Home() {
             )}
           </div>
         )}
-        {user.data?.identity_type === "guest" && (
-          <p className={s.notice}>
-            访客进度保留七天。
-            {config.data?.guest_full_story ? (
-              <span>当前可继续完整故事，无需绑定账号。</span>
-            ) : config.data?.zhihu_login ? (
-              <a href="/api/auth/zhihu">绑定知乎，继承进度继续第二幕</a>
-            ) : (
-              <span>当前仅开放第一幕；知乎登录开放后可绑定并继续。</span>
-            )}
-          </p>
-        )}
         {user.data?.binding_pending && (
           <p role="status">
             登录成功，当前回合结束后将继承试玩存档。请稍后刷新存档列表。
@@ -215,9 +203,6 @@ export function Home() {
           <p className={s.notice}>
             AI 对话尚未配置。可查看故事，角色对话暂不可用。
           </p>
-        )}
-        {config.data && !config.data.zhihu_login && (
-          <p className={s.muted}>知乎登录待接入</p>
         )}
         <ErrorNotice error={error} />
         <ErrorNotice

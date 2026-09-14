@@ -259,9 +259,9 @@ async def test_guest_quota_and_deferred_merge(v2):
     assert guest["identity_type"] == "guest"
     cookie = client.cookies.get("btl_session")
     save = await create(client)
-    assert (await client.post("/api/saves", json={})).status_code == 422
+    assert (await client.post("/api/saves", json={})).status_code == 200
     await act(client, save, "begin")
-    runtime.settings.guest_ai_limit = 1
+    runtime.settings.daily_turn_limit = 1
     await act(client, save, "speak", text="你好")
     blocked = await client.post(
         f"/api/saves/{save['id']}/turns",
@@ -278,7 +278,8 @@ async def test_guest_quota_and_deferred_merge(v2):
         f"/api/saves/{save['id']}/turns",
         json={"request_id": str(uuid4()), "version": save["version"], "action": "next"},
     )
-    assert blocked.status_code == 422
+    assert blocked.status_code == 200
+    save = (await client.get(f"/api/saves/{save['id']}")).json()
     await client.post("/api/auth/logout", json={})
     member = (await client.post("/api/auth/dev", json={})).json()
     async with runtime.sessions.begin() as db:

@@ -26,7 +26,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). Select “立即试玩 · 第一幕” (Try Act 1 now), or “开发环境试玩” (Development preview) to test all three acts. Each development login creates a separate identity. Refreshing preserves the session; logging out and back in does not recover the previous development identity. Member accounts use a stable Zhihu identity mapping.
+Open [http://localhost:5173](http://localhost:5173). Select “立即试玩 · 完整故事” to play every act without a Zhihu account. Guests use the same active-save and daily AI limits as other players; there is no seven-day identity expiry. Returning to the homepage renews the guest browser session for a year. Clearing browser cookies or logging out still loses access to an unbound identity. Each development login creates a separate identity. Refreshing preserves the session; logging out and back in does not recover the previous development identity. Member accounts use a stable Zhihu identity mapping.
 
 Mock mode still runs the Agent: `ChatDeepSeek → HTTPX mock DeepSeek SSE → Deep Agents tool loop → domain services → PostgreSQL`, including streamed tool-argument assembly, tool execution, and checkpoints. Mock token counts are test estimates, with zero cost; they do not represent real-model latency, semantic quality, or billing.
 

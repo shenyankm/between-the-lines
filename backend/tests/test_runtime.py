@@ -206,7 +206,7 @@ async def test_persistence_failure_is_subscription_error_until_recovery(app, mon
 
 
 async def test_reply_records_the_current_scene_and_full_trial_preserves_guest_identity(app):
-    app.state.settings.guest_full_story_enabled = True
+    app.state.settings.guest_full_story_enabled = False  # Obsolete flag cannot lock existing saves.
     async with (
         app.router.lifespan_context(app),
         httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c,

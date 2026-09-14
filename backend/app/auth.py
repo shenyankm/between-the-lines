@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from . import zhihu_oauth
@@ -41,14 +41,7 @@ async def current_user(request: Request) -> User:
             .join(LoginSession)
             .where(LoginSession.token_hash == digest(token), LoginSession.expires_at > utcnow())
         )
-    if (
-        not user
-        or user.merged_into
-        or (
-            user.identity_type == "guest"
-            and (not user.guest_expires_at or user.guest_expires_at <= utcnow())
-        )
-    ):
+    if not user or user.merged_into:
         raise ApiError(401, "not_authenticated")
     return user
 
@@ -66,9 +59,12 @@ async def issue_session(
         user = await db.scalar(select(User).where(User.subject == subject))
         if user is None:
             raise ApiError(401, "not_authenticated")
+        days = 365 if user.identity_type == "guest" else 7
         db.add(
             LoginSession(
-                token_hash=digest(token), user_id=user.id, expires_at=utcnow() + timedelta(days=7)
+                token_hash=digest(token),
+                user_id=user.id,
+                expires_at=utcnow() + timedelta(days=days),
             )
         )
     response.set_cookie(
@@ -77,7 +73,7 @@ async def issue_session(
         httponly=True,
         samesite="lax",
         secure=runtime.settings.environment == "production",
-        max_age=604800,
+        max_age=days * 86400,
         path="/",
     )
     return {"id": user.id, "name": user.name}
@@ -106,9 +102,32 @@ async def dev_login(body: DevLogin, request: Request, response: Response) -> dic
 
 
 @router.get("/me", response_model=UserOut, responses=AUTH_RESPONSES)
-async def me(request: Request, user: User = Depends(current_user)) -> dict[str, Any]:
+async def me(
+    request: Request, response: Response, user: User = Depends(current_user)
+) -> dict[str, Any]:
     runtime = runtime_for(request)
     await process_bindings(runtime.sessions)
+    # Browser guests keep their identity while returning regularly; old seven-day
+    # trial metadata no longer invalidates an otherwise valid session.
+    if user.identity_type == "guest":
+        token = request.cookies.get("btl_session", "")
+        async with runtime.sessions.begin() as db:
+            await db.execute(
+                update(LoginSession)
+                .where(LoginSession.token_hash == digest(token))
+                .values(expires_at=utcnow() + timedelta(days=365))
+            )
+            await db.execute(update(User).where(User.id == user.id).values(guest_expires_at=None))
+        user.guest_expires_at = None
+        response.set_cookie(
+            "btl_session",
+            token,
+            httponly=True,
+            samesite="lax",
+            secure=runtime.settings.environment == "production",
+            max_age=365 * 86400,
+            path="/",
+        )
     async with runtime.sessions() as db:
         ai = await runtime.service.ai_status(db, user.id)
         pending = await db.scalar(
@@ -250,7 +269,7 @@ async def guest_login(request: Request, response: Response) -> dict[str, Any]:
             subject=subject,
             name="试玩者",
             identity_type="guest",
-            guest_expires_at=utcnow() + timedelta(days=runtime.settings.guest_days),
+            guest_expires_at=None,
         )
         db.add(user)
         await db.flush()
@@ -260,5 +279,5 @@ async def guest_login(request: Request, response: Response) -> dict[str, Any]:
         **result,
         "identity_type": "guest",
         "guest_expires_at": user.guest_expires_at,
-        "ai_remaining": runtime.settings.guest_ai_limit,
+        "ai_remaining": runtime.settings.daily_turn_limit,
     }

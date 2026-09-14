@@ -58,9 +58,8 @@ async def manage(
         )
         if active or job:
             raise ApiError(409, "save_busy")
-        if user.identity_type != "guest" and (
-            (body.operation == "restore" and save.deleted_at and not save.archived_at)
-            or (body.operation == "unarchive" and save.archived_at and not save.deleted_at)
+        if (body.operation == "restore" and save.deleted_at and not save.archived_at) or (
+            body.operation == "unarchive" and save.archived_at and not save.deleted_at
         ):
             await check_save_capacity(db, user, runtime.settings.active_save_limit)
         if body.operation == "archive":

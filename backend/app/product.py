@@ -56,22 +56,17 @@ async def check_save_capacity(db: AsyncSession, user: User, limit: int) -> None:
                 Save.user_id == user.id,
                 Save.story_version == 3,
                 Save.state["content_revision"].as_integer() == 2,
-                *(
-                    []
-                    if user.identity_type == "guest"
-                    else [Save.archived_at.is_(None), Save.deleted_at.is_(None)]
-                ),
+                Save.archived_at.is_(None),
+                Save.deleted_at.is_(None),
             )
         )
         or 0
     )
-    if count >= (1 if user.identity_type == "guest" else limit):
+    if count >= limit:
         raise ApiError(
             422,
             "rule_violation",
-            "访客只能保留一个试玩存档。"
-            if user.identity_type == "guest"
-            else "已有二十个未归档存档，请先归档。",
+            f"已有 {limit} 个未归档存档，请先归档。",
         )
 
 

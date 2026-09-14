@@ -82,12 +82,12 @@ async def reserve_job(
             .select_from(AISpend)
             .where(
                 AISpend.user_id == user.id,
-                *([] if user.identity_type == "guest" else [AISpend.created_at >= since]),
+                AISpend.created_at >= since,
             )
         )
         or 0
     )
-    limit = settings.guest_ai_limit if user.identity_type == "guest" else settings.daily_turn_limit
+    limit = settings.daily_turn_limit
     if count >= limit:
         raise ApiError(
             429,
@@ -96,16 +96,7 @@ async def reserve_job(
                 "Retry-After": str(
                     max(
                         1,
-                        int(
-                            (
-                                (
-                                    user.guest_expires_at or since + timedelta(days=1)
-                                    if user.identity_type == "guest"
-                                    else since + timedelta(days=1)
-                                )
-                                - now
-                            ).total_seconds()
-                        ),
+                        int(((since + timedelta(days=1)) - now).total_seconds()),
                     )
                 )
             },

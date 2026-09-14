@@ -335,7 +335,7 @@ async def test_binding_waits_for_inflight_turn_and_expired_guest_is_rejected(v2)
     async with runtime.sessions.begin() as db:
         row = await db.get(User, expired["id"])
         row.guest_expires_at = utcnow() - timedelta(seconds=1)
-    assert (await client.get("/api/auth/me")).status_code == 401
+    assert (await client.get("/api/auth/me")).status_code == 200
 
 
 async def test_public_diagnostic_contains_only_static_stack_frames(v2):
@@ -446,17 +446,31 @@ async def test_oauth_binding_uses_recorded_state_not_callback_identity(
         assert len(fees) == 1 and fees[0].user_id == member["id"]
 
 
-async def test_guest_archive_trash_cannot_multiply_trial_saves(v2):
-    client, _runtime = v2
+async def test_guest_saves_use_shared_capacity_and_restore_checks(v2):
+    client, runtime = v2
+    runtime.settings.active_save_limit = 2
     await client.post("/api/auth/logout", json={})
     await client.post("/api/auth/guest", json={})
-    save = await create(client)
-    for operation in ("archive", "unarchive", "delete", "restore"):
+    first = await create(client)
+    await create(client)
+    assert (await client.post("/api/saves", json={})).status_code == 422
+
+    async def manage(save, operation, status=200):
         response = await client.post(
             f"/api/saves/{save['id']}/manage", json={"operation": operation}
         )
-        assert response.status_code == 200, response.text
-        assert (await client.post("/api/saves", json={})).status_code == 422
+        assert response.status_code == status, response.text
+
+    await manage(first, "archive")
+    third = await create(client)
+    await manage(first, "unarchive", 422)
+    await manage(third, "delete")
+    await manage(first, "unarchive")
+    await manage(first, "delete")
+    fourth = await create(client)
+    await manage(first, "restore", 422)
+    await manage(fourth, "archive")
+    await manage(first, "restore")
 
 
 async def test_ai_view_reflects_reserved_monthly_budget(v2):

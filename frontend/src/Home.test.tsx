@@ -157,7 +157,7 @@ it.each([true, false])(
       }),
     );
     mount();
-    fireEvent.click(await screen.findByText("立即试玩 · 第一幕"));
+    fireEvent.click(await screen.findByText("立即试玩 · 完整故事"));
     await waitFor(() =>
       expect(sessionStorage.getItem("trial_identity")).toBe("guest"),
     );

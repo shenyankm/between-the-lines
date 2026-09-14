@@ -45,7 +45,8 @@ class Settings(BaseSettings):
     deepseek_max_retries: int = 2
     story_v2_enabled: bool = True
     guest_enabled: bool = True
-    guest_full_story_enabled: bool = False
+    # Accepted for older environments; guest access no longer depends on these flags.
+    guest_full_story_enabled: bool = True
     automatic_intents_enabled: bool = True
     discussions_enabled: bool = True
     guest_ai_limit: int = 8
@@ -87,8 +88,6 @@ class Settings(BaseSettings):
             if self.monthly_cost_cap_usd > 0 and not self.pricing_known:
                 raise ValueError("OpenAI cost cap requires configured gateway token prices")
         if self.environment == "production":
-            if self.guest_full_story_enabled:
-                raise ValueError("Full guest story is only available in development")
             if self.dev_login_enabled or self.agent_mode == "mock":
                 raise ValueError("Production forbids development login and mock agents")
             if len(self.session_secret) < 32 or self.session_secret.startswith("development"):
@@ -104,8 +103,8 @@ class Settings(BaseSettings):
             # and unacceptable where they are billed. Refuse to boot without one.
             if self.monthly_cost_cap_usd <= 0:
                 raise ValueError("Production requires a positive MONTHLY_COST_CAP_USD")
-            if not self.oauth_ready:
-                raise ValueError("Production requires complete Zhihu OAuth configuration")
+            if self.zhihu_client_id and not self.oauth_ready:
+                raise ValueError("Incomplete Zhihu OAuth configuration")
         return self
 
     @property

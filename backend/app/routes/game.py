@@ -48,7 +48,7 @@ router = APIRouter()
 async def config(request: Request) -> dict[str, Any]:
     return {
         "guest_login": runtime_for(request).settings.guest_enabled,
-        "guest_full_story": runtime_for(request).settings.guest_full_story_enabled,
+        "guest_full_story": True,
         "story_version": 3,
         "dev_login": runtime_for(request).settings.dev_login_enabled
         and runtime_for(request).settings.environment != "production",

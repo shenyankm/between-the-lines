@@ -107,6 +107,7 @@
   z-index: 2;
 }
 .current {
+  text-align: left;
   font-family: "PingFang SC", "Microsoft YaHei", SimHei, sans-serif;
   font-size: 21px;
   line-height: 1.8;
@@ -115,13 +116,21 @@
 }
 .script {
   width: 100%;
+  height: auto;
   text-align: left;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  justify-items: stretch;
+  align-items: start;
+  white-space: normal;
   gap: 16px;
   background: transparent;
   border: 0;
 }
 .script span {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   font-family: "PingFang SC", "Microsoft YaHei", SimHei, sans-serif;
   font-size: 23px;
   line-height: 1.85;

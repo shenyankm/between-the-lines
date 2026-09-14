@@ -113,6 +113,95 @@ async def test_preview_is_ephemeral_and_failure_does_not_save_partial_prose(fail
         assert saved[1] == "未完成的开头，完整结尾。"
 
 
+@pytest.mark.parametrize("version", [1, 3])
+async def test_deepseek_public_content_streams_before_completion_only_in_tool_free_v3(version):
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    class Graph:
+        async def astream(self, *args, **kwargs):
+            yield (
+                "messages",
+                (AIMessageChunk(content="", additional_kwargs={"reasoning_content": "SECRET"}), {}),
+            )
+            yield "messages", (AIMessageChunk(content="我们"), {})
+            entered.set()
+            await release.wait()
+            yield (
+                "messages",
+                (
+                    AIMessageChunk(
+                        content="TOOL PLAN",
+                        tool_call_chunks=[
+                            {"name": "unexpected", "args": "{}", "id": "t", "index": 0}
+                        ],
+                    ),
+                    {},
+                ),
+            )
+            yield "messages", (AIMessageChunk(content="核对记录。"), {})
+            yield (
+                "updates",
+                {
+                    "model": {
+                        "messages": [
+                            AIMessage(
+                                content="我们核对记录。",
+                                usage_metadata={
+                                    "input_tokens": 3,
+                                    "output_tokens": 2,
+                                    "total_tokens": 5,
+                                },
+                            )
+                        ]
+                    }
+                },
+            )
+
+    service = SimpleNamespace(
+        context_for=AsyncMock(
+            return_value=AgentContext(
+                story_version=version,
+                facts={"act": 1, "flags": [], "procurement": "pending"},
+                history=[],
+            )
+        )
+    )
+    model = SimpleNamespace(
+        root_async_client=SimpleNamespace(close=AsyncMock()),
+        root_client=SimpleNamespace(close=Mock()),
+    )
+    gateway = AgentGateway(
+        Settings(
+            _env_file=None,
+            agent_mode="openai",
+            openai_model="deepseek-v4-flash",
+            openai_reasoning_effort="none",
+        ),
+        service,
+        load_story(),
+        lambda: model,
+    )
+    gateway.build_agent = lambda *a, **k: Graph()
+    parts = []
+    usage = {}
+
+    async def consume():
+        async for text in gateway.run_agent(turn(), InMemorySaver(), usage):
+            parts.append(text)
+
+    task = asyncio.create_task(consume())
+    try:
+        await asyncio.wait_for(entered.wait(), 2)
+        assert parts == (["我们"] if version == 3 else [])
+        assert not task.done()
+    finally:
+        release.set()
+        await task
+    assert parts == (["我们", "核对记录。"] if version == 3 else ["我们核对记录。"])
+    assert usage["model_calls"] == 1
+    assert usage["total_tokens"] == 5
+
+
 @pytest.mark.parametrize(
     "text",
     [

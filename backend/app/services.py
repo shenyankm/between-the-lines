@@ -148,15 +148,6 @@ class GameService:
                 raise ApiError(409, "version_conflict")
             if save.archived_at:
                 raise ApiError(422, "rule_violation", "请先恢复归档。")
-            if (
-                user.identity_type == "guest"
-                and body.action == "next"
-                and save.state["act"] == 1
-                and not self.settings.guest_full_story_enabled
-            ):
-                raise ApiError(
-                    422, "rule_violation", "第一幕已完成，绑定知乎后继续；试玩进度会保留。"
-                )
             from .product import rate_limit
 
             await rate_limit(db, "turn:" + user_id, self.settings.mutation_limit_per_minute, 60)
@@ -628,7 +619,6 @@ class GameService:
         }
 
     async def ai_status(self, db: AsyncSession, user_id: str) -> dict[str, Any]:
-        user = cast(User, await db.get(User, user_id))
         since = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         count = (
             await db.scalar(
@@ -636,19 +626,14 @@ class GameService:
                 .select_from(AISpend)
                 .where(
                     AISpend.user_id == user_id,
-                    *([] if user.identity_type == "guest" else [AISpend.created_at >= since]),
+                    AISpend.created_at >= since,
                 )
             )
             or 0
         )
         remaining = max(
             0,
-            (
-                self.settings.guest_ai_limit
-                if user.identity_type == "guest"
-                else self.settings.daily_turn_limit
-            )
-            - count,
+            self.settings.daily_turn_limit - count,
         )
         ready = self.settings.model_ready
         if ready and self.settings.agent_mode != "mock" and self.settings.monthly_cost_cap_usd > 0:
