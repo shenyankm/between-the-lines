@@ -50,7 +50,7 @@ Create this dedicated verification database first. pytest and disconnection/rest
 
 1. Back up the database, checkpoint schema, and application configuration; verify restoration into an independent database.
 2. For schema 0009, stop the old application before migrating and release the backend and frontend together. Retain one instance and one API worker. Never run incompatible old writers simultaneously. Back up before migration: deleted accounting data cannot be recovered by downgrade. Downgrade recreates empty accounting structures; production rollback requires the pre-migration backup and matching application build.
-3. Initially deploy with `STORY_V2_ENABLED=false`, `GUEST_ENABLED=false`, `AUTOMATIC_INTENTS_ENABLED=false`, and `DISCUSSIONS_ENABLED=false`. Check v1 continuation and legacy-request recovery.
+3. Historical v2 rollout used feature flags. Current releases create only v3 stories and keep older saves read-only; the retired story-version flag has been removed. Check legacy history and original-request recovery.
 4. Release the new frontend, then enable v2 creation, automatic intents, and reviewed perspectives individually. Enable guests only after real OAuth integration.
 5. `ENVIRONMENT=production` requires full OAuth configuration, production origin, and session secret, alongside existing safety checks. Set `DEV_LOGIN_ENABLED=false`.
 6. Configure `TRUSTED_PROXY_NETWORKS` for the Nginx private network, such as an explicit JSON list of Docker CIDRs. Do not expose the API publicly. Nginx rewrites X-Real-IP; the application trusts only direct proxies in configured networks. An empty list safely uses direct IPs but makes all proxied guests share a quota.

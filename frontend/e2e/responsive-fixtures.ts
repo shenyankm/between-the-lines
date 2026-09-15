@@ -24,7 +24,6 @@ function save({ id = "responsive-save" } = {}): Save {
   };
 }
 import authored from "../src/testing/story-v3.json" with { type: "json" };
-import legacy from "../src/testing/story.json" with { type: "json" };
 
 /** All API traffic stays inside the browser, including visit/jobs/turn writes. */
 export async function responsiveFixture(page: Page) {
@@ -192,10 +191,9 @@ export async function responsiveFixture(page: Page) {
         .waitFor();
     },
     legacy() {
-      view.story = legacy as Story;
       view.play.save = {
         ...save({ id: "responsive-save" }),
-        relationships: sample.relationships,
+        read_only: true,
       };
       view.play.performance = undefined;
       view.play.available_actions = undefined;

@@ -33,29 +33,3 @@ export function endingVisual(state: StateV3) {
   const id = state.outcome?.id;
   return id && id in endingVisuals ? endingVisuals[id] : null;
 }
-
-export function expressionStyle(state: StateV3) {
-  const evidence = Object.keys(state.relationship?.facts ?? {}).some((key) =>
-    ["boundary", "sun_cut", "friendship", "sun_observe"].includes(key),
-  );
-  return state.relationship?.intention === "professional"
-    ? "清晰守界"
-    : state.relationship?.intention === "friendship"
-      ? "审慎修复"
-      : evidence
-        ? "主动表达"
-        : "保留空间";
-}
-
-export function shareLines(state: StateV3, facts: string[]) {
-  return [
-    `《章外回声》 · 本局已收束${endingVisual(state) ? ` · ${endingVisual(state)!.code}` : ""}`,
-    state.outcome?.title ?? state.ending ?? "本局记录",
-    ...(endingVisual(state) ? [endingVisual(state)!.subtitle] : []),
-    `我的表达风格：${expressionStyle(state)}`,
-    `舆论温度 ${state.heat} · 专业信用 ${state.credit}`,
-    `内耗值 ${state.rumination ?? 25} · 工作压力 ${state.pressure ?? 25}`,
-    ...facts,
-    "这是本局选择的记录，不是心理测评。",
-  ];
-}

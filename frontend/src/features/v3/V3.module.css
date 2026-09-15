@@ -124,15 +124,10 @@
   display: grid;
   gap: 20px;
 }
-.storyTools,
-.accountTools {
+.storyTools {
   display: grid;
   gap: 10px;
   min-width: 0;
-}
-.accountTools {
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
 }
 .toolbar button {
   width: 100%;
@@ -437,16 +432,6 @@
 .drawerBody .messages p {
   background: #1d3045;
 }
-.drawerBody .relationList {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.drawerBody .relationList button {
-  width: 100%;
-  min-width: 0;
-  text-align: left;
-}
 .drawerBody [aria-pressed="true"] {
   outline: 2px solid #ebc16c;
   outline-offset: 2px;
@@ -494,14 +479,6 @@
   border-radius: 8px;
   border-top: 2px solid #9eae9b;
 }
-.relationCenter {
-  text-align: center;
-  font-family: serif;
-  font-size: 25px;
-  padding: 22px;
-  border-bottom: 1px solid #94a697;
-  margin-bottom: 20px;
-}
 .ending {
   grid-area: ending;
   position: relative;
@@ -520,36 +497,6 @@
   --surface: #f5f0e5;
   --surface-secondary: #e6e8d8;
 }
-.endingPoster {
-  container-type: inline-size;
-  font-family: "Ending Serif", "Songti SC", "SimSun", serif;
-}
-.endingPosterHeader {
-  display: block;
-  padding: 4% 5.8% 3.5%;
-  background: var(--poster-image) top / 100% 522.5% no-repeat;
-  text-align: center;
-}
-.endingBrand {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  color: #52634d;
-  border-bottom: 1px solid #aaa891;
-  padding-bottom: 0.8%;
-  margin-bottom: 1.3%;
-  font-size: clamp(16px, 2.8cqw, 26px);
-  letter-spacing: 0.12em;
-}
-.endingBrand span:last-child {
-  font-size: 1.55em;
-  letter-spacing: 0;
-}
-.endingClosed {
-  display: block;
-  font-size: clamp(12px, 2.55cqw, 24px);
-  letter-spacing: 0.3em;
-}
 .ending h1 {
   margin: 0;
   font-family: "Ending Serif", "Songti SC", "SimSun", serif;
@@ -567,39 +514,6 @@
   font-size: 18px;
   margin: 24px 0 10px;
 }
-.endingSubtitle {
-  margin: 0;
-  color: #52634d;
-  font-size: clamp(12px, 2.55cqw, 24px);
-  letter-spacing: 0.18em;
-}
-.endingColumns {
-  display: block;
-  padding: 0 clamp(18px, 3vw, 36px) 24px;
-}
-.endingStory {
-  display: block;
-}
-.endingArtFrame {
-  position: relative;
-  aspect-ratio: 941 / 820;
-  overflow: hidden;
-}
-.endingArt {
-  position: absolute;
-  top: -39.0244%;
-  width: 100%;
-  height: auto;
-}
-.endingDetails {
-  min-width: 0;
-}
-.endingNarrative {
-  min-width: 0;
-  padding: 28px clamp(18px, 3vw, 36px);
-  font-size: 18px;
-  line-height: 1.85;
-}
 @media (min-width: 1000px) {
   .ending {
     display: grid;
@@ -610,112 +524,15 @@
     border: 0;
     overflow: visible;
   }
-  .endingPoster {
-    position: sticky;
-    top: 24px;
-    background: #f5f0e5;
-    border: 1px solid #a6aa91;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .endingDetails {
-    background: #f5f0e5;
-    border: 1px solid #a6aa91;
-    border-radius: 8px;
-  }
-}
-@media (max-width: 999px) {
-  .endingPoster {
-    width: min(480px, 100%);
-    margin-inline: auto;
-  }
-}
-.endingNarrative p {
-  margin: 0.65em 0;
-}
-.endingNarrative small {
-  font: 13px/1.5 sans-serif;
-  color: #58634f;
-}
-.endingFacts {
-  min-width: 0;
-}
-.endingNarrative blockquote {
-  margin: 20px 0;
-  padding: 16px 20px;
-  border-left: 3px solid #7e8e6c;
-  background: #e6e8d8;
-  border-radius: 8px;
-}
-.endingFacts {
-  border-top: 1px solid #b6baa2;
-  margin-top: 28px;
-  padding-top: 24px;
-}
-.endingFacts ul {
-  list-style: disc;
-  padding-left: 24px;
-}
-.endingFacts li {
-  margin: 10px 0;
-}
-.endingActions {
-  margin: 0 clamp(18px, 3vw, 36px);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 20px;
-  align-items: center;
-  padding-top: 24px;
-  border-top: 1px solid #b6baa2;
 }
 .ending a {
   color: #40543e;
   text-decoration: underline;
 }
-.endingShare {
-  padding: 24px clamp(18px, 3vw, 36px);
-  margin-top: 28px;
-  padding-top: 24px;
-  border-top: 1px solid #b6baa2;
-}
-.endingShare fieldset {
-  border: 0;
-  padding: 0;
-  margin: 16px 0;
-  min-width: 0;
-}
-.shareChoice {
-  display: flex;
-  align-items: start;
-  gap: 12px;
-  min-height: 44px;
-  padding: 8px 0;
-}
-.shareChoice input {
-  flex-shrink: 0;
-  margin-top: 8px;
-  accent-color: #52634d;
-}
-.sharePreviewGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
-  gap: 24px;
-}
-.shareCopy {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font: inherit;
-  min-width: 0;
-}
 .share {
   width: 100%;
   max-width: 360px;
   margin: 0 0 20px;
-}
-@media (max-width: 899px) {
-  .sharePreviewGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 .sr {
   position: absolute;
@@ -752,53 +569,6 @@
 }
 .dialogue .composer textarea::placeholder {
   color: #b4bac5;
-}
-.relationGraph {
-  position: relative;
-  width: 100%;
-  height: 360px;
-}
-.relationGraph svg {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  inset: 0;
-}
-.relationGraph line {
-  stroke: #b4a07e;
-  stroke-width: 0.4;
-}
-.graphCenter,
-.graphPerson {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  max-width: 32%;
-  text-align: center;
-}
-.graphCenter {
-  top: 50%;
-  left: 50%;
-  border-radius: 50%;
-  background: #29394a;
-  padding: 16px;
-  color: #f2ddb3;
-}
-.graphPerson[aria-pressed="true"] {
-  outline: 2px solid #bda570;
-}
-.relationList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-@media (max-width: 700px) {
-  .relationGraph {
-    display: none;
-  }
-  .relationList {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
 }
 
 .dialogueControls {
@@ -866,17 +636,12 @@
   display: flex;
   flex-wrap: wrap;
 }
-.root[data-ending="true"] .storyTools,
-.root[data-ending="true"] .accountTools {
+.root[data-ending="true"] .storyTools {
   display: flex;
   flex-wrap: wrap;
 }
 .root[data-ending="true"] .toolbar button {
   width: auto;
-}
-.root[data-ending="true"] .accountTools {
-  border: 0;
-  padding: 0;
 }
 @media (max-width: 1000px) {
   .root {
@@ -897,15 +662,6 @@
   }
   .storyTools {
     grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
-  }
-  .accountTools {
-    display: flex;
-    flex-wrap: wrap;
-    padding: 0;
-    border: 0;
-  }
-  .accountTools button {
-    width: auto;
   }
   .toolbar {
     gap: 10px;
@@ -968,9 +724,6 @@
   }
   .drawerBody {
     padding: 16px 16px max(16px, env(safe-area-inset-bottom));
-  }
-  .drawerBody .relationList {
-    grid-template-columns: 1fr;
   }
   .composer textarea {
     min-height: 60px;
@@ -1576,9 +1329,6 @@
   padding: 4px 0 12px 10px;
   margin-bottom: 12px;
 }
-.workActions {
-  grid-column: 1 / -1;
-}
 .workDrawer .tabs {
   margin-bottom: 16px;
 }
@@ -2087,17 +1837,6 @@
   border: 1px solid #faeac4;
   min-width: 150px;
 }
-.workDrawer .workActions {
-  padding: 10px 20px;
-  background: #f4f6fa;
-  color: #344862;
-}
-.workActions > summary {
-  cursor: pointer;
-}
-.workActions .actions {
-  margin-top: 12px;
-}
 @media (max-width: 800px) {
   .workDrawer {
     width: calc(100vw - 24px);
@@ -2175,14 +1914,6 @@
 }
 .workDrawer .workForm legend small {
   display: inline;
-}
-.workDrawer .workActions {
-  flex-shrink: 0;
-  margin-top: 0;
-}
-.workDrawer .workActions[open] {
-  overflow-y: auto;
-  max-height: 180px;
 }
 .workDrawer .hrPage {
   overflow-y: auto;
@@ -2434,9 +2165,6 @@
   font-size: 18px;
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px #fff3d777;
-}
-.workDrawer .workActions {
-  padding: 4px 26px;
 }
 @media (max-width: 1200px) {
   .workMotto {
@@ -2998,12 +2726,6 @@
 .relationsContent::-webkit-scrollbar {
   display: none;
 }
-.relationsDrawer .relationGraph {
-  height: clamp(180px, 30dvh, 270px);
-}
-.relationsDrawer .relationList {
-  display: none;
-}
 .relationsDrawer .relationsContent h3 {
   margin: 8px 0;
 }
@@ -3020,17 +2742,6 @@
 @media (max-width: 700px) {
   .relationsDrawer .drawerBody {
     padding: 12px 16px;
-  }
-  .relationsDrawer .relationList {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .relationsDrawer .relationList button {
-    border-radius: 12px;
-    padding: 10px;
-    font-size: 14px;
-    min-height: 64px;
   }
 }
 
@@ -3548,14 +3259,6 @@
 .ending {
   line-height: 1.65;
 }
-.endingDetails {
-  padding: 20px;
-}
-.ending .endingNarrative {
-  padding: 0;
-  font-size: 15px;
-  line-height: 1.75;
-}
 .ending h2 {
   font-size: 20px;
   margin: 0 0 12px;
@@ -3564,55 +3267,10 @@
   font-size: 16px;
   margin: 18px 0 8px;
 }
-.ending .endingNarrative blockquote {
-  margin: 10px 0;
-  padding: 10px 14px;
-  border-radius: 7px;
-}
-.ending .endingNarrative blockquote p {
-  margin: 0;
-}
-.ending .endingNarrative blockquote p + p {
-  margin-top: 6px;
-}
-.ending .endingColumns {
-  padding: 0;
-}
-.ending .endingFacts {
-  margin-top: 20px;
-  padding-top: 18px;
-  font-size: 14px;
-}
-.ending .endingFacts > p {
-  margin: 6px 0;
-}
-.ending .endingFacts ul {
-  margin: 6px 0;
-  padding-left: 20px;
-}
-.ending .endingFacts li {
-  margin: 4px 0;
-}
-.ending .endingActions {
-  margin: 20px 0 0;
-  padding: 16px 0 0;
-}
-.ending .endingShare {
-  margin-top: 18px;
-  padding: 16px;
-}
 @media (min-width: 1200px) {
   .ending {
     grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
     gap: 20px;
-  }
-}
-@media (max-width: 600px) {
-  .endingDetails {
-    padding: 16px;
-  }
-  .ending .endingNarrative {
-    font-size: 14px;
   }
 }
 
@@ -3634,33 +3292,6 @@
   border: 1px solid #a6aa91;
   border-radius: 14px;
   overflow: hidden;
-}
-.root .endingPoster {
-  position: static;
-  width: 100%;
-  max-width: none;
-  border: 0;
-  border-radius: 0;
-}
-.endingCardText {
-  padding: 20px 28px 28px;
-  color: #3b4535;
-  font:
-    16px/1.85 "Ending Serif",
-    "Songti SC",
-    serif;
-}
-.endingCardText p {
-  margin: 0 0 12px;
-}
-.endingCardText p:last-child {
-  margin-bottom: 0;
-}
-@media (max-width: 600px) {
-  .endingCardText {
-    padding: 18px 22px 24px;
-    font-size: 15px;
-  }
 }
 
 /* Keep the document poster intact and wholly visible at every viewport size. */

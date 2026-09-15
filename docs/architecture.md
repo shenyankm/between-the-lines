@@ -30,7 +30,7 @@ Story presentation is defined in versioned files under `app/`: `story.json` (v1)
 
 ## Frontend recovery
 
-Home and save entry points live in `features/Home.tsx`. The game is split into Play, GameStage, Conversation, and GameDrawer. React Query manages server data; UI state is isolated by user/save mounting, and components collaborate through data and callbacks.
+Home and save entry points live in `features/Home.tsx`. Play routes current saves to PlayV3 and older saves to read-only EventHistory. React Query manages server data; UI state is isolated by user/save mounting, and components collaborate through data and callbacks.
 
 `useTurnController` unifies submission, subscription, and recovery. Before sending, it saves a versioned sessionStorage record with user, save, original request_id, and complete payload; storage failures fall back to memory. Leaving the page cancels only the subscription. Asynchronous results must pass lifecycle signal checks before updating caches.
 

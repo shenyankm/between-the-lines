@@ -23,7 +23,6 @@ env = {
     "ENVIRONMENT": "test",
     "AGENT_MODE": "mock",
     "DATABASE_URL": test_database_url,
-    "STORY_V2_ENABLED": "false",
     "CHECKPOINT_URL": test_database_url.replace("postgresql+asyncpg://", "postgresql://"),
 }
 child_code = """
