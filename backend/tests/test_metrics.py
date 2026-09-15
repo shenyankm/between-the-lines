@@ -10,7 +10,7 @@ import re
 
 import pytest
 
-from app.metrics import BUCKETS, observe_turn, render, reset
+from app.metrics import BUCKETS, Metrics
 
 pytestmark = pytest.mark.unit
 
@@ -18,11 +18,9 @@ pytestmark = pytest.mark.unit
 SAMPLE = re.compile(r"^[a-zA-Z_:][a-zA-Z0-9_:]*(\{[^}]*\})? -?\d+(\.\d+)?([eE][-+]?\d+)?$")
 
 
-@pytest.fixture(autouse=True)
-def clean() -> None:
-    # The series are module globals and a test that leaves them dirty would make
-    # the next test's counts depend on ordering -- which pytest-randomly changes.
-    reset()
+@pytest.fixture
+def metrics() -> Metrics:
+    return Metrics()
 
 
 def parse(text: str) -> dict[str, float]:
@@ -37,18 +35,18 @@ def parse(text: str) -> dict[str, float]:
     return out
 
 
-def test_render_produces_only_valid_lines_and_ends_with_a_newline():
-    observe_turn("completed", 1.5)
-    text = render(3)
+def test_render_produces_only_valid_lines_and_ends_with_a_newline(metrics: Metrics):
+    metrics.observe_turn("completed", 1.5)
+    text = metrics.render(3)
     assert text.endswith("\n")
     assert parse(text)
 
 
-def test_every_series_declares_help_and_type_before_its_samples():
+def test_every_series_declares_help_and_type_before_its_samples(metrics: Metrics):
     # A cleared counter series renders no samples, so without this observation
     # btl_turns_total would have nothing to compare the declaration order against.
-    observe_turn("completed", 1.0)
-    text = render(0)
+    metrics.observe_turn("completed", 1.0)
+    text = metrics.render(0)
     for name, kind in [
         ("btl_turns_total", "counter"),
         ("btl_turns_active", "gauge"),
@@ -60,10 +58,10 @@ def test_every_series_declares_help_and_type_before_its_samples():
         assert text.index(f"# TYPE {name}") < text.index(f"\n{name}")
 
 
-def test_buckets_are_cumulative_and_inf_equals_the_count():
+def test_buckets_are_cumulative_and_inf_equals_the_count(metrics: Metrics):
     for duration in (0.1, 0.7, 3.0):
-        observe_turn("completed", duration)
-    samples = parse(render(0))
+        metrics.observe_turn("completed", duration)
+    samples = parse(metrics.render(0))
 
     # 0.1 lands in every bucket; 0.7 in every bucket from 1.0 up; 3.0 from 5.0 up.
     expected = {0.25: 1, 0.5: 1, 1.0: 2, 2.0: 2, 5.0: 3, 10.0: 3, 30.0: 3, 60.0: 3}
@@ -82,20 +80,20 @@ def test_buckets_are_cumulative_and_inf_equals_the_count():
     assert samples["btl_turn_duration_seconds_sum"] == pytest.approx(3.8)
 
 
-def test_an_observation_exactly_on_a_bound_lands_in_that_bucket():
-    observe_turn("completed", 1.0)
-    samples = parse(render(0))
+def test_an_observation_exactly_on_a_bound_lands_in_that_bucket(metrics: Metrics):
+    metrics.observe_turn("completed", 1.0)
+    samples = parse(metrics.render(0))
     # le is inclusive, so 1.0 belongs to le="1.0" and not only to the ones above.
     assert samples['btl_turn_duration_seconds_bucket{le="0.5"}'] == 0
     assert samples['btl_turn_duration_seconds_bucket{le="1.0"}'] == 1
 
 
-def test_outcomes_are_separate_series_and_a_replay_is_not_a_completion():
-    observe_turn("completed", 1.0)
-    observe_turn("failed", 0.5)
-    observe_turn("replayed", 0.0)
-    observe_turn("interrupted", 2.0)
-    samples = parse(render(0))
+def test_outcomes_are_separate_series_and_a_replay_is_not_a_completion(metrics: Metrics):
+    metrics.observe_turn("completed", 1.0)
+    metrics.observe_turn("failed", 0.5)
+    metrics.observe_turn("replayed", 0.0)
+    metrics.observe_turn("interrupted", 2.0)
+    samples = parse(metrics.render(0))
 
     assert samples['btl_turns_total{status="completed"}'] == 1
     assert samples['btl_turns_total{status="failed"}'] == 1
@@ -105,42 +103,42 @@ def test_outcomes_are_separate_series_and_a_replay_is_not_a_completion():
     assert samples["btl_turn_duration_seconds_count"] == 3
 
 
-def test_an_outcome_never_seen_still_renders_without_a_prior_declaration():
+def test_an_outcome_never_seen_still_renders_without_a_prior_declaration(metrics: Metrics):
     # `status` is a plain string rather than a Literal so a new outcome cannot
     # require editing two modules. This is that claim, tested.
-    observe_turn("some_future_outcome", 0.1)
-    assert 'btl_turns_total{status="some_future_outcome"} 1' in render(0)
+    metrics.observe_turn("some_future_outcome", 0.1)
+    assert 'btl_turns_total{status="some_future_outcome"} 1' in metrics.render(0)
 
 
-def test_reset_returns_every_series_to_its_initial_value():
-    observe_turn("completed", 9.0)
-    reset()
-    samples = parse(render(0))
+def test_instances_do_not_share_observations(metrics: Metrics):
+    metrics.observe_turn("completed", 9.0)
+    metrics = Metrics()
+    samples = parse(metrics.render(0))
     assert samples["btl_turn_duration_seconds_count"] == 0
     assert samples['btl_turn_duration_seconds_bucket{le="+Inf"}'] == 0
     # A cleared counter series renders no samples at all, which is valid: an
     # absent label set means zero, and printing status="" would be worse.
-    assert "btl_turns_total{" not in render(0)
+    assert "btl_turns_total{" not in metrics.render(0)
 
 
-def test_the_gauge_reflects_the_argument_not_module_state():
-    assert parse(render(0))["btl_turns_active"] == 0
-    assert parse(render(7))["btl_turns_active"] == 7
+def test_the_gauge_reflects_the_argument_not_module_state(metrics: Metrics):
+    assert parse(metrics.render(0))["btl_turns_active"] == 0
+    assert parse(metrics.render(7))["btl_turns_active"] == 7
     # And observing turns must not disturb it: it is read from app.state.runtime.runner.active.
-    observe_turn("completed", 1.0)
-    assert parse(render(7))["btl_turns_active"] == 7
+    metrics.observe_turn("completed", 1.0)
+    assert parse(metrics.render(7))["btl_turns_active"] == 7
 
 
-def test_a_label_value_cannot_break_out_of_its_quoted_string():
+def test_a_label_value_cannot_break_out_of_its_quoted_string(metrics: Metrics):
     # The status comes from this process, not from a client, but a quote or a
     # backslash in it would corrupt the line for every scraper reading it.
-    observe_turn('bad"status', 1.0)
-    line = next(x for x in render(0).splitlines() if x.startswith("btl_turns_total{"))
+    metrics.observe_turn('bad"status', 1.0)
+    line = next(x for x in metrics.render(0).splitlines() if x.startswith("btl_turns_total{"))
     assert SAMPLE.match(line), line
 
 
-def test_accounting_series_are_not_exposed():
-    observe_turn("completed", 1.0)
-    text = render(1)
+def test_accounting_series_are_not_exposed(metrics: Metrics):
+    metrics.observe_turn("completed", 1.0)
+    text = metrics.render(1)
     assert "btl_model_calls_total" not in text
     assert "btl_cost_usd_total" not in text

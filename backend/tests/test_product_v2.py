@@ -28,7 +28,6 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 async def v2(app):
-    app.state.settings.story_v2_enabled = True
     async with (
         app.router.lifespan_context(app),
         httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client,

@@ -9,8 +9,7 @@
     linear-gradient(0deg, #0b1421, transparent 50%),
     url("/assets/office-1280-ae05720ea87f.webp") center/cover;
 }
-.topbar,
-.gameHeader {
+.topbar {
   height: 84px;
   display: flex;
   align-items: center;
@@ -347,46 +346,6 @@
   min-height: 100dvh;
   background: #0c1624;
 }
-.gameHeader {
-  height: 70px;
-  padding: 0 4%;
-}
-.gameHeader .brand {
-  font-size: 19px;
-  letter-spacing: 3px;
-  font-family: "Songti SC", serif;
-}
-.chapterNav {
-  display: flex;
-  gap: 36px;
-  color: #627080;
-  font-size: 12px;
-}
-.chapterNav > span {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.currentChapter {
-  color: #d3b994 !important;
-}
-.currentChapter:after {
-  content: "";
-  display: block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #d3b994;
-}
-.iconText {
-  min-height: 44px;
-  min-width: 44px;
-  display: flex;
-  gap: 8px;
-  color: #a0afc0;
-  font-size: 13px;
-  align-items: center;
-}
 .stage {
   min-height: 440px;
   height: 52vh;
@@ -398,49 +357,6 @@
       45% / cover;
   overflow: hidden;
 }
-.sceneInfo {
-  position: absolute;
-  left: 5%;
-  top: 38px;
-}
-.sceneInfo h2 {
-  font-family: "Songti SC", serif;
-  font-weight: 400;
-  font-size: 30px;
-  letter-spacing: 3px;
-  margin: 12px 0;
-}
-.sceneInfo p {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  color: #a7b4c0;
-  font-size: 13px;
-}
-.stats {
-  position: absolute;
-  right: 5%;
-  top: 32px;
-  display: flex;
-  gap: 28px;
-  background: #0a1527b8;
-  backdrop-filter: blur(12px);
-  padding: 18px 22px;
-  border: 1px solid #ffffff15;
-}
-.stats > div {
-  width: 94px;
-}
-.stats span {
-  font-size: 12px;
-  color: #aebdcc;
-}
-.stats strong {
-  float: right;
-  font-weight: 400;
-  color: #d7c49c;
-  font-size: 15px;
-}
 .meter {
   height: 3px;
   background: #37465a;
@@ -451,64 +367,6 @@
   display: block;
   background: #b7a077;
   transition: width 0.4s;
-}
-.sceneCaption {
-  position: absolute;
-  left: 5%;
-  bottom: 48px;
-  max-width: 420px;
-}
-.sceneCaption span {
-  color: #bcab91;
-  font-size: 11px;
-  letter-spacing: 3px;
-}
-.sceneCaption p {
-  font-family: "Songti SC", serif;
-  font-size: 18px;
-  line-height: 1.9;
-  color: #d2d9e2;
-  margin: 12px 0;
-}
-.characterCard {
-  position: absolute;
-  right: 17%;
-  bottom: 55px;
-  display: flex;
-  gap: 18px;
-  align-items: center;
-  background: #162335c9;
-  border: 1px solid #71849b44;
-  padding: 20px 30px;
-  backdrop-filter: blur(14px);
-}
-.characterMonogram {
-  width: 80px;
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: "Songti SC", serif;
-  font-size: 42px;
-  background: linear-gradient(135deg, var(--character-color), #253749);
-  color: #f0e9df;
-  border-radius: 40px 40px 4px 4px;
-}
-.characterCard small {
-  color: #b4a389;
-  font-size: 11px;
-  letter-spacing: 2px;
-}
-.characterCard h3 {
-  font-family: "Songti SC", serif;
-  font-size: 28px;
-  font-weight: 400;
-  margin: 10px 0;
-}
-.characterCard p {
-  font-size: 12px;
-  color: #a9b6c7;
-  margin: 0;
 }
 .toolbar {
   position: absolute;
@@ -542,13 +400,6 @@
   padding: 0 36px 28px;
   animation: appear 0.4s;
 }
-.speakerRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #5361794a;
-  padding: 16px 0;
-}
 .speaker {
   display: flex;
   align-items: center;
@@ -561,11 +412,6 @@
   font-size: 11px;
   letter-spacing: 1px;
   color: #798da4;
-}
-.speakerDot {
-  width: 5px;
-  height: 18px;
-  background: #c1a174;
 }
 .saved {
   color: #72869c;
@@ -633,23 +479,6 @@
   padding: 10px;
   display: flex;
 }
-.conversationFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 16px;
-  color: #6b8097;
-  font-size: 12px;
-  gap: 12px;
-}
-.conversationFooter button {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  background: none;
-  color: #c5b08d;
-  font-size: 13px;
-}
 .drawer {
   position: fixed;
   inset: 0 0 0 auto;
@@ -667,11 +496,6 @@
 .drawer::backdrop {
   background: #020a13a6;
   backdrop-filter: blur(4px);
-}
-.drawerInside {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
 }
 .drawerHeader {
   display: flex;
@@ -731,9 +555,6 @@
   font-family: "Songti SC", serif;
   font-size: 22px;
 }
-.selectedContact {
-  background: #28394e;
-}
 .note {
   padding: 22px;
   margin: 24px 0;
@@ -755,16 +576,7 @@
   color: #7e92a9;
   font-size: 12px;
 }
-.checkRow {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #293c52;
-  font-size: 14px;
-}
-.checked,
-.unchecked {
+.checked {
   width: 19px;
   height: 19px;
   border: 1px solid #566b82;
@@ -777,20 +589,6 @@
   background: #9c8b71;
   color: #142136;
   border-color: #9c8b71;
-}
-.historyItem {
-  border-left: 1px solid #415671;
-  padding: 0 0 16px 20px;
-}
-.historyItem small {
-  font-size: 12px;
-  color: #c2aa85;
-}
-.historyItem p {
-  font-size: 14px;
-  line-height: 1.9;
-  color: #afbed0;
-  margin: 10px 0;
 }
 .logout {
   display: flex;
@@ -838,50 +636,12 @@
   }
 }
 @media (max-width: 850px) {
-  .chapterNav {
-    gap: 20px;
-  }
-  .chapterNav > span > span {
-    display: none;
-  }
   .stage {
     height: 420px;
     min-height: 0;
   }
-  .sceneCaption {
-    max-width: 42%;
-    bottom: 30px;
-  }
-  .sceneCaption p {
-    font-size: 15px;
-  }
-  .characterCard {
-    right: 18%;
-    padding: 14px;
-    gap: 12px;
-  }
-  .characterMonogram {
-    width: 50px;
-    height: 70px;
-    font-size: 30px;
-  }
-  .characterCard h3 {
-    font-size: 24px;
-  }
-  .characterCard p {
-    max-width: 120px;
-    line-height: 1.8;
-  }
   .toolbar span {
     display: none;
-  }
-  .stats {
-    right: 4%;
-    gap: 18px;
-    padding: 14px;
-  }
-  .stats > div {
-    width: 75px;
   }
   .conversation {
     padding: 0 24px 24px;
@@ -929,88 +689,11 @@
   .homeFooter span:last-child {
     display: none;
   }
-  .gameHeader {
-    height: 60px;
-    padding: 0 20px;
-  }
-  .gameHeader .brand {
-    font-size: 17px;
-  }
-  .chapterNav {
-    gap: 12px;
-  }
-  .iconText span {
-    display: none;
-  }
   .stage {
     height: 355px;
   }
-  .sceneInfo {
-    left: 22px;
-    top: 22px;
-  }
-  .sceneInfo .overline {
-    font-size: 10px;
-    letter-spacing: 2px;
-  }
-  .sceneInfo h2 {
-    font-size: 24px;
-  }
-  .sceneInfo p {
-    font-size: 11px;
-  }
-  .stats {
-    top: 26px;
-    right: 20px;
-    flex-direction: column;
-    gap: 14px;
-    padding: 12px;
-    background: #0b182aaa;
-  }
-  .stats > div {
-    width: 76px;
-  }
-  .stats span {
-    font-size: 10px;
-  }
-  .stats strong {
-    font-size: 12px;
-  }
   .meter {
     margin-top: 8px;
-  }
-  .sceneCaption {
-    left: 22px;
-    bottom: 82px;
-    max-width: 55%;
-  }
-  .sceneCaption span {
-    font-size: 10px;
-  }
-  .sceneCaption p {
-    font-size: 13px;
-    line-height: 1.85;
-    margin: 8px 0;
-  }
-  .characterCard {
-    right: 18px;
-    bottom: 88px;
-    padding: 10px;
-    display: block;
-    text-align: center;
-  }
-  .characterMonogram {
-    width: 55px;
-    height: 65px;
-    margin: auto;
-  }
-  .characterCard small,
-  .characterCard p {
-    display: none;
-  }
-  .characterCard h3 {
-    font-size: 19px;
-    margin: 8px 0 0;
   }
   .toolbar {
     bottom: 16px;
@@ -1043,9 +726,6 @@
   .speaker small {
     display: none;
   }
-  .speakerRow {
-    padding: 12px 0;
-  }
   .dialogue {
     font-size: 16px;
     margin: 20px 0;
@@ -1066,12 +746,6 @@
   .saved {
     font-size: 10px;
   }
-  .conversationFooter {
-    font-size: 10px;
-  }
-  .conversationFooter button {
-    font-size: 12px;
-  }
   .drawerBody {
     padding: 16px 16px max(16px, env(safe-area-inset-bottom));
   }
@@ -1079,29 +753,9 @@
     display: none;
   }
 }
-
-.characterPortrait {
-  width: 110px;
-  height: 150px;
-  object-fit: cover;
-  object-position: 50% 15%;
-  border-radius: 4px;
-}
 .avatar {
   object-fit: cover;
   object-position: 50% 15%;
-}
-@media (max-width: 850px) {
-  .characterPortrait {
-    width: 75px;
-    height: 100px;
-  }
-}
-@media (max-width: 540px) {
-  .characterPortrait {
-    width: 65px;
-    height: 85px;
-  }
 }
 
 .interlude {
