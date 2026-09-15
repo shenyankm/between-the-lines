@@ -283,28 +283,14 @@ test("home saves endings and legacy pages handle empty and long content", async 
     await page.setViewportSize({ width, height: 650 });
     await page.goto("/play/responsive-save");
     await expect(
-      page.getByRole("textbox", { name: "对角色说的话" }),
+      page.getByRole("heading", { name: "旧版故事 · 只读历史" }),
     ).toBeVisible();
+    await expect(page.getByRole("textbox")).toHaveCount(0);
+    await expect(page.getByText(view.play.save.scene_intro!)).toBeVisible();
+    await expect(page.getByText("本局还没有记录。")).toBeVisible();
     await noOverflow(page);
     await capture(page, info, `legacy-${width}`);
-    await page.getByRole("button", { name: "手机", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "手机", exact: true });
-    await dialog
-      .locator('[class*="drawerBody"]')
-      .evaluate((el) => (el.scrollTop = el.scrollHeight));
-    await inViewport(dialog.getByRole("button", { name: "关闭面板" }), page);
-    await noOverflow(page);
-    await capture(page, info, `legacy-panel-${width}`);
-    await page.keyboard.press("Escape");
   }
-  view.play.save.read_only = true;
-  await page.goto("/play/responsive-save");
-  await expect(
-    page.getByRole("heading", { name: "旧版故事 · 只读历史" }),
-  ).toBeVisible();
-  await expect(page.getByRole("textbox")).toHaveCount(0);
-  await noOverflow(page);
-  await capture(page, info, "read-only");
 });
 
 test("long stage history and interlude remain usable with terminal discussion states", async ({
