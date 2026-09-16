@@ -11,10 +11,10 @@ After completing the initial setup in CONTRIBUTING:
 ```sh
 make dev-up
 make migrate
-make api
+PUBLIC_ORIGIN=http://localhost:5173 make api
 ```
 
-Run `make web` in another terminal and open [localhost:5173](http://localhost:5173). `make api` explicitly selects mock mode and the host database addresses, even when the root `.env` contains Compose-internal addresses.
+Run `make web` in another terminal and open [localhost:5173](http://localhost:5173). The inline `PUBLIC_ORIGIN` overrides the root `.env`'s port-8080 container origin for this API process; otherwise Vite's mutation requests would be rejected. `make api` explicitly selects mock mode and the host database addresses, even when the root `.env` contains Compose-internal addresses.
 
 The development login creates a new identity each time. Refreshing retains its session; logging out and logging in again does not recover the previous identity. Zhihu accounts use a stable provider identity. Guest trials are available only when enabled outside production.
 

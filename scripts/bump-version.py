@@ -35,7 +35,7 @@ def bump_package_json(version: str) -> None:
     path = REPO_ROOT / "frontend" / "package.json"
     text = path.read_text(encoding="utf-8")
     updated, count = re.subn(
-        r'^(\s*"version": ")[^"]*(")$',
+        r'^(\s*"version": ")[^"]*(",?)$',
         rf"\g<1>{version}\g<2>",
         text,
         count=1,

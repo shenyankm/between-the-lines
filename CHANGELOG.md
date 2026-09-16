@@ -1,6 +1,6 @@
 # Changelog
 
-Changes are grouped by development milestone. The application version is currently `0.1.0`; story/content revisions are separate save-compatibility identifiers, not package releases. Production deployments are identified by audited commit SHA. Do not infer a release date or deployed status from an unreleased section.
+Changes are grouped by development milestone. Application versions are recorded in [backend/pyproject.toml](backend/pyproject.toml) and [frontend/package.json](frontend/package.json); story/content revisions are separate save-compatibility identifiers, not package releases. Production deployments are identified by audited commit SHA. Do not infer a release date or deployed status from an unreleased section.
 
 Use `make release V=<version>` to update both package versions and insert a release stub. `make version-check` verifies that backend and frontend versions match. Release procedure: [operations](docs/operations.md).
 

@@ -70,14 +70,14 @@ make migrate
 Start the services in two terminals at the repository root:
 
 ```sh
-make api
+PUBLIC_ORIGIN=http://localhost:5173 make api
 ```
 
 ```sh
 make web
 ```
 
-Open <http://localhost:5173>. `make api` uses mock mode and host database addresses. Development PostgreSQL listens on `localhost:54329`; do not use the container-only `db:5432` address with host Python.
+Open <http://localhost:5173>. The command above overrides the copied `.env`'s port-8080 container origin so Vite's login and other mutation requests pass origin validation. `make api` uses mock mode and host database addresses. Development PostgreSQL listens on `localhost:54329`; do not use the container-only `db:5432` address with host Python.
 
 See [development](docs/development.md) for local configuration and real DeepSeek integration, and [Zhihu OAuth](docs/zhihu-oauth-deployment.md) for login configuration. Daily development uses mock and needs no real model key. The model is fixed to official `deepseek-flash`; provider, model, or invocation-boundary changes require a separate design discussion.
 
