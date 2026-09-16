@@ -44,7 +44,7 @@ Except for the independent `/api/ready` probe response, errors use this structur
 | 503       | `oauth_not_configured` / `model_unconfigured`            | Ask the administrator to configure the service                                                               |
 | 404 / 405 | `http_404` / `http_405`                                  | Framework routing error, not evidence of an absent turn                                                      |
 
-Quota responses carry `Retry-After` and `retry_after_seconds`; the server emits integer seconds. The frontend also accepts HTTP-date headers from proxies. If both values are valid, use the longer delay. Error and successful API responses prohibit caching and include request-tracing information.
+Capacity-limit responses carry `Retry-After` and `retry_after_seconds`; the server emits integer seconds. The frontend also accepts HTTP-date headers from proxies. If both values are valid, use the longer delay. Error and successful API responses prohibit caching and include request-tracing information.
 
 Paths use UUID parameters. Versions must be nonnegative JSON integers; booleans, floats, and numeric strings are rejected. Request bodies reject unknown fields. Login names are trimmed and cannot be whitespace-only. Original dialogue text and existing action defaults are preserved.
 
@@ -90,4 +90,4 @@ The original request identity, one replay only after explicit `turn_not_found`, 
 
 Validation distinguishes a real Mock turn with a dropped browser response from UI response substitution. Backend failure integration checks establish that committed effect evidence survives a provider failure and a repeated request; browser recovery checks establish visible wording and no duplicate POST. Physical networking and real-model readiness are separate acceptance scopes.
 
-For the recovery-status change, the current isolated Mock drills were rerun: `scripts/test-restart.py` confirmed the committed tool survived process kill/restart without an incomplete reply, and `scripts/test-disconnect.py` confirmed TCP disconnection did not duplicate tools or replies. These checks use the disposable test database, not production or private saves.
+Run the disconnect and restart drills from [verification](verification.md) to establish these guarantees for the current commit. They use a disposable test database, never production or private saves.

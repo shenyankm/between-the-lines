@@ -29,7 +29,7 @@ Existing guest players must sign in with Zhihu before continuing. Link from the 
 
 ## Make room for another response
 
-Each save is a separate experience. You can start again to explore another approach, return to completed stories, or delete saves you no longer need. A deleted save is removed from your story list and cleared on the server after thirty days.
+Each save is a separate experience. You can start again to explore another approach, return to completed stories, or delete saves you no longer need. A deleted save is removed from your story list and eligible for server cleanup after thirty days.
 
 At the end, revisit what happened and reflect on your choices. You do not have to preserve every friendship or respond the same way every time.
 
@@ -43,9 +43,9 @@ At the end, revisit what happened and reflect on your choices. You do not have t
 
 ## Feedback and contributions
 
-Found a confusing choice or a problem while playing? [Open an issue](https://github.com/shenyankm/between-the-lines/issues) with the scene, what you tried, and what happened. A screenshot can help; leave out private messages and account information. Report security issues through the [security policy](SECURITY.md).
+Found a confusing choice or a problem while playing? [Open an issue](https://github.com/shenyankm/between-the-lines/issues) in English with the scene, what you tried, and what happened. A screenshot can help; leave out private messages and account information. Report security issues through the [security policy](SECURITY.md).
 
-To work on the project, see the [contribution guide](CONTRIBUTING.md). Local setup and hosting instructions are in [development and deployment](docs/development.md); implementation details are in the [architecture guide](docs/architecture.md).
+To work on the project, see the [contribution guide](CONTRIBUTING.md). Local setup is in [development](docs/development.md), hosting is in [operations](docs/operations.md); implementation details are in the [architecture guide](docs/architecture.md).
 
 ## Current story scope
 

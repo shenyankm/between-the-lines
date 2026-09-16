@@ -1,12 +1,22 @@
-<!-- Use a descriptive title, preferably type(scope): description.
+<!-- Write the PR title and description in English. Use type(scope): description.
+Original UI text, logs, and screenshots may retain their original language with an English explanation.
 Keep the PR focused. Use Draft for unfinished work and list what remains.
 Fill in each section briefly; use "Not applicable" with a reason where appropriate.
 Never include credentials, .env files, raw saves, or private dialogue. -->
 
+## Linked issue
+
+<!-- Required for every PR, including documentation, tests, and small fixes.
+Replace the placeholder with an existing issue number or full issue URL.
+Use "Closes #123" for a complete fix. For partial work, use "Refs #123",
+describe the remaining scope, and leave the issue open. -->
+
+Closes #<issue-number>
+
 ## Problem and change
 
-<!-- Explain the trigger, previous behavior, resulting behavior, and why this approach was chosen.
-Link related issues; use "Closes #..." only when this PR fully resolves the issue. -->
+<!-- Explain the problem, resulting behavior, and how this meets the linked issue's acceptance criteria.
+Include the reason for the approach when it helps review. -->
 
 ## Verification
 
@@ -36,6 +46,7 @@ request idempotency, drafts, and recovery. -->
 
 <!-- Check items once satisfied, including when the requirement is not applicable. -->
 
+- [ ] This PR links an existing issue; both the issue and PR have English titles and descriptions.
 - [ ] The diff is focused and contains no credentials, private content, or temporary artifacts.
 - [ ] Relevant tests, documentation, and generated contracts are updated where applicable.
 - [ ] Verification results and skipped checks are reported accurately above.

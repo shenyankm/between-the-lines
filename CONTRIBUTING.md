@@ -2,17 +2,17 @@
 
 Contributions to 章外回声 are welcome: report problems, improve the story and interactions, add tests and documentation, or fix engineering issues. The project uses React, FastAPI, PostgreSQL, and Deep Agents. Start with the [README](README.md) for the player experience and product boundaries.
 
-This guide follows the organization of the [Qwen Code contribution guide](https://github.com/QwenLM/qwen-code/blob/main/CONTRIBUTING.md), with commands and conventions adapted to this repository.
-
 ## Contribution process
 
 ### Issues and proposals
 
 Search existing issues and PRs before starting. A bug report should include reproduction steps, expected and actual behavior, environment details, and redacted logs or screenshots. For save or turn-recovery problems, include the story version, act, and whether a refresh or disconnection occurred. Do not publish private conversations, session cookies, or keys.
 
-Use the [bug report form](.github/ISSUE_TEMPLATE/bug_report.yml) for defects and the [feature or improvement form](.github/ISSUE_TEMPLATE/feature_request.yml) for proposals, including story, interaction, documentation, and refactoring work. A blank issue remains available when neither form fits. Unknown technical details can be marked as such.
+**All issue and PR titles and descriptions must be in English.** Exact UI text, log messages, source excerpts, and screenshots may retain their original language when needed for reproduction, with an English explanation.
 
-Discuss new features, large refactors, story-direction changes, and model-boundary changes in an issue with the maintainer first. Small documentation corrections and clear local fixes can go directly to a PR with an explanation. An already agreed task does not need another round of routine confirmation.
+Use the [bug report form](.github/ISSUE_TEMPLATE/bug_report.yml) for defects and the [feature or improvement form](.github/ISSUE_TEMPLATE/feature_request.yml) for proposals, including story, interaction, documentation, tests, dependencies, and refactoring work. Blank issues are disabled in the issue chooser. Unknown technical details can be marked as such. Report security vulnerabilities privately through [SECURITY.md](SECURITY.md).
+
+**Every PR must link at least one existing issue**, including documentation-only changes, tests, configuration, dependencies, and urgent fixes. Create an issue first if none tracks the work. Small corrections need only a concise problem statement and acceptance criteria; they do not need a separate design discussion. Discuss new features, large refactors, story-direction changes, and model-boundary changes with the maintainer in the issue before implementation. An already agreed task does not need another round of routine confirmation.
 
 ### Pull requests
 
@@ -21,14 +21,14 @@ All changes must be submitted through a GitHub PR for maintainer review before m
 Merge only after CI has passed for the PR's latest commit and all required checks are successful. Pending, failed, cancelled, or missing checks block merging. After adding commits or updating the branch, wait for CI to pass again; an earlier commit's successful run is not sufficient. Do not bypass this process with direct pushes, force pushes, or administrator overrides.
 
 - Keep each PR focused on one problem or complete feature. Separate unrelated formatting, dependency upgrades, and refactors.
-- Link an existing issue, or provide enough background and reproduction details in the PR itself.
+- Include a linked-issue section in the PR body. Use `Closes #123` when the PR fully resolves the issue; for partial work, use `Refs #123` or a direct issue URL and explain what remains; this reference must not automatically close unfinished work. A closing keyword takes effect when the PR merges into the default branch; see [GitHub's linking guide](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
 - Use a Draft PR for unfinished work and describe what remains.
 - Explain the observable behavior change, why the approach was chosen, and compatibility implications.
 - Include screenshots or a short video for UI, story, or interaction changes, covering relevant desktop or mobile scenarios. Internal changes can state that there is no visible change.
 - Update affected documentation, tests, and generated files. Report checks actually run and their results, with reasons for skipped checks. Mock results do not replace real-model or OAuth acceptance.
 - Review the final diff for temporary reports, credentials, and unrelated files.
 
-Use descriptive commit messages and PR titles, preferably `type(scope): description`, for example:
+Use descriptive commit messages and English PR titles in `type(scope): description` form (the scope is optional), for example:
 
 ```text
 fix(game): retain unconfirmed turn requests after disconnection
@@ -36,7 +36,7 @@ feat(story): add progress-aware relationship hints
 docs(contributing): document local verification
 ```
 
-The [default PR template](.github/pull_request_template.md) prompts for the problem and resulting behavior, verification, a demo, and compatibility or operational impacts. Keep each section proportional to the change; state when a section does not apply and explain skipped checks.
+The [default PR template](.github/pull_request_template.md) prompts for the linked issue, problem and resulting behavior, verification, a demo, and compatibility or operational impacts. Keep each section proportional to the change; state when a section does not apply and explain skipped checks. Templates guide submission; maintainers must also verify issue linkage and language during review, including for PRs created through the CLI or API.
 
 ## Development environment
 
@@ -58,6 +58,8 @@ git clone https://github.com/shenyankm/between-the-lines.git
 cd between-the-lines
 conda activate base
 python -m pip install uv
+cp .env.example .env
+chmod 600 .env
 make dev-up
 make bootstrap
 make migrate
@@ -77,7 +79,7 @@ make web
 
 Open <http://localhost:5173>. `make api` uses mock mode and host database addresses. Development PostgreSQL listens on `localhost:54329`; do not use the container-only `db:5432` address with host Python.
 
-See [development and deployment](docs/development.md) for local configuration, real DeepSeek integration, and Zhihu OAuth. Daily development uses mock and needs no real model key. The model is fixed to official `deepseek-flash`; provider, model, or invocation-boundary changes require a separate design discussion.
+See [development](docs/development.md) for local configuration and real DeepSeek integration, and [Zhihu OAuth](docs/zhihu-oauth-deployment.md) for login configuration. Daily development uses mock and needs no real model key. The model is fixed to official `deepseek-flash`; provider, model, or invocation-boundary changes require a separate design discussion.
 
 ## Verification and workflow
 
@@ -122,7 +124,7 @@ make test-e2e
 
 Afterward, run `make ci-stack-down`. This deletes the isolated `btl-ci` stack and its volumes; it is not a development or production data cleanup command.
 
-Turn execution, transaction, and recovery changes also require applicable disconnection/restart checks from the [CI guide](docs/ci.md). Capacity, storage, and deployment changes may require mock load tests, backup restoration, and container-runtime checks. See [verification records](docs/verification.md) and [operations](docs/operations.md) for procedures and reporting boundaries.
+Turn execution, transaction, and recovery changes also require applicable disconnection/restart checks from the [verification guide](docs/verification.md). Capacity, storage, and deployment changes may require mock load tests, backup restoration, and container-runtime checks. See [verification records](docs/verification.md) and [operations](docs/operations.md) for procedures and reporting boundaries.
 
 ### Formatting, contracts, and dependencies
 
@@ -171,4 +173,4 @@ Documentation is Markdown in the root and `docs/`, previewable in an editor or G
 
 Reproduce locally with mock first, then inspect browser Network/Console output, API logs, and turn IDs. `make api` enables hot reload. Inspect Playwright reports and traces for browser failures. Real-model semantics, latency, cost, and OAuth require separate integration testing; mock validates only its simulated paths.
 
-Do not commit `.env`, private keys, access tokens, database backups, or debugging artifacts containing private content. Use empty values or explicit placeholders in configuration examples and explain new settings. Follow [CI/CD documentation](docs/cicd.md) and the applicable release guide for deployment and releases. A PR submission does not itself authorize production deployment.
+Do not commit `.env`, private keys, access tokens, database backups, or debugging artifacts containing private content. Use empty values or explicit placeholders in configuration examples and explain new settings. Follow the [operations guide](docs/operations.md) for deployment and releases. A PR submission does not itself authorize production deployment.
