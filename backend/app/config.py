@@ -35,7 +35,6 @@ class Settings(BaseSettings):
     # a fabricated 429 in the fixture cannot be silently absorbed, while real
     # traffic gets bounded backoff. This value only applies outside mock mode.
     deepseek_max_retries: int = 2
-    story_v2_enabled: bool = True
     guest_enabled: bool = True
     automatic_intents_enabled: bool = True
     discussions_enabled: bool = True

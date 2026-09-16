@@ -14,6 +14,8 @@ Coverage floors must not be lowered:
 
 Contracts: `make contract-generate` writes OpenAPI, generated TypeScript, and public story fixtures; `make contract` regenerates into a temporary directory and diffs without touching the workspace. Schema: `make migrate` then `make migrate-check`; migration history and save compatibility are in [product-v2-release](product-v2-release.md).
 
+Semantic fixtures share `python scripts/evaluate-semantics.py --version 2` (the default, 90 samples) and `--version 3`; both remain mock-only unless `--real` is supplied.
+
 ## Integration gates
 
 Browser, disconnection, restart, load, and backup-restore checks are independent of `make check`:

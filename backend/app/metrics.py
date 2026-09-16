@@ -17,13 +17,6 @@ class Metrics:
         self._duration_count = 0
         self._duration_sum = 0.0
 
-    def reset(self) -> None:
-        """Return every series to its initial value. Used by tests, not by the app."""
-        self._turns_total.clear()
-        self._duration_buckets[:] = [0] * len(BUCKETS)
-        self._duration_count = 0
-        self._duration_sum = 0.0
-
     def observe_turn(self, status: str, duration_seconds: float) -> None:
         """Record one finished turn.
 
@@ -63,9 +56,3 @@ class Metrics:
     def render(self, active_turns: int) -> str:
         """Render the exposition format. Ends with a newline, as the format requires."""
         return "".join(f"{line}\n" for line in self._lines(active_turns))
-
-
-_default = Metrics()
-reset = _default.reset
-observe_turn = _default.observe_turn
-render = _default.render

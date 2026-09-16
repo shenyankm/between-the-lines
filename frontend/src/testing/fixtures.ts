@@ -31,7 +31,7 @@ export function save(
   over: { id?: string; version?: number; state?: Partial<GameState> } = {},
 ): Save {
   return {
-    read_only: false,
+    read_only: true,
     story_id: "workplace-s1",
     story_version: 1,
     last_played_at: null,
@@ -52,20 +52,4 @@ export const sunReply: GameEvent = {
   npc: "sun",
   act: 1,
   text: "菱菱，你不会又生气了吧？我只是随口一说。",
-};
-
-/** Same interlocutor, earlier act: must not be picked as the latest reply. */
-export const olderSunReply: GameEvent = {
-  id: "evt-0",
-  kind: "npc",
-  npc: "sun",
-  act: 0,
-  text: "这句是上一幕的旧回复。",
-};
-
-export const epilogueEvent: GameEvent = {
-  id: "evt-9",
-  kind: "epilogue",
-  npc: "sun",
-  text: "你为这段经历选择了一条清晰的边界。",
 };

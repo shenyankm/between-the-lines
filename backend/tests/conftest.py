@@ -67,7 +67,6 @@ def app():
             _env_file=None,
             environment="test",
             agent_mode="mock",
-            story_v2_enabled=False,
             database_url=os.environ["DATABASE_URL"],
             checkpoint_url=os.environ["CHECKPOINT_URL"],
         )
