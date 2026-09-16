@@ -30,6 +30,7 @@ The importer accepts up to ten queries with up to ten results each, checks provi
 From the repository root, review local content before approving it:
 
 ```sh
+mkdir -p artifacts
 python scripts/product-admin.py review-export --file artifacts/candidates.json
 # Review sources; set approved/rejected, review_note, and act_1/act_2/act_3 tags.
 # Keep the exported content_hash unchanged; changed source content needs a new export.
