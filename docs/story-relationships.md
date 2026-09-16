@@ -1,29 +1,36 @@
 # Relationships and endings
 
-This iteration uses the user-provided relationship diagram for the source novel “横扫恶意，找回自我” (Overcoming Malice, Rediscovering Yourself) as the main ending reference. The full novel was not retrieved again. New dialogue, Uncle Wang's reply, and interludes are original game writing, not claimed as verbatim adaptations. The three workplace acts and conversation Agents for Sun Miao, Li Jie, and Engineer Zhang are retained.
+The current story follows Zhou Lingling (周菱菱) through the three workplace acts. Sun Miao, Li Jie, and Engineer Zhang are the three conversational NPCs. Authored scenes live in [story-v3.json](../backend/app/story-v3.json); older story files remain for compatibility. [Story scope](story-scope.md) defines the boundary between the workplace story and unimplemented partner/family scenes.
 
-## Relationship development
+## Relationships and permissions
 
-- Zhou Ling once considered Sun Miao a friend. Early confrontation or boundary-setting changes events and values but does not replace the final private-relationship choice in Act 3. Ending private contact still permits necessary work communication.
-- Li Jie verifies notices and facts while mediating, without asking the protagonist to endure mistreatment. She approves complete procurement materials. Engineer Zhang only provides project support; facts are recorded only after an actual report and support-tool execution.
-- Uncle Wang is a retired senior colleague and intergenerational friend. `contact_wang` atomically writes a greeting and a `personal` reply with an empty audience, visible only to the player. Repeated requests do not duplicate it.
-- After Act 1, a senior schoolmate helps the protagonist distinguish relationships, while her mother and family express care. After Act 2, the protagonist breaks up with Xie Chuan while retaining maternal affection and asserting autonomy. These fixed narratives are recorded only after successfully entering Acts 2 and 3 respectively. Closing the interlude does not commit facts.
-- Xiao Liu and Xiao Chen ask about or repeat rumors; the original source remains unverified. NPCs cannot accuse Sun Miao of originating them without evidence.
+- Sun's private relationship with the protagonist is separate from required professional cooperation. A boundary expression does not imply forgiveness or a final relationship choice.
+- Li owns procurement approval and checks the recorded materials. Zhang coordinates project support and delivery; neither conversation nor a relationship choice grants financial authority.
+- Wang is a senior colleague with an authored farewell contact. His reply is not a fourth autonomous NPC or evidence that workplace actions completed.
+- Rumor responsibility depends on evidence. Characters must not accuse another person of originating a rumor without a recorded basis.
+- Advancing an act does not commit a breakup, reconciliation, disclosure, acceptance of family advice, or emotional closure. Historical explicit private choices remain preserved and isolated from workplace NPCs.
 
-## Actions and projections
+The backend derives relationship cards, greetings, and summaries through `SaveOut` and versioned story definitions. NPC history is filtered by recipient and audience; private chats do not become another NPC's memory. Public story projections omit personas and internal prompts.
 
-In the current v3 release, Act 3 offers the final private-relationship choices that set `relationship.intention`: `cut_ties` (retain work-only contact, stores `sun_cut`), `keep_distance` (defer, stores `sun_observe`), and `repair_friendship` (offer to keep the friendship). These do not score repeatedly. The ending itself is not a button the player clicks but one of six outcomes the server adjudicates from the committed work and relationship facts at close, shown as posters E01–E06: `rules_rewritten` (改写规则), `professional_boundary` (各自为界), `limited_repair` (有限修复), `active_exit` (主动转身), `career_cost` (付出代价), and the `unresolved` (尚未破局) fallback. A submitted exit resolves to `active_exit` and summarizes only events that have already happened; the earlier “只留工作往来 / 继续观察” two-ending framing was superseded by this fact-based set.
+## Choices and endings
 
-`relationship_story` marks saves using these rules; `reflection` / `personal_resolved` track interlude progress. Existing flags are retained, with no new table or `state_schema_version` change.
+Act 3 offers `cut_ties`, `keep_distance`, and `repair_friendship`, representing professional-only contact, an undecided relationship, or willingness to retain friendship. Repair requires actual supporting actions; a choice alone does not fabricate an apology or completed remedy. Work prerequisites and consequential-choice confirmations remain server-owned.
 
-`SaveOut` adds backend-derived `relationships` (id, name, role, description), `npc_greetings`, and `ending_summary`. Story material is centralized in `backend/app/story.json`. Public story data excludes NPC personas and future relationship variants. The phone retains three chat contacts; other characters have read-only cards. The fixed ending summary is independent of the retryable generated reflection, which receives only confirmed relationship facts.
+The backend selects an ending from committed facts when the story closes:
 
-Final relationship choices and boundary events are visible only to Sun Miao; reports and project support only to Engineer Zhang. Uncle Wang's reply, family matters, and romantic status never enter workplace NPC history or visible flags. NPC tone by act also follows only visible facts.
+| ID                      | Poster       | Meaning                                                                             |
+| ----------------------- | ------------ | ----------------------------------------------------------------------------------- |
+| `rules_rewritten`       | E01 改写规则 | Recorded procurement approval, clarification, responsibility, and rule change       |
+| `professional_boundary` | E02 各自为界 | Professional boundaries supported by the saved outcome                              |
+| `limited_repair`        | E03 有限修复 | Relationship repair supported by actual actions                                     |
+| `active_exit`           | E04 主动转身 | An exit application has been submitted; later arrangements are not assumed complete |
+| `career_cost`           | E05 付出代价 | Unresolved recorded career consequences                                             |
+| `unresolved`            | E06 尚未破局 | Remaining work or relationship issues                                               |
 
-## Legacy saves
+Exact precedence and prerequisites are defined in [V3 rules](../backend/app/story_rules.py), not by numeric scores or a direct “choose ending” button. [EndingOpening](../frontend/src/features/v3/EndingOpening.tsx) describes the saved work and relationship state, then [Ending](../frontend/src/features/v3/Ending.tsx) displays the matching original poster. Generated ending artifacts remain a backend capability; generated prose and share/export controls are not part of the current ending page.
 
-Completed saves retain their original endings, events, and reflections. Endings without `relationship_story` show “旧版结局” (Legacy ending), without inferring a breakup or severed friendship. Unfinished legacy saves retain work facts and use the relevant narrative for their current act. Act 3 requires the final choice, and subsequent submissions persist the narrative marker. Story content is cached in-process, so restart the backend after story changes.
+## Compatibility and verification
 
-## Verification entry points
+V1/V2 and V3 revision 1 are read-only history. Existing endings, events, and choices are not rewritten; missing historical choices must not be inferred. V3 revisions 2 and 3 remain playable with their own scoring. See [route balance](route-balance-r3.md).
 
-Backend `test_relationships.py` covers branches, prerequisites, mutual exclusion, early departure, and legacy saves. `test_api.py` checks duplicate requests, private-event filtering, and relationship projections after refresh. Frontend `relationships.test.tsx` checks choice prerequisites, relationship cards, and fixed summaries without generated reflections. Browser `game.spec.ts` completes both relationship endings on desktop/mobile and checks refresh recovery; `scenes.spec.ts` checks interlude cancellation and assets.
+[Play routing tests](../frontend/src/Play.test.tsx) cover read-only history and V3 recovery. Browser suites under `frontend/e2e/` cover relationship choices, ending facts and variants, original posters, and refresh recovery. See [verification](verification.md) for commands and the distinction between mock, real-model, and player acceptance.

@@ -5,7 +5,18 @@ body:
     attributes:
       value: |
         Search existing issues and PRs before submitting. Describe one problem per report.
+        Write the title and description in English. Keep original UI text or logs when needed, with an English explanation.
+        Report security vulnerabilities through the [security policy](https://github.com/shenyankm/between-the-lines/blob/main/SECURITY.md), not a public issue.
         Redact private dialogue, keys, tokens, cookies, and personal data from all examples and attachments. Do not upload raw saves, database backups, or `.env` files.
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and pull requests for this topic.
+          required: true
+        - label: The issue title and description are in English, and all evidence is safe to share.
+          required: true
   - type: textarea
     id: problem
     attributes:
@@ -61,7 +72,7 @@ body:
       label: Story, save, and recovery context
       description: For gameplay or recovery problems, include the story version, act, new or existing save, and whether a refresh, disconnect, retry, restart, or save switch occurred. Omit private story content.
       placeholder: |
-        Story version and act:
+        Story version, content revision, and act (if known):
         New save or existing save (created before which update, if known):
         Refresh / disconnect / retry / restart / save switch:
         Was the draft retained? Did an action or committed fact disappear or repeat?

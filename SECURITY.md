@@ -11,7 +11,7 @@ Include reproduction steps, affected versions or commits, an impact assessment, 
 
 ## Supported versions
 
-Only the latest tag is supported. This is a single-maintainer project deployed on one server; older versions do not receive security maintenance. The upgrade path is to deploy the latest tag. See `docs/operations.md` for rollback procedures.
+Security fixes target the current `main` code line; older versions do not receive separate maintenance. Production releases are identified by an audited commit SHA, not only by the application version or a tag. Deploy through the verified release workflow; see [operations](docs/operations.md) for upgrade and rollback procedures.
 
 ## Implemented protections
 
@@ -27,12 +27,12 @@ The following constraints are enforced in code, not merely recommended in docume
 
 ## Stored personal data
 
-| Data                           | Location                       | Description                                                                                                                                                                   |
-| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Zhihu user ID, nickname, and avatar | `public.users`                 | Created through real Zhihu OAuth. Initial verification predates configured endpoints; see `docs/verification.md` and `docs/zhihu-oauth-deployment.md` for subsequent records. |
-| Session token digests          | `public.login_sessions`        | SHA-256 digests, not plaintext                                                                                                                                                |
-| Saves and turn content         | `public.saves`, `public.turns` | Player input and model replies                                                                                                                                                |
-| Agent conversation checkpoints | `agent_checkpoints` schema     | LangGraph checkpoints containing conversation history                                                                                                                         |
+| Data                                | Location                       | Description                                                                                                                           |
+| ----------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Zhihu user ID, nickname, and avatar | `public.users`                 | Created through real Zhihu OAuth. See [OAuth integration](docs/zhihu-oauth-deployment.md) for provider fields and dated verification. |
+| Session token digests               | `public.login_sessions`        | SHA-256 digests, not plaintext                                                                                                        |
+| Saves and turn content              | `public.saves`, `public.turns` | Player input and model replies                                                                                                        |
+| Agent conversation checkpoints      | `agent_checkpoints` schema     | LangGraph checkpoints containing conversation history                                                                                 |
 
 `config.py` rejects development login (`DEV_LOGIN_ENABLED`) in production, so the development identity entry point is unavailable there.
 

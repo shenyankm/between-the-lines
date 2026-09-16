@@ -1,30 +1,47 @@
-# Public Zhihu reference data
+# Public Zhihu references
 
-The initial import used the user-authorized Access Secret with the official Zhihu search API: five topics, five results each, totaling 25 distinct items. Topics covered belittling colleagues and boundaries, exclusion from gatherings, procurement communication, job-change rumors, and personal growth.
+Public references are separate from player identity, story facts, and private NPC memory. Search results are source material, not authoritative workplace rules or permission to execute actions. The implementation uses existing PostgreSQL tables and the shared DeepSeek factory; there is no separate discussion service or vector database.
 
-Data is stored in `public.zhihu_contents` in the `btl` database of Docker container `between-the-lines-db-1`. Fields include titles, service-provided excerpts, public author nicknames, source URLs with provenance parameters, upvote/comment counts, search topics, and collection timestamps. Deduplication uses content type plus content ID; repeated imports update content/statistics and merge topics.
+## Current discussion flow
 
-This independent reference table does not represent player accounts or contain the authorized user's private content. At this import stage, it was not injected into NPC memory or connected to advice cards. Search relevance and perspective quality require filtering before player display.
+[Discussion](../frontend/src/features/v3/Discussion.tsx) submits a `discussion` job through `POST /api/saves/{id}/jobs` and reads its status/result. `backend/app/jobs.py` validates ownership, save revision, version, and request identity. The earlier proposal for dedicated `/discussions` endpoints was superseded by the job API.
 
-The credential is stored as `ZHIHU_ACCESS_SECRET` in local `backend/.env`, mode 0600 and Git-ignored. It is separate from OAuth and DeepSeek keys. The importer sends it only to public-data endpoints on `developer.zhihu.com`, does not follow redirects, and accepts source links only on HTTPS Zhihu domains.
+- In real mode, enabled V3 discussions can search a fixed topic for the current act through `zhihu_search.py`. Queries contain no player input, identity, or save ID. Search results are cached for 24 hours; failed refreshes may return explicitly labeled older cache entries.
+- If live sources are unavailable, generation can use approved, hash-validated local records matching the act. Missing sources or disabled discussions use labeled editorial advice. Mock mode returns labeled synthetic examples.
+- Generation validates source IDs and supporting excerpt quotes. The server fills source URLs/authors from allowed records; unknown sources and invented supporting quotes are rejected. This validation does not prove that every summary is semantically faithful.
+- Completed discussion results may be reused for 24 hours by story version, act, source content, prompt, model, and runtime configuration. Cache keys do not include private player dialogue.
+- Choosing an expression fills a draft. The player must send it before it becomes dialogue. Turn fields `discussion_id` and `perspective_id` are checked against the player's save, act, and card; opening a card does not alter story facts or notify another NPC.
 
-Using the existing Miniconda interpreter, run from backend:
+The application has no AI usage or spending quota. Provider service limits, execution capacity, timeouts, input validation, and NPC permissions still apply. `ZHIHU_ACCESS_SECRET` is separate from OAuth user tokens and DeepSeek credentials; keep it in the server environment or a protected, Git-ignored dotenv file.
+
+## Import and review
+
+`public.zhihu_contents` stores public titles, service excerpts, authors when available, source URLs, statistics, topics, and timestamps. Imports deduplicate by content type and ID, merge topic tags, and invalidate review approval when relevant source content changes. They do not import the authorized user's private content.
+
+After configuring the intended host database and credentials, run from `backend/`:
 
 ```sh
-python -m alembic upgrade head
 python -m app.zhihu_import
-# Custom topics: at most ten per invocation, ten results each.
 python -m app.zhihu_import --query '职场沟通边界' --count 5
 ```
 
-The program checks remaining quota first and makes one search request per topic. Each batch commits separately; later failures preserve committed batches and are not reported as success. The completion report is `artifacts/zhihu-import.json`, without secrets.
+The importer accepts up to ten queries with up to ten results each, checks provider quota, and commits each topic independently. Later failure leaves earlier batches committed and exits unsuccessfully. The four-second pause between topics is a local pacing choice, not a guarantee about platform limits. Its report goes to `artifacts/zhihu-import.json`.
 
-[Search API documentation](https://developer.zhihu.com/docs?key=zhihu_search) · [Authentication documentation](https://developer.zhihu.com/docs?key=authorization)
+From the repository root, review local content before approving it:
 
-## Second expansion
+```sh
+mkdir -p artifacts
+python scripts/product-admin.py review-export --file artifacts/candidates.json
+# Review sources; set approved/rejected, review_note, and act_1/act_2/act_3 tags.
+# Keep the exported content_hash unchanged; changed source content needs a new export.
+python scripts/product-admin.py review-import --file artifacts/candidates.json
+python scripts/product-admin.py review-import --file artifacts/candidates.json --apply
+```
 
-Thirty new topics returned ten items each, processing 300 results. Deduplication by type and ID added 294 items, bringing the recorded total to 319. `docs/data/zhihu-topics.json` lists topics covering all three workplace acts, partner relationships, mother-daughter communication, independent choices, and personal growth.
+Set both `DATABASE_URL` and `CHECKPOINT_URL` to the intended database before administration. The review CLI is dry-run unless `--apply` is provided. Original imports and live-search caches are different sources; imported candidates do not automatically become approved material.
 
-At verification time, the search quota was 35 / 5000 used, with 4965 remaining. After one short-term rate limit, committed batches were retained and import resumed from unfinished topics. The importer now waits four seconds between topics in a batch to reduce bursts. This interval is not a platform rate guarantee; rate-limit handling remains necessary.
+## References and verification
 
-All 30 topics were verified to have ten associated records. Twenty items lacked author nicknames and remain empty rather than inventing authors. Some results were product-oriented; these remained candidate references, not individually curated content or automatic NPC input. Summary report: `artifacts/zhihu-expansion-summary.json`.
+[Topic catalog](data/zhihu-topics.json) preserves historical search topics, including topics outside the currently playable workplace story. Previous import totals and provider quota readings were snapshots, not current inventory or available capacity. Do not label them as current without querying the target environment.
+
+[Provider search documentation](https://developer.zhihu.com/docs?key=zhihu_search) and [authentication documentation](https://developer.zhihu.com/docs?key=authorization) are external references. Runtime behavior above is described from the repository code, not a new verification of the provider service. Check source fidelity, unavailable sources, cross-save/act rejection, and NPC isolation separately; real API checks require explicit authorization and never run as routine mock CI.

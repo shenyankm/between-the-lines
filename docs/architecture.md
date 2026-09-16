@@ -4,9 +4,9 @@ The project retains React, FastAPI, PostgreSQL, and Deep Agents. Only one API pr
 
 ## Modules and resource lifecycle
 
-- `app/game_types.py`, `app/domain.py`: typed state, actions, permissions, and pure rules. Rules do not read databases or story files.
+- `app/game_types.py`, `app/domain.py`, `app/story_rules.py`: typed state, actions, permissions, and pure rules. Rules do not read databases or story files.
 - `app/services.py`: transaction boundaries, turn admission, tool facts, unified terminal commits, legacy-save validation, and consistent page reads. Uses concrete SQLAlchemy sessions without a generic repository framework.
-- `app/runner.py`: background execution, admission slots, timeouts, usage, and execution metrics. HTTP connections subscribe to tasks; disconnection does not cancel them.
+- `app/runner.py`: background execution, admission slots, timeouts and execution metrics. HTTP connections subscribe to tasks; disconnection does not cancel them.
 - `app/storage.py`, `app/agents.py`: connection pools and the Deep Agents adapter. Agents receive `AgentTurn` and `AgentContext`, depend only on restricted `GameTools`, and receive no ORM objects.
 - `app/routes/`, `app/auth.py`: identity, parameters, response DTOs, errors, and SSE. `create_app(settings, dependencies)` creates resources during lifespan. Tests inject reply/epilogue dependencies rather than replacing business-module globals. OpenAPI export neither starts lifespan nor connects to the database.
 
@@ -14,23 +14,23 @@ Startup acquires a PostgreSQL advisory lock before recovering leftover running t
 
 ## Transaction and turn invariants
 
-The admission transaction locks the user and save, checks request_id and the original payload first, then validates quota, concurrency, and version for a new turn. Replaying a terminal request returns its stored result without another model call or added execution usage. Reusing an ID with a different payload produces a conflict. Only one running turn is allowed; a partial unique database index is the final safeguard.
+The admission transaction locks the user and save, checks request_id and the original payload first, then validates story permissions, concurrency, and version for a new turn. Replaying a terminal request returns its stored result without another model call. Reusing an ID with a different payload produces a conflict. Only one running turn is allowed; a partial unique database index is the final safeguard.
 
 Model calls do not hold business transactions. Tools use separate short transactions to recheck turn status and role permissions, with operation-ID deduplication. Successfully committed facts must survive later model failures. Success, failure, timeout, and restart recovery all call `finish_turn`; only running can transition to terminal, and repeated finalization returns the stored terminal state. Dialogue is sent only after it is complete and committed; failures do not save partial dialogue.
 
-The storage boundary accepts `state_schema_version` in `{1, 2, 3}` and requires it to equal `story_version`. The later migrations only add fields, constraints, and indexes; they do not rewrite state, original turn payloads, events, or checkpoint identifiers. Missing retryable in legacy results defaults to false; `TurnUsage` explicitly supplies missing usage fields. These read-time defaults do not change idempotency comparison data. Events are ordered stably by `(created_at, id)`.
+The storage boundary accepts `state_schema_version` in `{1, 2, 3}` and requires it to equal `story_version`. Migrations preserve story state, original turn payloads, events, and checkpoint namespaces; migrations 0009 and 0010 remove obsolete accounting and archive fields. See [operations](operations.md) for upgrade and rollback constraints. Missing `retryable` in legacy results defaults to false; structured failures receive compatibility defaults. These read-time defaults do not change idempotency comparison data. Events are ordered stably by `(created_at, id)`.
 
 ## Public protocol and story
 
-`GET /api/saves/{id}/play-state` returns `{save, events, active_turn}` in one REPEATABLE READ, READ ONLY transaction. active_turn includes the internal turn ID and request_id for discovering in-progress turns across devices. Existing save, event, and result-query endpoints remain available.
+`GET /api/saves/{id}/play-state` returns the save, events, active turn, and V3 presentation fields in one REPEATABLE READ, READ ONLY transaction. active_turn includes the internal turn ID and request_id for discovering in-progress turns across devices. Existing save, event, and result-query endpoints remain available.
 
 Turn states are running, completed, and failed. SSE retains status (`StatusEvent`), dialogue (`DialogueEvent`), and done (`TurnResult`), all declared in OpenAPI components. done must be completed or failed. Terminal HTTP queries and SSE both supply legacy defaults.
 
-Story presentation is defined in versioned files under `app/`: `story.json` (v1), `story-v2.json`, and `story-v3.json` together with its `story-v3-r1.json` revision-1 variant. `load_story(version, revision)` selects one from the save's `story_version` and `content_revision`; new saves are created as v3 only, while v1/v2 saves stay readable and continuable. Each file holds acts, scenes, characters, default dialogue, interludes, and action buttons. Pydantic validates structure, character references, and asset paths; tests check that assets exist. Internal `StoryDefinition` contains persona; public `StoryOut` projects fields explicitly instead of spreading internal objects. Frontend story fixtures are generated from the public projection, not maintained as a second copy. Python continues to adjudicate story values.
+Story presentation is defined in versioned files under `app/`: `story.json` (v1), `story-v2.json`, and `story-v3.json` together with its `story-v3-r1.json` revision-1 variant. `load_story(version, revision)` selects one from the save's `story_version` and `content_revision`; new saves use V3 content revision 3. V3 revision 2 remains playable with its original scoring; V1/V2 and V3 revision 1 (including missing revision values) are read-only and cannot create new turns, branches, or AI artifacts. Each file holds acts, scenes, characters, default dialogue, interludes, and action buttons. Pydantic validates structure, character references, and asset paths; tests check that assets exist. Internal `StoryDefinition` contains persona; public `StoryOut` projects fields explicitly instead of spreading internal objects. Frontend story fixtures are generated from the public projection, not maintained as a second copy. Python continues to adjudicate story values.
 
 ## Frontend recovery
 
-Home and save entry points live in `features/Home.tsx`. Play routes current saves to PlayV3 and older saves to read-only EventHistory. React Query manages server data; UI state is isolated by user/save mounting, and components collaborate through data and callbacks.
+Home and save entry points live in `features/Home.tsx`. Play routes current saves to PlayV3 and older saves to read-only EventHistory. Only playable V3 saves mount the turn recovery controller after the story loads; read-only history does not resume old pending turns. React Query manages server data; UI state is isolated by user/save mounting, and components collaborate through data and callbacks.
 
 `useTurnController` unifies submission, subscription, and recovery. Before sending, it saves a versioned sessionStorage record with user, save, original request_id, and complete payload; storage failures fall back to memory. Leaving the page cancels only the subscription. Asynchronous results must pass lifecycle signal checks before updating caches.
 

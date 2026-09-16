@@ -1,9 +1,9 @@
-# 结局海报素材基线
+# Original ending poster baseline
 
-来源：[飞书文档](https://ccnoz23f7y98.feishu.cn/wiki/Ka47wg91jiUW1ekAcbFc9Fuonqe)，文档版本 1067，2026-09-15 重新下载核验。
+Source: [Feishu document](https://ccnoz23f7y98.feishu.cn/wiki/Ka47wg91jiUW1ekAcbFc9Fuonqe), recorded at document version 1067 and downloaded for comparison on 2026-09-15. This is a historical provenance record, not a new source verification.
 
-按文档顺序为 E01 改写规则、E02 各自为界、E03 有限修复、E04 主动转身、E05 付出代价、E06 尚未破局。服务端按已保存事实判定结局，前端按 outcome.id 映射图片。
+Document order: E01 改写规则, E02 各自为界, E03 有限修复, E04 主动转身, E05 付出代价, E06 尚未破局. The backend derives the ending from saved facts; the frontend maps `outcome.id` to the corresponding image.
 
-产品直接使用文档中的完整图片，保留标题、正文、手写文字和插画，不裁切、不覆盖、不拼接 AI 文案。按可用窗口等比例缩放。终幕开场仍按本局事实显示，之后展示对应原版卡片。
+The product displays each complete original image, including its title, body text, handwriting, and illustration. Scale proportionally without cropping, text overlays, or generated prose. The factual ending opening appears first, followed by the original card.
 
-frontend/public/assets/ending-*.png 是下载原图，与本目录保留的 1064 版素材逐一核对哈希。provenance.json 记录原图和产品路径。WebP 为原图等比例压缩版本，使用 scripts/build-images.py 重建（需要 Pillow）。
+`frontend/public/assets/ending-*.png` contains downloaded originals, compared by hash against the version-1064 assets retained here. [provenance.json](provenance.json) records source and product paths. WebP variants retain the complete image; rebuild them with `python scripts/build-images.py` from the repository root (requires Pillow).

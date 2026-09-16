@@ -5,7 +5,17 @@ body:
     attributes:
       value: |
         Search existing issues and PRs first. Use this form to discuss new features, large refactors, story-direction changes, and model-boundary changes before implementation.
-        Small documentation corrections and clear local fixes can go directly to a PR. Keep private dialogue and credentials out of examples.
+        Every PR must link an issue, including documentation and small fixes. Write the issue title and description in English.
+        Keep original UI text when needed, with an English explanation. Keep private dialogue and credentials out of examples.
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and pull requests for this topic.
+          required: true
+        - label: The issue title and description are in English, and all evidence is safe to share.
+          required: true
   - type: textarea
     id: need
     attributes:
