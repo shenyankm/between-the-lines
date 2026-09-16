@@ -6,7 +6,7 @@ English | [简体中文](README.zh-CN.md)
 
 章外回声 is an interactive workplace novel about relationships, communication, and personal boundaries. Step into the life of an R&D specialist caught between a missed farewell gathering, a stalled procurement request, and office rumors. Listen to what people say, decide how to respond, and find your own way through.
 
-**[Play in your browser](https://www.openwook.cloud)** · No installation required · Chinese-language story and interface
+**[Play in your browser](https://www.example.com)** · No installation required · Chinese-language story and interface
 
 ## A story you take part in
 
@@ -20,7 +20,7 @@ Talk to colleagues in your own words or choose from the available story actions.
 
 ## Start playing
 
-1. Open the [game](https://www.openwook.cloud) on your desktop or phone.
+1. Open the [game](https://www.example.com) on your desktop or phone.
 2. Choose **“知乎授权登录”** (Sign in with Zhihu), then start a new story. The public site requires Zhihu authorization.
 3. Read the scene, choose an action, or write a message to the current character. Use the phone and story panels to revisit conversations, materials, and progress.
 4. Return through **“继续上次的故事”** (Continue your last story), or open **“查看全部存档”** (View all saves) to choose another playthrough.

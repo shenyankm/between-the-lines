@@ -207,12 +207,12 @@ def healthy():
                     "-fsS",
                     "--max-time",
                     "10",
-                    "https://www.openwook.cloud/api/ready",
+                    "https://www.example.com/api/ready",
                 ]
             )
             if json.loads(result)["status"] == "ready":
                 command(
-                    ["/usr/bin/curl", "-fsS", "--max-time", "10", "https://www.openwook.cloud/"],
+                    ["/usr/bin/curl", "-fsS", "--max-time", "10", "https://www.example.com/"],
                     stdout=subprocess.DEVNULL,
                 )
                 return

@@ -1,7 +1,7 @@
 # Zhihu OAuth integration and single-server deployment
 
-Public entry point: `https://www.openwook.cloud`. Register this callback with Zhihu:
-`https://www.openwook.cloud/api/auth/zhihu/callback`.
+Public entry point: `https://www.example.com`. Register this callback with Zhihu:
+`https://www.example.com/api/auth/zhihu/callback`.
 
 ## Protocol and identity boundaries
 

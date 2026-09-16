@@ -12,7 +12,7 @@
 	}
 }
 
-www.openwook.cloud {
+www.example.com {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:18080
 	log {
@@ -36,6 +36,6 @@ www.openwook.cloud {
 	}
 }
 
-openwook.cloud {
-	redir https://www.openwook.cloud{uri} permanent
+example.com {
+	redir https://www.example.com{uri} permanent
 }
